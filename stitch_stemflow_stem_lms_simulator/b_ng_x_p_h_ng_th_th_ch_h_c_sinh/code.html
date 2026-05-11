@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+
+<html class="light" lang="vi"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&amp;family=Inter:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "surface-container-high": "#e7e8e9",
+                    "on-surface": "#191c1d",
+                    "on-secondary-fixed-variant": "#723600",
+                    "error": "#ba1a1a",
+                    "primary": "#003b43",
+                    "tertiary-fixed": "#cfe6f2",
+                    "inverse-primary": "#9acfda",
+                    "surface-container-low": "#f3f4f5",
+                    "error-container": "#ffdad6",
+                    "secondary-fixed": "#ffdcc6",
+                    "on-error": "#ffffff",
+                    "on-tertiary-fixed-variant": "#354a53",
+                    "inverse-on-surface": "#f0f1f2",
+                    "on-tertiary-container": "#aac0cc",
+                    "inverse-surface": "#2e3132",
+                    "surface-bright": "#f8f9fa",
+                    "secondary-container": "#fc820c",
+                    "secondary": "#964900",
+                    "on-surface-variant": "#40484a",
+                    "on-primary-fixed-variant": "#134e57",
+                    "on-background": "#191c1d",
+                    "outline-variant": "#c0c8ca",
+                    "on-tertiary-fixed": "#071e27",
+                    "outline": "#70797a",
+                    "on-secondary": "#ffffff",
+                    "surface-tint": "#30666f",
+                    "background": "#f8f9fa",
+                    "on-primary-fixed": "#001f24",
+                    "tertiary-container": "#3a4f59",
+                    "primary-container": "#1a535c",
+                    "primary-fixed": "#b6ecf6",
+                    "on-tertiary": "#ffffff",
+                    "on-secondary-container": "#5e2c00",
+                    "on-primary-container": "#90c5cf",
+                    "surface-variant": "#e1e3e4",
+                    "on-secondary-fixed": "#311300",
+                    "on-primary": "#ffffff",
+                    "tertiary": "#233841",
+                    "on-error-container": "#93000a",
+                    "secondary-fixed-dim": "#ffb786",
+                    "surface-container-lowest": "#ffffff",
+                    "surface-container": "#edeeef",
+                    "surface": "#f8f9fa",
+                    "tertiary-fixed-dim": "#b4cad6",
+                    "surface-container-highest": "#e1e3e4",
+                    "primary-fixed-dim": "#9acfda",
+                    "surface-dim": "#d9dadb"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "1rem",
+                    "xl": "1.5rem",
+                    "full": "9999px"
+            },
+            "fontFamily": {
+                    "headline": ["Manrope"],
+                    "body": ["Inter"],
+                    "label": ["Inter"]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(20px);
+        }
+        .bento-grid {
+            display: grid;
+            grid-template-columns: repeat(12, 1fr);
+            gap: 1.5rem;
+        }
+    </style>
+</head>
+<body class="bg-background font-body text-on-surface">
+<!-- TopNavBar -->
+<header class="bg-slate-50/80 dark:bg-slate-900/80 backdrop-blur-xl font-['Manrope'] font-bold text-base docked full-width top-0 sticky z-50 flex justify-between items-center px-6 py-3 w-full">
+<div class="flex items-center gap-8">
+<span class="text-xl font-extrabold tracking-tight text-[#1A535C] dark:text-teal-400">StemFlow</span>
+<nav class="hidden md:flex gap-6">
+<a class="text-slate-500 dark:text-slate-400 hover:text-[#1A535C] transition-colors" href="#">Bảng điều khiển</a>
+<a class="text-slate-500 dark:text-slate-400 hover:text-[#1A535C] transition-colors" href="#">Thư viện mẫu</a>
+<a class="text-[#1A535C] border-b-2 border-[#1A535C] pb-1" href="#">Bảng xếp hạng</a>
+</nav>
+</div>
+<div class="flex items-center gap-4">
+<div class="relative hidden sm:block">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline">search</span>
+<input class="pl-10 pr-4 py-2 bg-surface-container rounded-full text-sm outline-none focus:ring-2 ring-primary/20 w-64" placeholder="Tìm kiếm thử thách..." type="text"/>
+</div>
+<button class="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors rounded-full relative">
+<span class="material-symbols-outlined text-[#1A535C]">notifications</span>
+<span class="absolute top-2 right-2 w-2 h-2 bg-secondary rounded-full"></span>
+</button>
+<div class="flex items-center gap-3 ml-2 pl-4 border-l border-outline-variant">
+<div class="text-right hidden lg:block">
+<p class="text-xs font-bold text-on-surface">Hoàng Minh</p>
+<p class="text-[10px] text-outline uppercase tracking-wider">Hạng Kim Cương</p>
+</div>
+<img alt="Ảnh đại diện người dùng" class="w-10 h-10 rounded-full border-2 border-primary-fixed" data-alt="close-up portrait of a friendly young male student with glasses in a modern educational setting, soft natural lighting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuA87e8S5irVKOksK_TcwL_rTNPBeLUAOvIUjM0V-HPK3gkWdLRVhkhhNpQcHoOO4bGP6_InFlS9bTyrbLr7Kj_Anz8VubfN60kqfg9I8yR9RWnPO6fiacARAreY1s3VIthpcjsunhyBgftyVWq8bcIRJkuUav0_ma0Ijegk2lPUaWdzSPEasf0jEr4yjiHYaqyla8VEGV9PKOo6MsgtR7N2WbKqZrWpYDmTs0n1zAI_iw5zLdZdbdeXmt9zxP1vCNdTm-nEQfV_thI"/>
+</div>
+</div>
+</header>
+<div class="flex min-h-screen">
+<!-- SideNavBar -->
+<aside class="bg-[#f3f4f5] dark:bg-slate-950 h-screen w-64 fixed left-0 top-0 pt-20 hidden md:flex flex-col py-6 px-4 gap-2 z-40">
+<div class="mb-6 px-2">
+<h2 class="font-['Manrope'] font-black text-[#1A535C] dark:text-teal-500 text-lg">StemFlow</h2>
+<p class="text-xs text-slate-500">Phòng Thí Nghiệm Tư Duy</p>
+</div>
+<nav class="flex-1 space-y-1">
+<div class="flex items-center gap-3 px-4 py-3 text-slate-600 dark:text-slate-400 hover:bg-slate-200/50 dark:hover:bg-slate-800 hover:translate-x-1 transition-transform duration-200 cursor-pointer active:opacity-80 rounded-lg">
+<span class="material-symbols-outlined">dashboard</span>
+<span class="font-medium text-sm">Bảng điều khiển</span>
+</div>
+<div class="flex items-center gap-3 px-4 py-3 text-slate-600 dark:text-slate-400 hover:bg-slate-200/50 dark:hover:bg-slate-800 hover:translate-x-1 transition-transform duration-200 cursor-pointer active:opacity-80 rounded-lg">
+<span class="material-symbols-outlined">inventory_2</span>
+<span class="font-medium text-sm">Thư viện mẫu</span>
+</div>
+<div class="flex items-center gap-3 px-4 py-3 text-slate-600 dark:text-slate-400 hover:bg-slate-200/50 dark:hover:bg-slate-800 hover:translate-x-1 transition-transform duration-200 cursor-pointer active:opacity-80 rounded-lg">
+<span class="material-symbols-outlined">analytics</span>
+<span class="font-medium text-sm">Báo cáo hiệu suất</span>
+</div>
+<div class="flex items-center gap-3 px-4 py-3 bg-[#1A535C]/10 text-[#1A535C] border-l-4 border-[#964900] font-bold cursor-pointer active:opacity-80 rounded-r-lg">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">leaderboard</span>
+<span class="font-medium text-sm">Bảng xếp hạng</span>
+</div>
+<div class="flex items-center gap-3 px-4 py-3 text-slate-600 dark:text-slate-400 hover:bg-slate-200/50 dark:hover:bg-slate-800 hover:translate-x-1 transition-transform duration-200 cursor-pointer active:opacity-80 rounded-lg">
+<span class="material-symbols-outlined">psychology</span>
+<span class="font-medium text-sm">Thử thách</span>
+</div>
+</nav>
+<div class="mt-auto pt-6 border-t border-outline-variant space-y-1">
+<button class="w-full bg-secondary text-on-secondary font-bold py-3 px-4 rounded-full flex items-center justify-center gap-2 hover:scale-105 transition-transform active:scale-95 mb-4 shadow-lg shadow-secondary/20">
+<span class="material-symbols-outlined text-sm">science</span>
+<span class="text-sm">Bắt đầu thí nghiệm</span>
+</button>
+<div class="flex items-center gap-3 px-4 py-2 text-slate-600 dark:text-slate-400 hover:bg-slate-200/50 rounded-lg cursor-pointer">
+<span class="material-symbols-outlined">support_agent</span>
+<span class="text-sm">Hỗ trợ</span>
+</div>
+<div class="flex items-center gap-3 px-4 py-2 text-error hover:bg-error-container/20 rounded-lg cursor-pointer">
+<span class="material-symbols-outlined">logout</span>
+<span class="text-sm">Đăng xuất</span>
+</div>
+</div>
+</aside>
+<!-- Main Content Canvas -->
+<main class="flex-1 md:ml-64 p-6 lg:p-10">
+<header class="mb-10">
+<h1 class="font-headline font-black text-4xl text-primary tracking-tight mb-2">Đấu Trường Trí Tuệ</h1>
+<p class="text-on-surface-variant max-w-2xl">Vinh danh những nhà khoa học nhí xuất sắc nhất StemFlow. Vượt qua thử thách để nhận huy hiệu và nâng cao thứ hạng của bạn.</p>
+</header>
+<div class="bento-grid">
+<!-- Podium Section (Top 3) -->
+<div class="col-span-12 lg:col-span-8 bg-surface-container-lowest rounded-xl p-8 border border-transparent flex flex-col items-center relative overflow-hidden">
+<div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-primary via-secondary to-primary-container"></div>
+<h3 class="font-headline font-bold text-xl mb-12 self-start flex items-center gap-2">
+<span class="material-symbols-outlined text-secondary" style="font-variation-settings: 'FILL' 1;">workspace_premium</span>
+                        Top 3 Chiến Thần Tuần Này
+                    </h3>
+<div class="flex items-end justify-center gap-4 sm:gap-12 w-full pt-10">
+<!-- 2nd Place -->
+<div class="flex flex-col items-center group">
+<div class="relative mb-4">
+<div class="w-16 h-16 sm:w-20 sm:h-20 rounded-full border-4 border-slate-300 p-1 overflow-hidden">
+<img alt="Hạng 2" class="w-full h-full object-cover rounded-full" data-alt="portrait of a confident teenage girl student with a bright expression, studio lighting, soft gray background" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCnm4xdNaeSBDHkRdcuoTRhtFtnkv46AQ11Nikje-kgFl206KBoH20nOSyxBCCn3D-Sa0me7-Qct4vJ0mwFG_zioDx6wumzk5MVwAJp8bGkKfoQxPiT6LtI1tu5FdwmM7wu1IdgxxVU8VMhsczssc0F9Zk-EyBdgDQsMSisBNXoIarUc8oPwMlsWL_h7Vpl68w2ncSZIi4OMXUyxcwNQ9BeL2HC2JZgDAMG27JcwzHi7sO9Ahqyp7U5Y8Zf5NiSOAnhDDZNEpwnFlc"/>
+</div>
+<div class="absolute -bottom-2 left-1/2 -translate-x-1/2 bg-slate-400 text-white w-8 h-8 rounded-full flex items-center justify-center font-bold border-2 border-white">2</div>
+</div>
+<p class="font-bold text-sm">Linh Đan</p>
+<p class="text-secondary font-black text-xs">2,850 XP</p>
+<div class="h-24 w-16 sm:w-24 bg-surface-container-high rounded-t-lg mt-4 group-hover:scale-y-105 transition-transform origin-bottom"></div>
+</div>
+<!-- 1st Place -->
+<div class="flex flex-col items-center group">
+<div class="relative mb-6 -mt-8 scale-110">
+<span class="material-symbols-outlined absolute -top-8 left-1/2 -translate-x-1/2 text-yellow-500 text-3xl animate-bounce">emoji_events</span>
+<div class="w-20 h-20 sm:w-24 sm:h-24 rounded-full border-4 border-yellow-400 p-1 overflow-hidden shadow-xl shadow-yellow-200">
+<img alt="Hạng 1" class="w-full h-full object-cover rounded-full" data-alt="joyful young boy student laughing, vibrant energy, colorful scientific laboratory background out of focus" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAAq4jy4Z0vazGIqnjbrEn2UkhvQA2uSdPBwBwggiERP7TGV4QY1ma6mPa5OFNC5drTMstS9a5cZWx3RvSfutZitmCrOZQOKKbvacfv7hvFTdH8Sq_mE45ibb6Yhf8Sa-1staau20gHWIfqgNOjQQiGeZTtL0kI9bOC-xZ54wtZSnLnIc9G39_DUNhFbE5TNTTWIT6_kQTyAHRnXfPfcq-RQFhw_MvMMV9zx-Brm64MGbdneDiugg7OwYBBZxqLap2ESEEX8sXBX0A"/>
+</div>
+<div class="absolute -bottom-2 left-1/2 -translate-x-1/2 bg-yellow-500 text-white w-10 h-10 rounded-full flex items-center justify-center font-black border-4 border-white shadow-lg">1</div>
+</div>
+<p class="font-black text-base">Gia Bách</p>
+<p class="text-secondary font-black text-sm">3,120 XP</p>
+<div class="h-36 w-20 sm:w-32 bg-primary-container rounded-t-lg mt-4 shadow-2xl group-hover:scale-y-105 transition-transform origin-bottom"></div>
+</div>
+<!-- 3rd Place -->
+<div class="flex flex-col items-center group">
+<div class="relative mb-4">
+<div class="w-16 h-16 sm:w-20 sm:h-20 rounded-full border-4 border-amber-600 p-1 overflow-hidden">
+<img alt="Hạng 3" class="w-full h-full object-cover rounded-full" data-alt="pensive male student looking at the camera, clean professional lighting, neutral background" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAcPSG7DcHh21P3v-bPtzF2k-CHCQCdm82symaK9gXsE6SvFteFongA-lKpplhpAYISXHoBEpZ4Xg4SxQgF0E-0Fv0w375n0jiKX4s1-cGgYCHofNIkmfsDBp2IB-14JxsrwrSjkFr95k3MRvanl7Jdq7iRUiitQaSxf31pkfUgJC1kZQJxrGs4dYOeGXLNZZ_acMK5wLRqIn6Mx57vJexELsofI6S20rHTYpjao_Bo3PJs4BvpcH0c3vAF9JLdLIzwZI8uB8V2vYg"/>
+</div>
+<div class="absolute -bottom-2 left-1/2 -translate-x-1/2 bg-amber-700 text-white w-8 h-8 rounded-full flex items-center justify-center font-bold border-2 border-white">3</div>
+</div>
+<p class="font-bold text-sm">Quốc Anh</p>
+<p class="text-secondary font-black text-xs">2,600 XP</p>
+<div class="h-16 w-16 sm:w-24 bg-surface-container rounded-t-lg mt-4 group-hover:scale-y-105 transition-transform origin-bottom"></div>
+</div>
+</div>
+</div>
+<!-- Personal Rank Stats Card -->
+<div class="col-span-12 lg:col-span-4 bg-primary text-on-primary rounded-xl p-8 flex flex-col justify-between">
+<div>
+<div class="flex justify-between items-start mb-6">
+<div>
+<p class="text-on-primary/60 text-xs uppercase tracking-widest font-bold">Thứ hạng của bạn</p>
+<h4 class="text-4xl font-headline font-black">#12</h4>
+</div>
+<div class="bg-white/10 p-3 rounded-xl backdrop-blur-md">
+<span class="material-symbols-outlined text-3xl">trending_up</span>
+</div>
+</div>
+<div class="space-y-4">
+<div class="flex justify-between text-sm">
+<span>Tiến trình hạng tiếp theo</span>
+<span class="font-bold">85%</span>
+</div>
+<div class="w-full h-2 bg-white/20 rounded-full overflow-hidden">
+<div class="w-[85%] h-full bg-secondary-fixed"></div>
+</div>
+<p class="text-xs text-on-primary/70 italic">Bạn chỉ cần 120 XP nữa để lọt vào Top 10!</p>
+</div>
+</div>
+<div class="grid grid-cols-2 gap-4 mt-8">
+<div class="bg-white/5 p-4 rounded-lg">
+<p class="text-[10px] text-on-primary/60 uppercase">Chuỗi thắng</p>
+<p class="text-xl font-bold">7 Ngày</p>
+</div>
+<div class="bg-white/5 p-4 rounded-lg">
+<p class="text-[10px] text-on-primary/60 uppercase">Huy hiệu</p>
+<p class="text-xl font-bold">24 Cái</p>
+</div>
+</div>
+</div>
+<!-- Active Challenges Section -->
+<div class="col-span-12 lg:col-span-7">
+<div class="flex items-center justify-between mb-6">
+<h3 class="font-headline font-bold text-2xl flex items-center gap-2 text-primary">
+<span class="material-symbols-outlined text-secondary">rocket_launch</span>
+                            Thử Thách Đặc Biệt
+                        </h3>
+<a class="text-primary text-sm font-bold hover:underline" href="#">Xem tất cả</a>
+</div>
+<div class="space-y-4">
+<!-- Challenge Card 1 -->
+<div class="bg-surface-container-lowest p-5 rounded-xl border border-transparent hover:border-outline-variant transition-all group flex gap-5">
+<div class="w-24 h-24 rounded-lg bg-tertiary-fixed flex-shrink-0 flex items-center justify-center overflow-hidden">
+<span class="material-symbols-outlined text-4xl text-tertiary" style="font-variation-settings: 'FILL' 1;">bolt</span>
+</div>
+<div class="flex-1">
+<div class="flex justify-between items-start mb-1">
+<h4 class="font-bold text-lg text-primary">Thiết kế mạch tiết kiệm điện nhất</h4>
+<span class="px-2 py-1 bg-error-container text-on-error-container text-[10px] font-black rounded uppercase">Cấp độ: Khó</span>
+</div>
+<p class="text-sm text-on-surface-variant mb-4">Sử dụng linh kiện ảo để tạo ra bộ phát tín hiệu tiêu thụ dưới 5mW.</p>
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-3">
+<div class="flex -space-x-2">
+<img alt="user" class="w-6 h-6 rounded-full border-2 border-white" data-alt="avatar of student" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCZfCcXXFdhGSc2SeQ_aSrE08MipFUkqn1MiXXVGoKK4IHZAJ1ZiSxPOXIF9HlLfQWCei2hBTY1FKPzemkDuCOOUKqECm6vX6lVxX8n9NBaQldRe65vODY7EJGGhJhqFFhjN0oteRN44T3llyCT2L0eSTtjY7VFsMwTOVh827mGYYnFW1k-PnJfSoL08b7w5N-FYU_Ip9cQjS_kbhvc5Th-zZLkL7TbPO3v1A9RTurlVazaP28gLARlUHvy7pkSZmLO8VjfTlhWjAI"/>
+<img alt="user" class="w-6 h-6 rounded-full border-2 border-white" data-alt="avatar of student" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDiLp0Do-00jFBowGlxG3mQx8k4ptTGXNheJSjAZxwXFE9HD5Ul3_ZP6MZ6E5WN-D41JEemfp6TuSs6yhyUTu_cdNyySG_STbLH2KKfoyY60cxzuq4IPkXXqcfYTNxLahjNcVxTofibOkDYlCZ-5L7nzwEgU4I3_LfreIRAHEsCxfxKghjnMztImzFMpqKFWKmFt-0vG7affuskEXXyUcYHxqWHGQHaPT2JIpoET3rz5TRAlP3rJVZ_ABfH82o4LVuvlafFjy7C9OM"/>
+<div class="w-6 h-6 rounded-full bg-surface-container border-2 border-white text-[8px] flex items-center justify-center font-bold">+12</div>
+</div>
+<span class="text-[10px] text-outline font-medium italic">Đang tham gia</span>
+</div>
+<button class="bg-primary text-on-primary text-xs font-bold px-5 py-2 rounded-full hover:bg-primary-container transition-colors group-hover:scale-105 active:scale-95">Tham gia ngay</button>
+</div>
+</div>
+</div>
+<!-- Challenge Card 2 -->
+<div class="bg-surface-container-lowest p-5 rounded-xl border border-transparent hover:border-outline-variant transition-all group flex gap-5">
+<div class="w-24 h-24 rounded-lg bg-primary-fixed flex-shrink-0 flex items-center justify-center overflow-hidden">
+<span class="material-symbols-outlined text-4xl text-primary" style="font-variation-settings: 'FILL' 1;">water_drop</span>
+</div>
+<div class="flex-1">
+<div class="flex justify-between items-start mb-1">
+<h4 class="font-bold text-lg text-primary">Tối ưu hóa hệ thống lọc nước</h4>
+<span class="px-2 py-1 bg-secondary-fixed text-on-secondary-container text-[10px] font-black rounded uppercase">Cấp độ: Trung bình</span>
+</div>
+<p class="text-sm text-on-surface-variant mb-4">Phối hợp các vật liệu để tăng tốc độ lọc lên 20% so với mẫu cơ bản.</p>
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-2 text-secondary font-bold text-xs">
+<span class="material-symbols-outlined text-sm">stars</span>
+                                        Thưởng: Huy hiệu Aqua Master
+                                    </div>
+<button class="bg-primary text-on-primary text-xs font-bold px-5 py-2 rounded-full hover:bg-primary-container transition-colors group-hover:scale-105 active:scale-95">Tham gia ngay</button>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Leaderboard Table Section -->
+<div class="col-span-12 lg:col-span-5">
+<h3 class="font-headline font-bold text-2xl mb-6 text-primary flex items-center gap-2">
+<span class="material-symbols-outlined text-secondary">groups</span>
+                        Bảng Xếp Hạng Toàn Trường
+                    </h3>
+<div class="bg-surface-container-lowest rounded-xl shadow-sm overflow-hidden">
+<div class="bg-surface-container-low px-6 py-4 flex justify-between text-[10px] font-black text-outline uppercase tracking-wider border-b border-outline-variant/30">
+<span>Học sinh</span>
+<span>Điểm tích lũy (XP)</span>
+</div>
+<div class="divide-y divide-outline-variant/10">
+<!-- Rank 4 -->
+<div class="px-6 py-4 flex items-center justify-between hover:bg-surface-bright transition-colors">
+<div class="flex items-center gap-4">
+<span class="font-black text-outline w-4 text-center">4</span>
+<img alt="Rank 4" class="w-8 h-8 rounded-full" data-alt="avatar of student" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAWfcWzo-cUTYhLMvgpqbrMb8V5GtY8H-djht_sOtt6mKA9rE-WcaPex73kEDXFQia23UHwx2soJuF1wPUdRukv9zJmt2hhtZff1y_zdSWn87izOFxTq6tqUhn8h_0N8djuvUhdmyDJGjRo_rkqTOrrWedn23jixX66aF8GDGICwqP_XLsHNRUCtq9MDrXAXbEx1wLbKf5El_wH3kb1iOpSwtS3NHDP2JbZseoszPUEIw1SrK6latWXqOKVdO1mLGSWyDD9OJBQdRI"/>
+<span class="text-sm font-bold">Thùy Chi</span>
+</div>
+<span class="text-sm font-black text-primary">2,450</span>
+</div>
+<!-- Rank 5 -->
+<div class="px-6 py-4 flex items-center justify-between hover:bg-surface-bright transition-colors">
+<div class="flex items-center gap-4">
+<span class="font-black text-outline w-4 text-center">5</span>
+<img alt="Rank 5" class="w-8 h-8 rounded-full" data-alt="avatar of student" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDOgRgo8fUYi6pJlV3pc5V---O9sd87ckF6Perw_xCvj6yaDGfSmgSEi1CqlqSxlMhjiJ3LfGQesxg1NhTH6wJb-6X987gJ7qmUdQ9X3RXrajdyMA6YV3N33Ix5PIM8l83kCVruYSuwK82Ls5g2K7Ysgt35iDJHj7YRAhWRRUuCdg7pMpyb3mWnkLIcIv6rBzzmZznRP4Upz8YoqmVwYataPHZG-J131LtfiwSlpktWN48vQS1VLHbIACw2xL4VYkYrDhSJlJ6-qto"/>
+<span class="text-sm font-bold">Nhật Minh</span>
+</div>
+<span class="text-sm font-black text-primary">2,380</span>
+</div>
+<!-- Rank 6 -->
+<div class="px-6 py-4 flex items-center justify-between hover:bg-surface-bright transition-colors">
+<div class="flex items-center gap-4">
+<span class="font-black text-outline w-4 text-center">6</span>
+<img alt="Rank 6" class="w-8 h-8 rounded-full" data-alt="avatar of student" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBgkNoxxVj5n6WpySYBjazAT8-YPGUuqH_14BwhYagSwAdgtrcCaTgFroYZbg6n1BEQtHZr55Ok27kIxAdfFM7lo5egDKqHvTkewrBcmWttNi5ryEUVi9SXi1cFgpACExAAYeG3jXgTKgM3jmr_idt4YJznJCZOCerPBScZ7dPr1TKqLiFwhNrDKqUblDtZsG7Um8kasjZ4cZ3zv-u27cXkyffzDfpIQ0jQ3KI9xnJ3-dsAB3Ahj5E9maZyD9eDroZ0tTeK9Jo7Ld4"/>
+<span class="text-sm font-bold">Bảo Ngọc</span>
+</div>
+<span class="text-sm font-black text-primary">2,310</span>
+</div>
+<!-- Rank 7 -->
+<div class="px-6 py-4 flex items-center justify-between hover:bg-surface-bright transition-colors">
+<div class="flex items-center gap-4">
+<span class="font-black text-outline w-4 text-center">7</span>
+<img alt="Rank 7" class="w-8 h-8 rounded-full" data-alt="avatar of student" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAy9e4KIBtXOxrg_CeAajYqhfgU6E6xUkReDTDckPUgPR_H1pXbbLhvs9KqSwe9C1Avrtr-UAU7GlwviitK4gRojmhvSNgyBu36kYMhmXv-F2V1FNi_tck82KEI-jWo8J4jvwSS7fH83xPgrYc2zw2oALtAuA-9SNZPNVCioVENGAd3esjMeOvODMio433MBR8AMoH2ZgH53xZM6pLEU6LKbImFiKAnK5Kd7Us_z1DbzdU-J3HaSkm24xMEjotwhnrprZM3C2lQeHc"/>
+<span class="text-sm font-bold">Đức Thịnh</span>
+</div>
+<span class="text-sm font-black text-primary">2,290</span>
+</div>
+<!-- User's Rank Highlight -->
+<div class="px-6 py-4 flex items-center justify-between bg-primary/5 border-l-4 border-secondary">
+<div class="flex items-center gap-4">
+<span class="font-black text-primary w-4 text-center">12</span>
+<img alt="Your Rank" class="w-8 h-8 rounded-full" data-alt="avatar of current user student" src="https://lh3.googleusercontent.com/aida-public/AB6AXuC5Qg5QPVCGcY2GHtIinCjoT2AA1fmw9jZU2_RQXla8-f1uqSE-_ZZ1NbNi_PQrN-GqNowPK9XgZxp0wQPNjZOuRim8B335bVPKAQJ11z0ECj2Ux-anXS_HePe1faXrvQ2l9skVsiZu7s8hxVf1-hK4wmVqd1rTmTK1bDq6oTRS-ce7IzsdvdJW-PqHtLI-_d55AWg4FQUY95FKuqZlTjmX2rSnGsUEselhsHA95B0t_zj_8rk-1rKL2zkKcxKhrXbM8MOQtmgIiE4"/>
+<span class="text-sm font-black text-primary">Bạn (Hoàng Minh)</span>
+</div>
+<span class="text-sm font-black text-secondary">2,150</span>
+</div>
+</div>
+<button class="w-full py-4 text-sm font-bold text-primary bg-surface-container-low hover:bg-surface-container-high transition-colors">Xem toàn bộ bảng xếp hạng</button>
+</div>
+</div>
+</div>
+</main>
+</div>
+<!-- Mobile Bottom Navigation -->
+<nav class="md:hidden fixed bottom-0 left-0 w-full bg-surface-container-lowest border-t border-outline-variant/30 flex justify-around py-3 px-2 z-50">
+<div class="flex flex-col items-center gap-1 text-outline">
+<span class="material-symbols-outlined">dashboard</span>
+<span class="text-[10px]">Trang chủ</span>
+</div>
+<div class="flex flex-col items-center gap-1 text-outline">
+<span class="material-symbols-outlined">inventory_2</span>
+<span class="text-[10px]">Thư viện</span>
+</div>
+<div class="flex flex-col items-center gap-1 text-primary">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">leaderboard</span>
+<span class="text-[10px] font-bold">Hạng</span>
+</div>
+<div class="flex flex-col items-center gap-1 text-outline">
+<span class="material-symbols-outlined">psychology</span>
+<span class="text-[10px]">Thử thách</span>
+</div>
+<div class="flex flex-col items-center gap-1 text-outline">
+<span class="material-symbols-outlined">person</span>
+<span class="text-[10px]">Cá nhân</span>
+</div>
+</nav>
+<!-- Floating Action Button - Contextual -->
+<button class="fixed bottom-24 right-6 md:bottom-10 md:right-10 bg-secondary text-on-secondary p-4 rounded-full shadow-2xl hover:scale-110 active:scale-90 transition-transform group flex items-center gap-2 overflow-hidden max-w-[56px] hover:max-w-xs transition-all duration-300">
+<span class="material-symbols-outlined">add</span>
+<span class="text-sm font-bold whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity">Tạo Lab mới</span>
+</button>
+</body></html>

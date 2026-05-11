@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+
+<html class="light" lang="vi"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&amp;family=Inter:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "secondary-fixed": "#ffdcc6",
+                        "inverse-on-surface": "#f0f1f2",
+                        "tertiary-fixed-dim": "#b4cad6",
+                        "on-error-container": "#93000a",
+                        "tertiary-fixed": "#cfe6f2",
+                        "primary-fixed-dim": "#9acfda",
+                        "error-container": "#ffdad6",
+                        "error": "#ba1a1a",
+                        "primary-container": "#1a535c",
+                        "secondary-container": "#fc820c",
+                        "surface-container-low": "#f3f4f5",
+                        "surface-container": "#edeeef",
+                        "on-primary": "#ffffff",
+                        "on-tertiary-container": "#aac0cc",
+                        "surface-tint": "#30666f",
+                        "on-secondary-container": "#5e2c00",
+                        "on-secondary-fixed-variant": "#723600",
+                        "on-secondary": "#ffffff",
+                        "primary-fixed": "#b6ecf6",
+                        "outline-variant": "#c0c8ca",
+                        "on-secondary-fixed": "#311300",
+                        "tertiary-container": "#3a4f59",
+                        "surface-container-lowest": "#ffffff",
+                        "on-tertiary": "#ffffff",
+                        "secondary": "#964900",
+                        "on-primary-fixed": "#001f24",
+                        "on-surface-variant": "#40484a",
+                        "surface-container-high": "#e7e8e9",
+                        "on-tertiary-fixed": "#071e27",
+                        "surface-variant": "#e1e3e4",
+                        "on-primary-fixed-variant": "#134e57",
+                        "surface-container-highest": "#e1e3e4",
+                        "on-surface": "#191c1d",
+                        "surface-bright": "#f8f9fa",
+                        "background": "#f8f9fa",
+                        "outline": "#70797a",
+                        "inverse-primary": "#9acfda",
+                        "surface-dim": "#d9dadb",
+                        "on-primary-container": "#90c5cf",
+                        "on-error": "#ffffff",
+                        "on-background": "#191c1d",
+                        "tertiary": "#233841",
+                        "on-tertiary-fixed-variant": "#354a53",
+                        "primary": "#003b43",
+                        "surface": "#f8f9fa",
+                        "inverse-surface": "#2e3132",
+                        "secondary-fixed-dim": "#ffb786"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "fontFamily": {
+                        "headline": ["Manrope"],
+                        "body": ["Inter"],
+                        "label": ["Inter"]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        body { font-family: 'Inter', sans-serif; }
+        h1, h2, h3, .font-headline { font-family: 'Manrope', sans-serif; }
+    </style>
+</head>
+<body class="bg-background text-on-background min-h-screen">
+<!-- SideNavBar -->
+<aside class="fixed left-0 top-0 h-full w-[250px] bg-[#f3f4f5] dark:bg-slate-900 flex flex-col h-screen py-6 px-4 z-50">
+<div class="mb-10 px-4">
+<h1 class="text-2xl font-black text-[#1A535C] dark:text-teal-400 tracking-tight">StemFlow</h1>
+<p class="text-xs font-semibold text-slate-500 uppercase tracking-widest mt-1">Phòng Thí Nghiệm Tư Duy</p>
+</div>
+<nav class="flex-1 space-y-2">
+<a class="text-slate-600 dark:text-slate-400 py-3 px-4 flex items-center gap-3 hover:bg-white/40 dark:hover:bg-slate-800/50 transition-all" href="#">
+<span class="material-symbols-outlined" data-icon="school">school</span>
+<span class="font-['Manrope'] font-semibold">Lớp học</span>
+</a>
+<a class="bg-white dark:bg-slate-800 text-[#1A535C] border-l-4 border-amber-600 rounded-r-xl py-3 px-4 flex items-center gap-3 active:translate-x-1 transition-transform" href="#">
+<span class="material-symbols-outlined" data-icon="library_books">library_books</span>
+<span class="font-['Manrope'] font-semibold">Thư viện</span>
+</a>
+<a class="text-slate-600 dark:text-slate-400 py-3 px-4 flex items-center gap-3 hover:bg-white/40 dark:hover:bg-slate-800/50 transition-all" href="#">
+<span class="material-symbols-outlined" data-icon="science">science</span>
+<span class="font-['Manrope'] font-semibold">Phòng Lab</span>
+</a>
+<a class="text-slate-600 dark:text-slate-400 py-3 px-4 flex items-center gap-3 hover:bg-white/40 dark:hover:bg-slate-800/50 transition-all" href="#">
+<span class="material-symbols-outlined" data-icon="analytics">analytics</span>
+<span class="font-['Manrope'] font-semibold">Báo cáo</span>
+</a>
+</nav>
+<div class="mt-auto space-y-4">
+<button class="w-full bg-secondary text-on-secondary py-3 rounded-full font-bold shadow-lg shadow-secondary/20 flex items-center justify-center gap-2 hover:opacity-90 transition-opacity">
+<span class="material-symbols-outlined text-sm" data-icon="play_arrow" style="font-variation-settings: 'FILL' 1;">play_arrow</span>
+                Bắt đầu thí nghiệm
+            </button>
+<a class="text-slate-600 dark:text-slate-400 py-3 px-4 flex items-center gap-3 hover:bg-white/40 dark:hover:bg-slate-800/50 transition-all" href="#">
+<span class="material-symbols-outlined" data-icon="logout">logout</span>
+<span class="font-['Manrope'] font-semibold">Đăng xuất</span>
+</a>
+</div>
+</aside>
+<!-- Main Content Shell -->
+<div class="ml-[250px] min-h-screen flex flex-col">
+<!-- TopNavBar -->
+<header class="sticky top-0 z-40 bg-[#f3f4f5]/80 dark:bg-slate-900/80 backdrop-blur-md flex justify-between items-center w-full px-8 py-3">
+<div class="flex items-center flex-1">
+<div class="relative w-full max-w-md">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-lg" data-icon="search">search</span>
+<input class="w-full bg-surface-container-lowest border-none rounded-xl py-2 pl-10 pr-4 text-sm focus:ring-2 focus:ring-primary/20 placeholder:text-slate-400" placeholder="Tìm kiếm thí nghiệm..." type="text"/>
+</div>
+</div>
+<div class="flex items-center gap-6">
+<div class="flex gap-4">
+<button class="p-2 rounded-full text-slate-500 hover:bg-white/50 transition-colors relative">
+<span class="material-symbols-outlined" data-icon="notifications">notifications</span>
+<span class="absolute top-2 right-2 w-2 h-2 bg-error rounded-full"></span>
+</button>
+</div>
+<div class="flex items-center gap-3 pl-6 border-l border-outline-variant/30">
+<div class="text-right">
+<p class="text-sm font-bold text-primary">Nguyễn Minh</p>
+<p class="text-xs text-slate-500">Học sinh chuyên Tin</p>
+</div>
+<img alt="Ảnh đại diện người dùng" class="w-10 h-10 rounded-full object-cover border-2 border-white shadow-sm" data-alt="chân dung cận cảnh một chàng trai trẻ với biểu cảm thân thiện và ánh sáng tự nhiên" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBEDL5jwzvNP49Wdr5cjuaW4JZhlRfVNV3MABPZVG2BkyZFV50sXfV1IoBFbyKY0XDyb6cxKqu4LRcHy_TUwEbAdglFLEeY1CPff-AdiuzLyAE9DK_A2XpFAGx0LwAtRBbfpe-eS4XK8smMh1wxHzMartE-B6dYglk37IY5a9LNze2Z2bu3HGLzO_vqep2758Qcr1NnOzXjQ9DpRsBnL-GEEpaHj_bglCgFd-zJoG1tpHiGQQwqrP_p7MFG0DRFKcemAwkv8Bx8s5Y"/>
+</div>
+</div>
+</header>
+<!-- Canvas -->
+<main class="flex-1 p-8 space-y-8">
+<!-- Hero / Library Header -->
+<section class="relative overflow-hidden rounded-2xl bg-primary-container p-10 text-on-primary">
+<div class="relative z-10 max-w-2xl">
+<h2 class="text-4xl font-extrabold font-headline mb-4 tracking-tight">Thư viện Thí nghiệm</h2>
+<p class="text-on-primary-container text-lg leading-relaxed mb-6">
+                        Khám phá hơn 200 mô phỏng tương tác từ cơ bản đến nâng cao. 
+                        Nơi lý thuyết trở nên sống động thông qua thực hành ảo.
+                    </p>
+<div class="flex gap-3">
+<span class="px-4 py-2 bg-white/10 backdrop-blur-md rounded-lg text-sm font-medium border border-white/10">24 Thí nghiệm mới</span>
+<span class="px-4 py-2 bg-white/10 backdrop-blur-md rounded-lg text-sm font-medium border border-white/10">1.2k Người đang học</span>
+</div>
+</div>
+<div class="absolute right-0 top-0 w-1/3 h-full opacity-20 pointer-events-none">
+<span class="material-symbols-outlined text-[200px] absolute -right-10 -top-10" data-icon="science">science</span>
+</div>
+</section>
+<!-- Filter Bar -->
+<section class="flex items-center justify-between">
+<div class="flex items-center gap-2 overflow-x-auto pb-2 no-scrollbar">
+<button class="px-6 py-2.5 bg-primary text-on-primary rounded-full font-semibold text-sm whitespace-nowrap">Tất cả</button>
+<button class="px-6 py-2.5 bg-surface-container-high text-on-surface-variant rounded-full font-semibold text-sm whitespace-nowrap hover:bg-surface-variant transition-colors">Vật lý</button>
+<button class="px-6 py-2.5 bg-surface-container-high text-on-surface-variant rounded-full font-semibold text-sm whitespace-nowrap hover:bg-surface-variant transition-colors">Điện tử</button>
+<button class="px-6 py-2.5 bg-surface-container-high text-on-surface-variant rounded-full font-semibold text-sm whitespace-nowrap hover:bg-surface-variant transition-colors">Robotics</button>
+<button class="px-6 py-2.5 bg-surface-container-high text-on-surface-variant rounded-full font-semibold text-sm whitespace-nowrap hover:bg-surface-variant transition-colors">Hóa học</button>
+</div>
+<div class="flex items-center gap-3">
+<span class="text-sm text-slate-500 font-medium">Sắp xếp:</span>
+<button class="flex items-center gap-2 px-4 py-2 bg-surface-container-lowest rounded-xl border border-outline-variant/20 text-sm font-semibold">
+                        Mới nhất
+                        <span class="material-symbols-outlined text-sm" data-icon="expand_more">expand_more</span>
+</button>
+</div>
+</section>
+<!-- Experiment Grid -->
+<section class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">
+<!-- Card 1: Physics -->
+<div class="group bg-surface-container-lowest rounded-2xl overflow-hidden hover:shadow-xl hover:shadow-primary/5 transition-all duration-300 flex flex-col border border-transparent hover:border-outline-variant/20">
+<div class="h-48 overflow-hidden relative">
+<img alt="Thí nghiệm Vật lý" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" data-alt="hình ảnh 3D trừu tượng về các hạt nguyên tử và sóng vật lý lượng tử với màu xanh neon và tím" src="https://lh3.googleusercontent.com/aida-public/AB6AXuC6fJDcdD1VmFNvdZNZSXzWCsuDzoRfXKB7Gocu80pjjs34Ygn-8qUS3cW_mjCFrqNH0Voy5Q-siFLOx6zF6Gkfa264icpUoz96Ks5PlEOASKgfjxaoQZuiFaOuQvOxvHjQAcgI3Lx2KZq7l5ffFzCAOZzwj8K1T8Nzozu-0QEScOzbd4kWe2PWbHROUUw4kxjvEwqLUARx2KVai01MRpdSQkZQW-NUbZI03PJuDRTDgJYniMBZg_doEByfhRB4iVtOYGXNTgAFOS0"/>
+<div class="absolute top-4 left-4">
+<span class="bg-primary/90 backdrop-blur-md text-on-primary text-[10px] uppercase tracking-widest font-bold px-3 py-1 rounded-full">Vật lý</span>
+</div>
+</div>
+<div class="p-6 flex-1 flex flex-col">
+<h3 class="text-xl font-bold text-primary mb-2 group-hover:text-secondary transition-colors">Mô phỏng Dao động Con lắc Đơn</h3>
+<p class="text-sm text-on-surface-variant leading-relaxed mb-6 line-clamp-2">Khám phá mối quan hệ giữa chiều dài dây treo, khối lượng vật nặng và chu kỳ dao động trong môi trường không trọng lực.</p>
+<div class="mt-auto pt-6 border-t border-outline-variant/10 flex items-center justify-between">
+<div class="flex items-center gap-4">
+<div class="flex items-center gap-1 text-slate-500">
+<span class="material-symbols-outlined text-lg" data-icon="signal_cellular_alt">signal_cellular_alt</span>
+<span class="text-xs font-semibold">Dễ</span>
+</div>
+<div class="flex items-center gap-1 text-slate-500">
+<span class="material-symbols-outlined text-lg" data-icon="visibility">visibility</span>
+<span class="text-xs font-semibold">1.2k</span>
+</div>
+</div>
+<button class="p-2 bg-secondary-fixed text-on-secondary-fixed rounded-full hover:bg-secondary hover:text-white transition-colors">
+<span class="material-symbols-outlined" data-icon="arrow_forward">arrow_forward</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Card 2: Electronics -->
+<div class="group bg-surface-container-lowest rounded-2xl overflow-hidden hover:shadow-xl hover:shadow-primary/5 transition-all duration-300 flex flex-col border border-transparent hover:border-outline-variant/20">
+<div class="h-48 overflow-hidden relative">
+<img alt="Thí nghiệm Điện tử" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" data-alt="cận cảnh bảng mạch xanh công nghệ cao với các linh kiện phát sáng và tiếp điểm vàng" src="https://lh3.googleusercontent.com/aida-public/AB6AXuALUecVZJVi7jPLYnacrc_pWRpLnA_Ey_iDuopvPXchd_FCnUaNsoIcx98LKBbkF2LDUjvNbU7D2VUkx_ysTGTvOUGGQGJcig8OJ3ZiuhwGodl4XuSqCo9haVgbVW0xRZ2wb0C3Zf6CFdQC_w6UXWks8SyRKAL8_wJEF4SUjKIzgU_z59yAv2FFiyo8mD55roZRkHol8rIivN1A9pcSkDyDQuDzeX4My7i-QmBih4S188ChRDVXnhEJ70xglgT0TVlsuLHUI3_jIc0"/>
+<div class="absolute top-4 left-4">
+<span class="bg-tertiary-container text-on-tertiary text-[10px] uppercase tracking-widest font-bold px-3 py-1 rounded-full">Điện tử</span>
+</div>
+</div>
+<div class="p-6 flex-1 flex flex-col">
+<h3 class="text-xl font-bold text-primary mb-2 group-hover:text-secondary transition-colors">Thiết kế Mạch Logic Cơ bản</h3>
+<p class="text-sm text-on-surface-variant leading-relaxed mb-6 line-clamp-2">Lắp ráp các cổng AND, OR, NOT để tạo ra hệ thống điều khiển đèn tín hiệu giao thông thông minh.</p>
+<div class="mt-auto pt-6 border-t border-outline-variant/10 flex items-center justify-between">
+<div class="flex items-center gap-4">
+<div class="flex items-center gap-1 text-slate-500">
+<span class="material-symbols-outlined text-lg" data-icon="signal_cellular_alt_2_bar">signal_cellular_alt_2_bar</span>
+<span class="text-xs font-semibold">Trung bình</span>
+</div>
+<div class="flex items-center gap-1 text-slate-500">
+<span class="material-symbols-outlined text-lg" data-icon="visibility">visibility</span>
+<span class="text-xs font-semibold">850</span>
+</div>
+</div>
+<button class="p-2 bg-secondary-fixed text-on-secondary-fixed rounded-full hover:bg-secondary hover:text-white transition-colors">
+<span class="material-symbols-outlined" data-icon="arrow_forward">arrow_forward</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Card 3: Robotics -->
+<div class="group bg-surface-container-lowest rounded-2xl overflow-hidden hover:shadow-xl hover:shadow-primary/5 transition-all duration-300 flex flex-col border border-transparent hover:border-outline-variant/20">
+<div class="h-48 overflow-hidden relative">
+<img alt="Thí nghiệm Robotics" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" data-alt="bàn tay robot màu trắng bóng bẩy của tương lai tương tác với giao diện kỹ thuật số trong phòng thí nghiệm hiện đại sáng sủa" src="https://lh3.googleusercontent.com/aida-public/AB6AXuA0_JRhY4vAIftdmPpRkRQbfn2cptoA8V0I2WPsaa1-j2uw6v5pHdWQIm9LsSmlO-eUVleWmdBIgXGI_G38VjmL0-e1bPlMfZmKkbhm_q08F270VjdIN8Wn9LHYf23SUH3m8hLq5Mb_NYk0dknq7sFulDkC-6CTq0M6cUqnkc7D_QNEgyOVYBhrj5pEfPqOAONU9mvU28z4ZOFwl1DFwjHAE3KYwcCpsI-WTMOhC95W9URheqBYz5Ku25RfTNuqUlde74kMS3pww2A"/>
+<div class="absolute top-4 left-4">
+<span class="bg-secondary text-on-secondary text-[10px] uppercase tracking-widest font-bold px-3 py-1 rounded-full">Robotics</span>
+</div>
+</div>
+<div class="p-6 flex-1 flex flex-col">
+<h3 class="text-xl font-bold text-primary mb-2 group-hover:text-secondary transition-colors">Lập trình Cánh tay Robot 6 trục</h3>
+<p class="text-sm text-on-surface-variant leading-relaxed mb-6 line-clamp-2">Sử dụng thuật toán Inverse Kinematics để điều khiển robot gắp và đặt linh kiện chính xác đến từng milimet.</p>
+<div class="mt-auto pt-6 border-t border-outline-variant/10 flex items-center justify-between">
+<div class="flex items-center gap-4">
+<div class="flex items-center gap-1 text-slate-500">
+<span class="material-symbols-outlined text-lg" data-icon="signal_cellular_alt">signal_cellular_alt</span>
+<span class="text-xs font-semibold text-error font-bold">Khó</span>
+</div>
+<div class="flex items-center gap-1 text-slate-500">
+<span class="material-symbols-outlined text-lg" data-icon="visibility">visibility</span>
+<span class="text-xs font-semibold">2.4k</span>
+</div>
+</div>
+<button class="p-2 bg-secondary-fixed text-on-secondary-fixed rounded-full hover:bg-secondary hover:text-white transition-colors">
+<span class="material-symbols-outlined" data-icon="arrow_forward">arrow_forward</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Card 4: Physics/Optics -->
+<div class="group bg-surface-container-lowest rounded-2xl overflow-hidden hover:shadow-xl hover:shadow-primary/5 transition-all duration-300 flex flex-col border border-transparent hover:border-outline-variant/20">
+<div class="h-48 overflow-hidden relative">
+<img alt="Thí nghiệm Quang học" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" data-alt="chùm sáng đi qua lăng kính thủy tinh và tán sắc thành dải cầu vồng đẹp mắt" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDbLeJT67zFbo41-tdDqG4IqUhfux11TiAibPNsBFhf7qZarVCeUQKmXF8maLEzdJG28NI11txZZyL4jgmoJnBF_BQG7WaS-o_roaJVowDPEx74qSRsqEKVC1-rtwbA3Csvl9yYYDuG2Zp3PCXl7YCC8oKbYyNbrrOIdgRoUlnl0-Ds_76XEv_F6gaFGTM8b90GSRqXysjkQYMn0w2oFA4Y0Lzy7vFc8Z16x63pcqlkahRVad_a3LyilkFphKK-ajbfdE91u7tLcMs"/>
+<div class="absolute top-4 left-4">
+<span class="bg-primary/90 backdrop-blur-md text-on-primary text-[10px] uppercase tracking-widest font-bold px-3 py-1 rounded-full">Vật lý</span>
+</div>
+</div>
+<div class="p-6 flex-1 flex flex-col">
+<h3 class="text-xl font-bold text-primary mb-2 group-hover:text-secondary transition-colors">Hiện tượng Khúc xạ &amp; Tán sắc</h3>
+<p class="text-sm text-on-surface-variant leading-relaxed mb-6 line-clamp-2">Nghiên cứu cách ánh sáng trắng đổi hướng và phân tách khi đi qua các môi trường chiết suất khác nhau.</p>
+<div class="mt-auto pt-6 border-t border-outline-variant/10 flex items-center justify-between">
+<div class="flex items-center gap-4">
+<div class="flex items-center gap-1 text-slate-500">
+<span class="material-symbols-outlined text-lg" data-icon="signal_cellular_alt">signal_cellular_alt</span>
+<span class="text-xs font-semibold">Dễ</span>
+</div>
+<div class="flex items-center gap-1 text-slate-500">
+<span class="material-symbols-outlined text-lg" data-icon="visibility">visibility</span>
+<span class="text-xs font-semibold">1.1k</span>
+</div>
+</div>
+<button class="p-2 bg-secondary-fixed text-on-secondary-fixed rounded-full hover:bg-secondary hover:text-white transition-colors">
+<span class="material-symbols-outlined" data-icon="arrow_forward">arrow_forward</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Card 5: Electronics -->
+<div class="group bg-surface-container-lowest rounded-2xl overflow-hidden hover:shadow-xl hover:shadow-primary/5 transition-all duration-300 flex flex-col border border-transparent hover:border-outline-variant/20">
+<div class="h-48 overflow-hidden relative">
+<img alt="Thí nghiệm Vi điều khiển" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" data-alt="cận cảnh vi điều khiển arduino với các dây nhảy màu sắc được kết nối" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDhzi7Fe5Wa0um5kC2uSJYisXYdXz7f9kVnKPb-z9x2qiiPi40Rei2XkdLhhCCUCFBgML2HBYXpbA4FYsQEo-PjeTRVRX1Mp_x86j9ROPUzTx6sZasOqs6uHWBGhXHcG9sMkBmJJlDZZssr3rpiIL7Q93uYeUBmUZrBawIoXq_Y0ewbZ72V6w8Zn1jCHahumRQbYUobFzy12Gc_KV4pVWqoxQUXy728Njrx3hvJYCk3jEQTwPqx5MoqGptvwKXsfgRTwlewIZDJ2L0"/>
+<div class="absolute top-4 left-4">
+<span class="bg-tertiary-container text-on-tertiary text-[10px] uppercase tracking-widest font-bold px-3 py-1 rounded-full">Điện tử</span>
+</div>
+</div>
+<div class="p-6 flex-1 flex flex-col">
+<h3 class="text-xl font-bold text-primary mb-2 group-hover:text-secondary transition-colors">Giao tiếp Cảm biến Siêu âm</h3>
+<p class="text-sm text-on-surface-variant leading-relaxed mb-6 line-clamp-2">Lập trình đo khoảng cách và hiển thị dữ liệu lên màn hình LCD sử dụng nền tảng Arduino ảo.</p>
+<div class="mt-auto pt-6 border-t border-outline-variant/10 flex items-center justify-between">
+<div class="flex items-center gap-4">
+<div class="flex items-center gap-1 text-slate-500">
+<span class="material-symbols-outlined text-lg" data-icon="signal_cellular_alt_2_bar">signal_cellular_alt_2_bar</span>
+<span class="text-xs font-semibold">Trung bình</span>
+</div>
+<div class="flex items-center gap-1 text-slate-500">
+<span class="material-symbols-outlined text-lg" data-icon="visibility">visibility</span>
+<span class="text-xs font-semibold">3.2k</span>
+</div>
+</div>
+<button class="p-2 bg-secondary-fixed text-on-secondary-fixed rounded-full hover:bg-secondary hover:text-white transition-colors">
+<span class="material-symbols-outlined" data-icon="arrow_forward">arrow_forward</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Card 6: Robotics/AI -->
+<div class="group bg-surface-container-lowest rounded-2xl overflow-hidden hover:shadow-xl hover:shadow-primary/5 transition-all duration-300 flex flex-col border border-transparent hover:border-outline-variant/20">
+<div class="h-48 overflow-hidden relative">
+<img alt="Thí nghiệm AI Robotics" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" data-alt="góc nhìn từ trên cao của một robot di động tự hành nhỏ đang điều hướng trong nhà kho mô hình phức tạp" src="https://lh3.googleusercontent.com/aida-public/AB6AXuD3e523KLmDdBeVoLDV7Z1lWVkH5-nCTXBETE1x_9eRiqSJclJiICee8Uiy226eBVl0wrXQ2QO2n7DTDKl93_bJthVOVtEo7AIsF2MKlcP2Igq_1Apshv1H1ic_mDbcBhtWPLfLVZCk3IH2i136TTqQt2TpRT-763LHrheUJ9x82R0mkJmMHBYl_aUQAm_eaJEoLErMXaDxyG-jOp9nQI1CJ9NItrmamPJGiWd749hVk1z9fMAYmwWWYhUBzEFkH5jBD_lCpeyDxfE"/>
+<div class="absolute top-4 left-4">
+<span class="bg-secondary text-on-secondary text-[10px] uppercase tracking-widest font-bold px-3 py-1 rounded-full">Robotics</span>
+</div>
+</div>
+<div class="p-6 flex-1 flex flex-col">
+<h3 class="text-xl font-bold text-primary mb-2 group-hover:text-secondary transition-colors">Điều hướng Robot Tự hành</h3>
+<p class="text-sm text-on-surface-variant leading-relaxed mb-6 line-clamp-2">Xây dựng bản đồ (SLAM) và lập kế hoạch đường đi cho robot trong mê cung phức tạp.</p>
+<div class="mt-auto pt-6 border-t border-outline-variant/10 flex items-center justify-between">
+<div class="flex items-center gap-4">
+<div class="flex items-center gap-1 text-slate-500">
+<span class="material-symbols-outlined text-lg" data-icon="signal_cellular_alt">signal_cellular_alt</span>
+<span class="text-xs font-semibold text-error font-bold">Khó</span>
+</div>
+<div class="flex items-center gap-1 text-slate-500">
+<span class="material-symbols-outlined text-lg" data-icon="visibility">visibility</span>
+<span class="text-xs font-semibold">1.5k</span>
+</div>
+</div>
+<button class="p-2 bg-secondary-fixed text-on-secondary-fixed rounded-full hover:bg-secondary hover:text-white transition-colors">
+<span class="material-symbols-outlined" data-icon="arrow_forward">arrow_forward</span>
+</button>
+</div>
+</div>
+</div>
+</section>
+<!-- Pagination/Load More -->
+<section class="flex flex-col items-center gap-4 py-8">
+<button class="px-10 py-3 bg-surface-container text-primary font-bold rounded-xl hover:bg-surface-container-high transition-colors">
+                    Xem thêm thí nghiệm
+                </button>
+<p class="text-sm text-slate-500">Hiển thị 6 trên 245 kết quả</p>
+</section>
+</main>
+<!-- Footer (Subtle) -->
+<footer class="px-8 py-6 border-t border-outline-variant/10 flex justify-between items-center bg-surface-container-low">
+<p class="text-xs text-slate-500 font-medium">© 2024 StemFlow. Nền tảng học thuật STEM cao cấp.</p>
+<div class="flex gap-6">
+<a class="text-xs text-slate-500 hover:text-primary font-semibold transition-colors" href="#">Hỗ trợ kỹ thuật</a>
+<a class="text-xs text-slate-500 hover:text-primary font-semibold transition-colors" href="#">Điều khoản Lab</a>
+</div>
+</footer>
+</div>
+</body></html>

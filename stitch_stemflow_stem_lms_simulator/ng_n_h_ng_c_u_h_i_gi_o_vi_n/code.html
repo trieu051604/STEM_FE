@@ -1,0 +1,522 @@
+<!DOCTYPE html>
+
+<html class="light" lang="vi"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&amp;family=Inter:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "secondary-container": "#fc820c",
+                        "surface-bright": "#f8f9fa",
+                        "error": "#ba1a1a",
+                        "on-primary-fixed": "#001f24",
+                        "surface-tint": "#30666f",
+                        "on-error-container": "#93000a",
+                        "primary": "#003b43",
+                        "primary-container": "#1a535c",
+                        "on-primary-fixed-variant": "#134e57",
+                        "on-primary": "#ffffff",
+                        "tertiary-fixed-dim": "#b4cad6",
+                        "outline": "#70797a",
+                        "tertiary": "#233841",
+                        "surface-dim": "#d9dadb",
+                        "surface-container-low": "#f3f4f5",
+                        "secondary-fixed-dim": "#ffb786",
+                        "surface-container-high": "#e7e8e9",
+                        "on-tertiary": "#ffffff",
+                        "primary-fixed-dim": "#9acfda",
+                        "on-tertiary-container": "#aac0cc",
+                        "secondary": "#964900",
+                        "on-primary-container": "#90c5cf",
+                        "tertiary-container": "#3a4f59",
+                        "surface-container-lowest": "#ffffff",
+                        "on-secondary-fixed": "#311300",
+                        "inverse-on-surface": "#f0f1f2",
+                        "surface": "#f8f9fa",
+                        "background": "#f8f9fa",
+                        "surface-variant": "#e1e3e4",
+                        "secondary-fixed": "#ffdcc6",
+                        "primary-fixed": "#b6ecf6",
+                        "outline-variant": "#c0c8ca",
+                        "on-surface-variant": "#40484a",
+                        "on-secondary-fixed-variant": "#723600",
+                        "on-secondary-container": "#5e2c00",
+                        "surface-container-highest": "#e1e3e4",
+                        "surface-container": "#edeeef",
+                        "tertiary-fixed": "#cfe6f2",
+                        "inverse-surface": "#2e3132",
+                        "on-tertiary-fixed-variant": "#354a53",
+                        "on-surface": "#191c1d",
+                        "on-error": "#ffffff",
+                        "error-container": "#ffdad6",
+                        "inverse-primary": "#9acfda",
+                        "on-tertiary-fixed": "#071e27",
+                        "on-background": "#191c1d",
+                        "on-secondary": "#ffffff"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "1rem",
+                        "xl": "1.25rem",
+                        "full": "9999px"
+                    },
+                    "fontFamily": {
+                        "headline": ["Manrope"],
+                        "body": ["Inter"],
+                        "label": ["Inter"]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        body { font-family: 'Inter', sans-serif; background-color: #f8f9fa; color: #191c1d; }
+        h1, h2, h3, .font-manrope { font-family: 'Manrope', sans-serif; }
+        .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+    </style>
+</head>
+<body class="flex min-h-screen">
+<!-- Sidebar Navigation -->
+<aside class="w-[250px] h-screen sticky left-0 top-0 bg-[#f3f4f5] flex flex-col py-6 space-y-2 overflow-y-auto shrink-0 shadow-sm">
+<div class="px-6 mb-8">
+<h1 class="text-lg font-bold text-[#1A535C] font-headline">StemFlow</h1>
+<p class="text-[10px] text-slate-500 font-medium uppercase tracking-widest">Phòng Thí Nghiệm Tư Duy</p>
+</div>
+<nav class="flex-1 px-2 space-y-1">
+<a class="text-slate-500 px-4 py-3 flex items-center gap-3 hover:bg-slate-200 transition-all rounded-lg" href="#">
+<span class="material-symbols-outlined">dashboard</span>
+<span class="font-medium text-sm">Tổng quan</span>
+</a>
+<a class="text-slate-500 px-4 py-3 flex items-center gap-3 hover:bg-slate-200 transition-all rounded-lg" href="#">
+<span class="material-symbols-outlined">domain</span>
+<span class="font-medium text-sm">Trường học</span>
+</a>
+<a class="text-slate-500 px-4 py-3 flex items-center gap-3 hover:bg-slate-200 transition-all rounded-lg" href="#">
+<span class="material-symbols-outlined">school</span>
+<span class="font-medium text-sm">Khóa học</span>
+</a>
+<a class="border-l-4 border-[#964900] bg-[#1A535C]/10 text-[#1A535C] font-semibold px-4 py-3 flex items-center gap-3 transition-all duration-300 rounded-r-lg" href="#">
+<span class="material-symbols-outlined">science</span>
+<span class="font-medium text-sm">Ngân hàng câu hỏi</span>
+</a>
+<a class="text-slate-500 px-4 py-3 flex items-center gap-3 hover:bg-slate-200 transition-all rounded-lg" href="#">
+<span class="material-symbols-outlined">local_library</span>
+<span class="font-medium text-sm">Thư viện</span>
+</a>
+<a class="text-slate-500 px-4 py-3 flex items-center gap-3 hover:bg-slate-200 transition-all rounded-lg" href="#">
+<span class="material-symbols-outlined">analytics</span>
+<span class="font-medium text-sm">Báo cáo</span>
+</a>
+</nav>
+<div class="px-4 mt-auto space-y-4">
+<button class="w-full py-3 bg-secondary text-white rounded-full font-semibold text-sm flex items-center justify-center gap-2 shadow-lg shadow-secondary/20 active:scale-95 transition-transform">
+<span class="material-symbols-outlined">add</span>
+                Tạo bài học mới
+            </button>
+<div class="pt-4 border-t border-slate-200">
+<a class="text-slate-500 px-4 py-2 flex items-center gap-3 hover:bg-slate-200 transition-all rounded-lg text-sm" href="#">
+<span class="material-symbols-outlined">settings</span>
+                    Cài đặt
+                </a>
+<a class="text-slate-500 px-4 py-2 flex items-center gap-3 hover:bg-slate-200 transition-all rounded-lg text-sm" href="#">
+<span class="material-symbols-outlined">logout</span>
+                    Đăng xuất
+                </a>
+</div>
+</div>
+</aside>
+<!-- Main Content Canvas -->
+<main class="flex-1 flex flex-col min-w-0 bg-background overflow-y-auto">
+<!-- Top Bar -->
+<header class="flex justify-between items-center w-full px-8 py-4 sticky top-0 z-50 bg-[#f3f4f5] border-none shadow-sm">
+<div class="flex items-center gap-4 flex-1">
+<div class="relative w-full max-w-md">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">search</span>
+<input class="w-full bg-surface-container-lowest border-none rounded-full py-2 pl-10 pr-4 text-sm focus:ring-2 focus:ring-primary/20 transition-all" placeholder="Tìm kiếm câu hỏi, chủ đề..." type="text"/>
+</div>
+</div>
+<div class="flex items-center gap-6 ml-4">
+<div class="flex items-center gap-2">
+<button class="p-2 text-slate-600 hover:bg-slate-200 rounded-full transition-colors relative">
+<span class="material-symbols-outlined">notifications</span>
+<span class="absolute top-2 right-2 w-2 h-2 bg-error rounded-full"></span>
+</button>
+<button class="p-2 text-slate-600 hover:bg-slate-200 rounded-full transition-colors">
+<span class="material-symbols-outlined">help</span>
+</button>
+</div>
+<div class="flex items-center gap-3 pl-6 border-l border-slate-300">
+<div class="text-right">
+<p class="text-sm font-bold text-primary font-headline">Dr. Minh Tran</p>
+<p class="text-[10px] text-slate-500">Giảng viên STEM</p>
+</div>
+<div class="w-10 h-10 rounded-full bg-primary-fixed-dim overflow-hidden border-2 border-white shadow-sm">
+<img alt="Ảnh đại diện người dùng" data-alt="Professional portrait of a male teacher with glasses in a modern illustrative avatar style" src="https://lh3.googleusercontent.com/aida-public/AB6AXuB6Hzg9suqdHzsaLCxIbsd0g69iiaIk69CkKFrAhxyEsZC9mwKrBtsRcXoDH1-Non8SJypWESYqvCtaVkYpWCg1MRiBb1QD2MZ-MtKLQMfqRn9zePe8YrqGhoGgcPou96Bs2S0D8gdWliEkPEQpEhAME3YQwFTJEdmYU7nf7hOK6OMR69HxCOQ7J_ZGahDAn2fTyYo207JPMNXFeNaXBMF9RDQdOnD-dB2DiWSRMYuZKNROzrnhVoTekfHEYZmH2K32wUyVPuP-Va8"/>
+</div>
+</div>
+</div>
+</header>
+<!-- Page Content -->
+<div class="p-8 space-y-8">
+<!-- Header Section -->
+<div class="flex justify-between items-end">
+<div>
+<nav class="flex items-center gap-2 text-xs text-slate-500 mb-2">
+<span>Hệ thống</span>
+<span class="material-symbols-outlined text-[14px]">chevron_right</span>
+<span class="text-primary font-medium">Ngân hàng câu hỏi</span>
+</nav>
+<h2 class="text-3xl font-extrabold text-primary font-headline tracking-tight">Ngân hàng Câu hỏi STEM</h2>
+<p class="text-slate-500 mt-1">Quản lý và biên soạn học liệu cho các phòng lab Arduino &amp; Vật lý.</p>
+</div>
+<div class="flex gap-3">
+<button class="px-5 py-2.5 rounded-full border border-outline-variant text-primary font-semibold text-sm hover:bg-slate-100 transition-colors flex items-center gap-2">
+<span class="material-symbols-outlined text-sm">file_download</span>
+                        Xuất file PDF/Excel
+                    </button>
+<button class="px-6 py-2.5 rounded-full bg-primary text-on-primary font-semibold text-sm hover:shadow-lg transition-all flex items-center gap-2">
+<span class="material-symbols-outlined text-sm">add_circle</span>
+                        Thêm câu hỏi mới
+                    </button>
+</div>
+</div>
+<!-- Dashboard Stats (Bento Style) -->
+<div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+<div class="bg-surface-container-lowest p-5 rounded-xl border border-transparent shadow-sm flex flex-col justify-between group hover:border-primary/20 transition-all">
+<div class="flex justify-between items-start">
+<span class="p-2 bg-primary/5 text-primary rounded-lg material-symbols-outlined">quiz</span>
+<span class="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">+12%</span>
+</div>
+<div class="mt-4">
+<p class="text-2xl font-extrabold text-primary font-headline">1,248</p>
+<p class="text-xs text-slate-500 font-medium">Tổng số câu hỏi</p>
+</div>
+</div>
+<div class="bg-surface-container-lowest p-5 rounded-xl border border-transparent shadow-sm flex flex-col justify-between group hover:border-primary/20 transition-all">
+<div class="flex justify-between items-start">
+<span class="p-2 bg-secondary/5 text-secondary rounded-lg material-symbols-outlined">memory</span>
+</div>
+<div class="mt-4">
+<p class="text-2xl font-extrabold text-primary font-headline">452</p>
+<p class="text-xs text-slate-500 font-medium">Chủ đề Arduino</p>
+</div>
+</div>
+<div class="bg-surface-container-lowest p-5 rounded-xl border border-transparent shadow-sm flex flex-col justify-between group hover:border-primary/20 transition-all">
+<div class="flex justify-between items-start">
+<span class="p-2 bg-tertiary-container/10 text-tertiary-container rounded-lg material-symbols-outlined">bolt</span>
+</div>
+<div class="mt-4">
+<p class="text-2xl font-extrabold text-primary font-headline">318</p>
+<p class="text-xs text-slate-500 font-medium">Vật lý &amp; Điện tử</p>
+</div>
+</div>
+<div class="bg-surface-container-lowest p-5 rounded-xl border border-transparent shadow-sm flex flex-col justify-between group hover:border-primary/20 transition-all">
+<div class="flex justify-between items-start">
+<span class="p-2 bg-error/5 text-error rounded-lg material-symbols-outlined">pending_actions</span>
+</div>
+<div class="mt-4">
+<p class="text-2xl font-extrabold text-primary font-headline">15</p>
+<p class="text-xs text-slate-500 font-medium">Chờ duyệt nội dung</p>
+</div>
+</div>
+</div>
+<!-- Filters & Main Table Section -->
+<div class="bg-surface-container-lowest rounded-xl shadow-sm overflow-hidden flex flex-col">
+<!-- Filter Bar -->
+<div class="p-4 bg-surface-container-low/50 flex flex-wrap gap-4 items-center">
+<div class="flex items-center gap-2 bg-white px-3 py-1.5 rounded-lg border border-outline-variant/30 text-sm">
+<span class="text-slate-400">Chủ đề:</span>
+<select class="border-none focus:ring-0 p-0 font-semibold text-primary text-sm cursor-pointer">
+<option>Tất cả các môn</option>
+<option>Arduino cơ bản</option>
+<option>Cảm biến &amp; IoT</option>
+<option>Điện dân dụng</option>
+<option>Vật lý hạt nhân</option>
+</select>
+</div>
+<div class="flex items-center gap-2 bg-white px-3 py-1.5 rounded-lg border border-outline-variant/30 text-sm">
+<span class="text-slate-400">Độ khó:</span>
+<div class="flex gap-1">
+<button class="px-2 py-0.5 rounded bg-emerald-100 text-emerald-700 font-bold text-[10px]">DỄ</button>
+<button class="px-2 py-0.5 rounded bg-amber-100 text-amber-700 font-bold text-[10px]">TB</button>
+<button class="px-2 py-0.5 rounded bg-rose-100 text-rose-700 font-bold text-[10px]">KHÓ</button>
+</div>
+</div>
+<div class="flex items-center gap-2 bg-white px-3 py-1.5 rounded-lg border border-outline-variant/30 text-sm ml-auto">
+<span class="text-slate-400">Sắp xếp:</span>
+<select class="border-none focus:ring-0 p-0 font-semibold text-primary text-sm cursor-pointer">
+<option>Mới nhất</option>
+<option>Cũ nhất</option>
+<option>Tên A-Z</option>
+</select>
+</div>
+</div>
+<!-- Table Content -->
+<div class="overflow-x-auto">
+<table class="w-full text-left border-collapse">
+<thead>
+<tr class="bg-slate-50 border-b border-slate-100">
+<th class="px-6 py-4 text-[11px] font-bold text-slate-400 uppercase tracking-wider">Mã CH</th>
+<th class="px-6 py-4 text-[11px] font-bold text-slate-400 uppercase tracking-wider">Nội dung câu hỏi</th>
+<th class="px-6 py-4 text-[11px] font-bold text-slate-400 uppercase tracking-wider">Phân loại</th>
+<th class="px-6 py-4 text-[11px] font-bold text-slate-400 uppercase tracking-wider">Độ khó</th>
+<th class="px-6 py-4 text-[11px] font-bold text-slate-400 uppercase tracking-wider">Ngày tạo</th>
+<th class="px-6 py-4 text-[11px] font-bold text-slate-400 uppercase tracking-wider text-right">Thao tác</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-slate-50">
+<!-- Row 1 -->
+<tr class="hover:bg-slate-50/80 transition-colors group">
+<td class="px-6 py-5">
+<span class="font-mono text-xs font-bold text-slate-400">ARD-102</span>
+</td>
+<td class="px-6 py-5 max-w-md">
+<p class="font-semibold text-primary text-sm line-clamp-1">Hàm digitalWrite() trong Arduino dùng để làm gì?</p>
+<p class="text-xs text-slate-400 mt-1">Trắc nghiệm • 4 phương án</p>
+</td>
+<td class="px-6 py-5">
+<div class="flex items-center gap-2">
+<span class="w-2 h-2 rounded-full bg-secondary"></span>
+<span class="text-xs font-medium text-slate-600">Arduino cơ bản</span>
+</div>
+</td>
+<td class="px-6 py-5">
+<span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-700">CƠ BẢN</span>
+</td>
+<td class="px-6 py-5 text-xs text-slate-500 font-medium">12/10/2023</td>
+<td class="px-6 py-5 text-right space-x-1">
+<button class="p-2 text-slate-400 hover:text-primary hover:bg-primary/5 rounded-full transition-all">
+<span class="material-symbols-outlined text-[20px]">edit</span>
+</button>
+<button class="p-2 text-slate-400 hover:text-error hover:bg-error/5 rounded-full transition-all">
+<span class="material-symbols-outlined text-[20px]">delete</span>
+</button>
+</td>
+</tr>
+<!-- Row 2 -->
+<tr class="hover:bg-slate-50/80 transition-colors group">
+<td class="px-6 py-5">
+<span class="font-mono text-xs font-bold text-slate-400">PHY-045</span>
+</td>
+<td class="px-6 py-5 max-w-md">
+<p class="font-semibold text-primary text-sm line-clamp-1">Tính điện trở tương đương của mạch cầu Wheatstone cân bằng khi...</p>
+<p class="text-xs text-slate-400 mt-1">Tự luận • Có công thức toán</p>
+</td>
+<td class="px-6 py-5">
+<div class="flex items-center gap-2">
+<span class="w-2 h-2 rounded-full bg-tertiary-container"></span>
+<span class="text-xs font-medium text-slate-600">Điện học</span>
+</div>
+</td>
+<td class="px-6 py-5">
+<span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-rose-100 text-rose-700">NÂNG CAO</span>
+</td>
+<td class="px-6 py-5 text-xs text-slate-500 font-medium">15/10/2023</td>
+<td class="px-6 py-5 text-right space-x-1">
+<button class="p-2 text-slate-400 hover:text-primary hover:bg-primary/5 rounded-full transition-all">
+<span class="material-symbols-outlined text-[20px]">edit</span>
+</button>
+<button class="p-2 text-slate-400 hover:text-error hover:bg-error/5 rounded-full transition-all">
+<span class="material-symbols-outlined text-[20px]">delete</span>
+</button>
+</td>
+</tr>
+<!-- Row 3 -->
+<tr class="hover:bg-slate-50/80 transition-colors group">
+<td class="px-6 py-5">
+<span class="font-mono text-xs font-bold text-slate-400">IOT-209</span>
+</td>
+<td class="px-6 py-5 max-w-md">
+<p class="font-semibold text-primary text-sm line-clamp-1">Giao thức giao tiếp I2C sử dụng bao nhiêu dây tín hiệu chính?</p>
+<p class="text-xs text-slate-400 mt-1">Trắc nghiệm • 4 phương án</p>
+</td>
+<td class="px-6 py-5">
+<div class="flex items-center gap-2">
+<span class="w-2 h-2 rounded-full bg-secondary"></span>
+<span class="text-xs font-medium text-slate-600">Cảm biến &amp; IoT</span>
+</div>
+</td>
+<td class="px-6 py-5">
+<span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-700">TRUNG BÌNH</span>
+</td>
+<td class="px-6 py-5 text-xs text-slate-500 font-medium">18/10/2023</td>
+<td class="px-6 py-5 text-right space-x-1">
+<button class="p-2 text-slate-400 hover:text-primary hover:bg-primary/5 rounded-full transition-all">
+<span class="material-symbols-outlined text-[20px]">edit</span>
+</button>
+<button class="p-2 text-slate-400 hover:text-error hover:bg-error/5 rounded-full transition-all">
+<span class="material-symbols-outlined text-[20px]">delete</span>
+</button>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<!-- Pagination -->
+<div class="p-4 border-t border-slate-100 flex justify-between items-center bg-slate-50/30">
+<p class="text-xs text-slate-500 font-medium">Hiển thị 10 trong số 1,248 câu hỏi</p>
+<div class="flex gap-2">
+<button class="w-8 h-8 flex items-center justify-center rounded border border-outline-variant/30 text-slate-400 hover:bg-white transition-colors">
+<span class="material-symbols-outlined text-sm">chevron_left</span>
+</button>
+<button class="w-8 h-8 flex items-center justify-center rounded bg-primary text-white text-xs font-bold">1</button>
+<button class="w-8 h-8 flex items-center justify-center rounded border border-outline-variant/30 text-slate-600 hover:bg-white text-xs font-bold transition-colors">2</button>
+<button class="w-8 h-8 flex items-center justify-center rounded border border-outline-variant/30 text-slate-600 hover:bg-white text-xs font-bold transition-colors">3</button>
+<span class="text-slate-400 px-1">...</span>
+<button class="w-8 h-8 flex items-center justify-center rounded border border-outline-variant/30 text-slate-600 hover:bg-white text-xs font-bold transition-colors">48</button>
+<button class="w-8 h-8 flex items-center justify-center rounded border border-outline-variant/30 text-slate-400 hover:bg-white transition-colors">
+<span class="material-symbols-outlined text-sm">chevron_right</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Question Creator Panel (Asymmetric Sidebar Layout) -->
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+<!-- Editor Section -->
+<div class="lg:col-span-2 bg-surface-container-lowest rounded-xl p-6 shadow-sm space-y-6">
+<div class="flex items-center justify-between border-b border-slate-100 pb-4">
+<h3 class="font-bold text-primary flex items-center gap-2">
+<span class="material-symbols-outlined text-secondary">edit_note</span>
+                            Soạn thảo câu hỏi mới
+                        </h3>
+<div class="flex gap-2">
+<span class="px-3 py-1 bg-primary/5 text-primary text-[10px] font-bold rounded-full uppercase tracking-tighter">Đang lưu nháp...</span>
+</div>
+</div>
+<div class="space-y-4">
+<div class="space-y-2">
+<label class="text-xs font-bold text-slate-500 uppercase">Tiêu đề/Nội dung câu hỏi</label>
+<div class="border border-outline-variant/50 rounded-lg overflow-hidden">
+<!-- Minimal Toolbar -->
+<div class="bg-slate-50 px-3 py-2 border-b border-outline-variant/30 flex gap-2">
+<button class="p-1 hover:bg-slate-200 rounded text-slate-600"><span class="material-symbols-outlined text-[20px]">format_bold</span></button>
+<button class="p-1 hover:bg-slate-200 rounded text-slate-600"><span class="material-symbols-outlined text-[20px]">format_italic</span></button>
+<button class="p-1 hover:bg-slate-200 rounded text-slate-600"><span class="material-symbols-outlined text-[20px]">functions</span></button>
+<div class="w-[1px] h-4 bg-slate-300 my-auto mx-1"></div>
+<button class="p-1 hover:bg-slate-200 rounded text-slate-600"><span class="material-symbols-outlined text-[20px]">image</span></button>
+<button class="p-1 hover:bg-slate-200 rounded text-slate-600"><span class="material-symbols-outlined text-[20px]">code</span></button>
+</div>
+<textarea class="w-full border-none focus:ring-0 p-4 text-sm font-body placeholder:text-slate-300" placeholder="Nhập nội dung câu hỏi tại đây. Sử dụng phím Σ để chèn công thức toán học..." rows="4"></textarea>
+</div>
+</div>
+<div class="grid grid-cols-2 gap-4">
+<div class="space-y-2">
+<label class="text-xs font-bold text-slate-500 uppercase">Loại câu hỏi</label>
+<select class="w-full bg-slate-50 border-outline-variant/30 rounded-lg py-2.5 text-sm font-semibold text-primary">
+<option>Trắc nghiệm 1 lựa chọn</option>
+<option>Trắc nghiệm nhiều lựa chọn</option>
+<option>Tự luận ngắn</option>
+<option>Ghép nối đáp án</option>
+</select>
+</div>
+<div class="space-y-2">
+<label class="text-xs font-bold text-slate-500 uppercase">Chủ đề chính</label>
+<select class="w-full bg-slate-50 border-outline-variant/30 rounded-lg py-2.5 text-sm font-semibold text-primary">
+<option>Lập trình Arduino</option>
+<option>Mạch điện xoay chiều</option>
+<option>Cơ học chất lỏng</option>
+<option>Linh kiện điện tử</option>
+</select>
+</div>
+</div>
+<div class="space-y-3 pt-4">
+<label class="text-xs font-bold text-slate-500 uppercase">Phương án trả lời</label>
+<div class="space-y-2">
+<div class="flex items-center gap-3">
+<div class="w-6 h-6 rounded-full border-2 border-primary flex items-center justify-center text-[10px] font-bold text-primary">A</div>
+<input class="flex-1 bg-slate-50 border-outline-variant/30 rounded-lg py-2 text-sm" type="text" value="Gửi tín hiệu tương tự (PWM)"/>
+<span class="material-symbols-outlined text-emerald-500" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+</div>
+<div class="flex items-center gap-3">
+<div class="w-6 h-6 rounded-full border-2 border-slate-300 flex items-center justify-center text-[10px] font-bold text-slate-400">B</div>
+<input class="flex-1 bg-slate-50 border-outline-variant/30 rounded-lg py-2 text-sm" type="text" value="Gửi tín hiệu mức Logic (High/Low)"/>
+<span class="material-symbols-outlined text-slate-200">check_circle</span>
+</div>
+<button class="text-xs font-bold text-secondary flex items-center gap-1 mt-2 hover:underline">
+<span class="material-symbols-outlined text-[16px]">add</span> Thêm phương án
+                                </button>
+</div>
+</div>
+</div>
+<div class="flex justify-end gap-3 pt-4">
+<button class="px-6 py-2 rounded-full font-bold text-slate-500 hover:bg-slate-100 transition-all text-sm">Hủy bỏ</button>
+<button class="px-8 py-2 rounded-full bg-secondary text-white font-bold hover:shadow-lg transition-all text-sm">Lưu câu hỏi</button>
+</div>
+</div>
+<!-- Preview & Quick Meta Section -->
+<div class="space-y-6">
+<div class="bg-primary-container p-6 rounded-xl text-on-primary-container shadow-sm relative overflow-hidden">
+<div class="relative z-10">
+<h4 class="font-bold mb-4 flex items-center gap-2">
+<span class="material-symbols-outlined">visibility</span>
+                                Xem trước hiển thị
+                            </h4>
+<div class="bg-white/10 backdrop-blur-md rounded-lg p-4 border border-white/20">
+<p class="text-sm font-medium mb-3">Lệnh nào sau đây được dùng để cấu hình chân Pin là Đầu vào hoặc Đầu ra?</p>
+<div class="space-y-2">
+<div class="px-3 py-2 bg-white/5 rounded text-xs border border-white/10">pinMode(pin, mode)</div>
+<div class="px-3 py-2 bg-white/5 rounded text-xs border border-white/10">digitalWrite(pin, val)</div>
+</div>
+</div>
+</div>
+<!-- Decorative Abstract Shape -->
+<div class="absolute -right-10 -bottom-10 w-40 h-40 bg-white/5 rounded-full blur-3xl"></div>
+</div>
+<div class="bg-surface-container-lowest p-6 rounded-xl shadow-sm border border-transparent hover:border-primary/10 transition-all">
+<h4 class="text-xs font-bold text-slate-500 uppercase mb-4 tracking-wider">Cấu hình nâng cao</h4>
+<div class="space-y-4">
+<div class="flex items-center justify-between">
+<span class="text-sm text-slate-600 font-medium">Cho phép xáo trộn đáp án</span>
+<div class="w-10 h-5 bg-emerald-500 rounded-full relative">
+<div class="absolute right-1 top-1 w-3 h-3 bg-white rounded-full"></div>
+</div>
+</div>
+<div class="flex items-center justify-between">
+<span class="text-sm text-slate-600 font-medium">Bắt buộc giải thích đáp án</span>
+<div class="w-10 h-5 bg-slate-300 rounded-full relative">
+<div class="absolute left-1 top-1 w-3 h-3 bg-white rounded-full"></div>
+</div>
+</div>
+<div class="pt-4 border-t border-slate-100">
+<p class="text-[10px] text-slate-400 font-bold uppercase mb-2">Thẻ từ khóa (Tags)</p>
+<div class="flex flex-wrap gap-2">
+<span class="px-2 py-1 bg-slate-100 text-slate-500 text-[10px] font-bold rounded">#arduino</span>
+<span class="px-2 py-1 bg-slate-100 text-slate-500 text-[10px] font-bold rounded">#input_output</span>
+<span class="px-2 py-1 bg-slate-100 text-slate-500 text-[10px] font-bold rounded">#tutorial</span>
+<button class="w-6 h-6 flex items-center justify-center bg-secondary/10 text-secondary rounded">
+<span class="material-symbols-outlined text-[16px]">add</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+<!-- Help Card -->
+<div class="bg-tertiary-fixed p-6 rounded-xl relative overflow-hidden group">
+<div class="relative z-10">
+<h4 class="text-on-tertiary-fixed font-bold flex items-center gap-2 mb-2">
+<span class="material-symbols-outlined">lightbulb</span>
+                                Mẹo soạn câu hỏi
+                            </h4>
+<p class="text-on-tertiary-fixed-variant text-xs leading-relaxed">
+                                Hãy thêm hình ảnh sơ đồ mạch điện từ thư viện StemFlow để giúp học sinh dễ hình dung hơn về bài lab.
+                            </p>
+</div>
+<span class="material-symbols-outlined absolute -right-4 -bottom-4 text-7xl text-black/5 rotate-12 group-hover:rotate-0 transition-transform duration-500">psychology</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Footer Note -->
+<footer class="p-8 text-center">
+<p class="text-slate-400 text-xs font-medium">© 2024 StemFlow Educational Systems. Tất cả quyền được bảo lưu.</p>
+</footer>
+</main>
+</body></html>

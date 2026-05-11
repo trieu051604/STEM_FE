@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+
+<html class="light" lang="vi"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&amp;family=Inter:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "on-surface": "#191c1d",
+                    "on-secondary-fixed-variant": "#723600",
+                    "surface-variant": "#e1e3e4",
+                    "surface-container-low": "#f3f4f5",
+                    "secondary": "#964900",
+                    "surface-dim": "#d9dadb",
+                    "surface": "#f8f9fa",
+                    "on-tertiary-container": "#aac0cc",
+                    "on-background": "#191c1d",
+                    "primary-container": "#1a535c",
+                    "inverse-surface": "#2e3132",
+                    "inverse-on-surface": "#f0f1f2",
+                    "surface-tint": "#30666f",
+                    "on-primary-fixed": "#001f24",
+                    "error": "#ba1a1a",
+                    "background": "#f8f9fa",
+                    "on-primary": "#ffffff",
+                    "tertiary-container": "#3a4f59",
+                    "on-tertiary-fixed-variant": "#354a53",
+                    "on-primary-fixed-variant": "#134e57",
+                    "outline": "#70797a",
+                    "tertiary-fixed-dim": "#b4cad6",
+                    "surface-container-lowest": "#ffffff",
+                    "secondary-fixed-dim": "#ffb786",
+                    "on-secondary-container": "#5e2c00",
+                    "on-error-container": "#93000a",
+                    "primary-fixed": "#b6ecf6",
+                    "surface-container-highest": "#e1e3e4",
+                    "on-secondary": "#ffffff",
+                    "primary-fixed-dim": "#9acfda",
+                    "on-secondary-fixed": "#311300",
+                    "on-primary-container": "#90c5cf",
+                    "error-container": "#ffdad6",
+                    "primary": "#003b43",
+                    "outline-variant": "#c0c8ca",
+                    "tertiary": "#233841",
+                    "surface-bright": "#f8f9fa",
+                    "surface-container-high": "#e7e8e9",
+                    "on-tertiary-fixed": "#071e27",
+                    "secondary-container": "#fc820c",
+                    "surface-container": "#edeeef",
+                    "on-surface-variant": "#40484a",
+                    "on-error": "#ffffff",
+                    "tertiary-fixed": "#cfe6f2",
+                    "on-tertiary": "#ffffff",
+                    "secondary-fixed": "#ffdcc6",
+                    "inverse-primary": "#9acfda"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "1rem",
+                    "xl": "1.25rem",
+                    "full": "9999px"
+            },
+            "fontFamily": {
+                    "headline": ["Manrope", "sans-serif"],
+                    "body": ["Inter", "sans-serif"],
+                    "label": ["Inter", "sans-serif"]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        body { font-family: 'Inter', sans-serif; line-height: 1.5; }
+        h1, h2, h3, h4 { font-family: 'Manrope', sans-serif; }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+        }
+    </style>
+</head>
+<body class="bg-background text-on-surface">
+<!-- Sidebar (Shell Component) -->
+<aside class="h-screen w-64 fixed left-0 top-0 bg-surface-container-low flex flex-col h-full py-6 px-4 hidden md:flex">
+<div class="flex items-center gap-3 mb-10 px-2">
+<div class="w-10 h-10 bg-primary rounded-lg flex items-center justify-center">
+<span class="material-symbols-outlined text-white" style="font-variation-settings: 'FILL' 1;">science</span>
+</div>
+<div>
+<h1 class="text-lg font-black text-teal-950 leading-none">StemFlow</h1>
+<p class="text-[10px] uppercase tracking-widest text-secondary font-bold">Intellectual Atelier</p>
+</div>
+</div>
+<nav class="flex-1 space-y-1">
+<a class="flex items-center gap-3 px-4 py-3 text-slate-500 hover:bg-slate-200 transition-all rounded-lg group" href="#">
+<span class="material-symbols-outlined">dashboard</span>
+<span class="font-medium text-sm">Bảng điều khiển</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-slate-500 hover:bg-slate-200 transition-all rounded-lg group" href="#">
+<span class="material-symbols-outlined">science</span>
+<span class="font-medium text-sm">Phòng thí nghiệm ảo</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-slate-500 hover:bg-slate-200 transition-all rounded-lg group" href="#">
+<span class="material-symbols-outlined">account_circle</span>
+<span class="font-medium text-sm">Hồ sơ của tôi</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-slate-500 hover:bg-slate-200 transition-all rounded-lg group" href="#">
+<span class="material-symbols-outlined">admin_panel_settings</span>
+<span class="font-medium text-sm">Bảng quản trị</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 bg-teal-50 text-teal-900 border-l-4 border-amber-600 translate-x-1 transition-transform rounded-r-lg" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">help_center</span>
+<span class="font-medium text-sm">Trung tâm hỗ trợ</span>
+</a>
+</nav>
+<div class="mt-auto px-2">
+<button class="w-full py-4 bg-secondary text-white rounded-full font-bold flex items-center justify-center gap-2 hover:opacity-90 transition-opacity"><span class="material-symbols-outlined text-sm">play_circle</span> Bắt đầu thí nghiệm</button>
+</div>
+</aside>
+<!-- Main Content Canvas -->
+<main class="md:ml-64 min-h-screen bg-background">
+<!-- Top Navigation -->
+<header class="bg-slate-50/80 backdrop-blur-xl sticky top-0 z-50 flex justify-between items-center px-8 h-16 w-full max-w-none">
+<div class="flex items-center gap-8">
+<span class="text-xl font-bold tracking-tight text-teal-900">Support Center</span>
+<nav class="hidden lg:flex gap-6">
+<a class="text-slate-600 font-medium hover:text-teal-700 transition-colors" href="#">Phòng thí nghiệm</a>
+<a class="text-slate-600 font-medium hover:text-teal-700 transition-colors" href="#">Lộ trình học tập</a>
+<a class="text-slate-600 font-medium hover:text-teal-700 transition-colors" href="#">Thành tựu</a>
+<a class="text-teal-800 border-b-2 border-teal-800 pb-1 font-bold" href="#">Hỗ trợ</a>
+</nav>
+</div>
+<div class="flex items-center gap-4">
+<button class="p-2 text-teal-900 hover:bg-slate-100 rounded-full transition-colors">
+<span class="material-symbols-outlined">notifications</span>
+</button>
+<button class="p-2 text-teal-900 hover:bg-slate-100 rounded-full transition-colors">
+<span class="material-symbols-outlined">settings</span>
+</button>
+<div class="w-8 h-8 rounded-full bg-slate-200 overflow-hidden ml-2">
+<img alt="Administrator profile avatar" data-alt="Close up portrait of a professional administrator avatar with clean background and neutral lighting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCh2drePNSv8HPQzDnpF06LSzMO3B9dXhZmr8oa9mtHjpGVU8F9uYBE7dw1H4vWMVfibBZBeoDyoqplWMQYQH6-Teju5d-Cl7i2RSmobnfT2yIuvqTFfNYdYIK5DymMFIDMOR9-maWpFc-ldBKzk_NOXu91eL4NIj_Fn2sX5MbdqbiCvMlqtWrR3jditWjMOijCy6dSzzZPsD2ey5fClTxEdTvfBcwUyyRK8uIBDCwSf8p6Tmysm1iU5dwKOtrjT8kKKkncoKSviII"/>
+</div>
+</div>
+</header>
+<!-- Search Hero Section -->
+<section class="relative py-24 px-8 overflow-hidden">
+<div class="absolute inset-0 z-0">
+<div class="absolute top-0 right-0 w-1/3 h-full bg-primary-container/5 rounded-bl-[100px]"></div>
+<div class="absolute bottom-0 left-0 w-1/4 h-1/2 bg-secondary-container/5 rounded-tr-[80px]"></div>
+</div>
+<div class="relative z-10 max-w-4xl mx-auto text-center">
+<h2 class="text-4xl md:text-5xl font-extrabold text-primary mb-6 tracking-tight">Chào mừng bạn đến với Trung tâm Hỗ trợ</h2>
+<p class="text-on-surface-variant text-lg mb-10 max-w-2xl mx-auto">Tìm kiếm câu trả lời cho mọi thắc mắc về Virtual Lab, linh kiện STEM và hướng dẫn học tập từ StemFlow.</p>
+<div class="relative max-w-2xl mx-auto">
+<div class="flex items-center bg-surface-container-lowest shadow-2xl shadow-primary/10 rounded-2xl p-2 focus-within:ring-2 focus-within:ring-primary/20 transition-all">
+<span class="material-symbols-outlined ml-4 text-outline">search</span>
+<input class="flex-1 border-none focus:ring-0 px-4 py-3 bg-transparent text-on-surface placeholder:text-outline/60" placeholder="Tìm kiếm hướng dẫn, mã lỗi, linh kiện..." type="text"/>
+<button class="bg-primary text-white px-8 py-3 rounded-xl font-bold hover:bg-primary-container transition-colors">Tìm kiếm</button>
+</div>
+<div class="flex flex-wrap justify-center gap-2 mt-4">
+<span class="text-xs font-semibold text-outline px-2 py-1">Gợi ý:</span>
+<a class="text-xs font-medium text-primary hover:underline" href="#">Lỗi kết nối Arduino</a>
+<a class="text-xs font-medium text-primary hover:underline" href="#">Thư viện cảm biến</a>
+<a class="text-xs font-medium text-primary hover:underline" href="#">Đăng ký bản quyền</a>
+</div>
+</div>
+</div>
+</section>
+<!-- Categories Bento Grid -->
+<section class="px-8 pb-16 max-w-7xl mx-auto">
+<div class="grid grid-cols-1 md:grid-cols-12 gap-6">
+<!-- Large Featured Category -->
+<div class="md:col-span-8 bg-surface-container-lowest rounded-xl p-8 flex flex-col md:flex-row gap-8 items-center border border-outline-variant/20 hover:border-primary/30 transition-all">
+<div class="flex-1">
+<span class="inline-block px-3 py-1 bg-secondary-fixed text-on-secondary-fixed-variant text-xs font-bold rounded-full mb-4">MỚI CẬP NHẬT</span>
+<h3 class="text-2xl font-bold text-primary mb-3">Hướng dẫn Arduino Toàn tập</h3>
+<p class="text-on-surface-variant mb-6">Tài liệu chi tiết từ thiết lập môi trường IDE đến việc lập trình các mạch điều khiển phức tạp dành cho học sinh.</p>
+<ul class="space-y-3 mb-8">
+<li class="flex items-center gap-2 text-sm text-on-surface font-medium">
+<span class="material-symbols-outlined text-primary text-lg">check_circle</span>
+                                Cài đặt Driver và IDE
+                            </li>
+<li class="flex items-center gap-2 text-sm text-on-surface font-medium">
+<span class="material-symbols-outlined text-primary text-lg">check_circle</span>
+                                Sơ đồ đấu nối 50+ linh kiện
+                            </li>
+</ul>
+<button class="text-primary font-bold flex items-center gap-2 group hover:gap-4 transition-all">
+                            Xem tất cả hướng dẫn <span class="material-symbols-outlined">arrow_forward</span>
+</button>
+</div>
+<div class="w-full md:w-64 h-48 rounded-xl overflow-hidden shadow-lg">
+<img class="w-full h-full object-cover" data-alt="High quality overhead shot of an Arduino board with multi-colored wires and electronic components on a clean workspace" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBrcgDHwUGSND3D1OZNQApgMHsPXhFbmChn5aZXMr6evDGJtIv5kNkn_aqaWFbzbRgZcT0izC5lKgVm-CXin5d2NNrkRONz6ju-EmgxNNkc8diykjz04_V5mNeik9bViXCreH2flyabGHtmd1eqwpNedvSEvLZ1U0POX1gJjRxmad75t-p_rbGrXp_JZRBdL6UuHLNqcPF5YYYm7a5TNtW2uUwnRgKovIcIAJt1tasZI1oXaUCTmNvsaBYeEdb3ml1R4tPMuZgCYTU"/>
+</div>
+</div>
+<!-- Secondary Category -->
+<div class="md:col-span-4 bg-primary-container text-on-primary-container rounded-xl p-8 hover:opacity-95 transition-all">
+<div class="w-12 h-12 bg-white/10 rounded-lg flex items-center justify-center mb-6">
+<span class="material-symbols-outlined text-white text-3xl">bolt</span>
+</div>
+<h3 class="text-xl font-bold text-white mb-2">Bắt đầu nhanh</h3>
+<p class="text-white/70 text-sm mb-6">5 phút để làm quen với giao diện Virtual Lab và thực hiện thí nghiệm đầu tiên của bạn.</p>
+<a class="inline-flex h-10 px-6 items-center justify-center bg-white text-primary font-bold rounded-full text-sm" href="#">
+                        Khám phá ngay
+                    </a>
+</div>
+<!-- Small Category -->
+<div class="md:col-span-4 bg-surface-container-lowest rounded-xl p-6 border border-outline-variant/20 hover:border-primary/30 transition-all flex flex-col items-center text-center">
+<div class="w-14 h-14 bg-surface-container rounded-full flex items-center justify-center mb-4">
+<span class="material-symbols-outlined text-primary">bug_report</span>
+</div>
+<h4 class="font-bold text-primary">Xử lý lỗi thường gặp</h4>
+<p class="text-xs text-on-surface-variant mt-2 mb-4">Khắc phục các sự cố về kết nối, nạp code và lỗi logic.</p>
+</div>
+<!-- Small Category -->
+<div class="md:col-span-4 bg-surface-container-lowest rounded-xl p-6 border border-outline-variant/20 hover:border-primary/30 transition-all flex flex-col items-center text-center">
+<div class="w-14 h-14 bg-surface-container rounded-full flex items-center justify-center mb-4">
+<span class="material-symbols-outlined text-primary">book</span>
+</div>
+<h4 class="font-bold text-primary">Thư viện STEM</h4>
+<p class="text-xs text-on-surface-variant mt-2 mb-4">Tra cứu kiến thức lý thuyết về Vật lý, Điện tử và Robotics.</p>
+</div>
+<!-- Small Category -->
+<div class="md:col-span-4 bg-surface-container-lowest rounded-xl p-6 border border-outline-variant/20 hover:border-primary/30 transition-all flex flex-col items-center text-center">
+<div class="w-14 h-14 bg-surface-container rounded-full flex items-center justify-center mb-4">
+<span class="material-symbols-outlined text-primary">groups</span>
+</div>
+<h4 class="font-bold text-primary">Cộng đồng</h4>
+<p class="text-xs text-on-surface-variant mt-2 mb-4">Tham gia thảo luận và giải đáp cùng hàng nghìn học sinh khác.</p>
+</div>
+</div>
+</section>
+<!-- FAQ Section -->
+<section class="bg-surface-container-low py-20 px-8">
+<div class="max-w-4xl mx-auto">
+<div class="flex items-end justify-between mb-12">
+<div>
+<h2 class="text-3xl font-extrabold text-primary mb-2">Câu hỏi thường gặp</h2>
+<p class="text-on-surface-variant">Giải đáp nhanh các vấn đề phổ biến nhất.</p>
+</div>
+<a class="text-primary font-bold text-sm hover:underline" href="#">Xem tất cả 50+ câu hỏi</a>
+</div>
+<div class="space-y-4">
+<div class="bg-surface-container-lowest rounded-xl p-6 shadow-sm">
+<details class="group">
+<summary class="flex justify-between items-center cursor-pointer list-none font-bold text-primary">
+<span>Làm cách nào để kết nối mạch Arduino với Lab ảo?</span>
+<span class="material-symbols-outlined group-open:rotate-180 transition-transform">expand_more</span>
+</summary>
+<div class="mt-4 text-on-surface-variant text-sm leading-relaxed border-t border-outline-variant/10 pt-4">
+                                Để kết nối, bạn cần tải StemFlow Linker trên máy tính. Sau khi cài đặt, chọn cổng COM tương ứng trong phần thiết lập Lab và nhấn "Connect". Chi tiết xem tại <a class="text-primary underline" href="#">Hướng dẫn kết nối ngoại vi</a>.
+                            </div>
+</details>
+</div>
+<div class="bg-surface-container-lowest rounded-xl p-6 shadow-sm">
+<details class="group">
+<summary class="flex justify-between items-center cursor-pointer list-none font-bold text-primary">
+<span>Tôi có thể sử dụng các linh kiện thực tế không?</span>
+<span class="material-symbols-outlined group-open:rotate-180 transition-transform">expand_more</span>
+</summary>
+<div class="mt-4 text-on-surface-variant text-sm leading-relaxed border-t border-outline-variant/10 pt-4">
+                                Có, StemFlow hỗ trợ Hybrid Learning. Bạn có thể sử dụng linh kiện thật và đồng bộ hóa dữ liệu với Virtual Lab thời gian thực.
+                            </div>
+</details>
+</div>
+<div class="bg-surface-container-lowest rounded-xl p-6 shadow-sm">
+<details class="group">
+<summary class="flex justify-between items-center cursor-pointer list-none font-bold text-primary">
+<span>Hệ thống có hỗ trợ Python hay chỉ C++?</span>
+<span class="material-symbols-outlined group-open:rotate-180 transition-transform">expand_more</span>
+</summary>
+<div class="mt-4 text-on-surface-variant text-sm leading-relaxed border-t border-outline-variant/10 pt-4">
+                                Hiện tại chúng tôi hỗ trợ lập trình khối (Blockly), C++ cho Arduino và MicroPython cho các mạch ESP32/Raspberry Pi Pico.
+                            </div>
+</details>
+</div>
+</div>
+</div>
+</section>
+<!-- CTA Direct Contact Section -->
+<section class="py-24 px-8 text-center">
+<div class="max-w-2xl mx-auto bg-surface-container-lowest border-2 border-primary/5 rounded-3xl p-12 relative overflow-hidden">
+<div class="absolute -top-12 -right-12 w-48 h-48 bg-secondary-fixed-dim/20 rounded-full blur-3xl"></div>
+<div class="absolute -bottom-12 -left-12 w-48 h-48 bg-primary-fixed/20 rounded-full blur-3xl"></div>
+<h2 class="text-3xl font-extrabold text-primary mb-4 relative">Vẫn cần sự trợ giúp?</h2>
+<p class="text-on-surface-variant mb-10 relative">Đội ngũ kỹ thuật của chúng tôi luôn sẵn sàng hỗ trợ bạn 24/7 để đảm bảo quá trình học tập không bị gián đoạn.</p>
+<div class="flex flex-col sm:flex-row gap-4 justify-center relative">
+<button class="bg-secondary text-white px-8 py-4 rounded-full font-bold flex items-center justify-center gap-2 hover:opacity-90 shadow-xl shadow-secondary/20 transition-all">
+<span class="material-symbols-outlined">support_agent</span>
+                        Liên hệ Kỹ thuật
+                    </button>
+<button class="bg-surface-container text-primary px-8 py-4 rounded-full font-bold flex items-center justify-center gap-2 hover:bg-surface-container-high transition-all">
+<span class="material-symbols-outlined">mail</span>
+                        Gửi Email yêu cầu
+                    </button>
+</div>
+<p class="mt-8 text-xs text-outline font-medium uppercase tracking-widest">Thời gian phản hồi trung bình: 15 phút</p>
+</div>
+</section>
+<!-- Footer -->
+<footer class="border-t border-outline-variant/20 py-12 px-8">
+<div class="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-8">
+<div class="flex items-center gap-3">
+<div class="w-8 h-8 bg-primary rounded flex items-center justify-center">
+<span class="material-symbols-outlined text-white text-xs">science</span>
+</div>
+<span class="font-bold text-primary">StemFlow</span>
+<span class="text-outline mx-2 text-sm">|</span>
+<span class="text-sm text-on-surface-variant">© 2024 Intellectual Atelier</span>
+</div>
+<div class="flex gap-8 text-sm font-medium text-on-surface-variant">
+<a class="hover:text-primary" href="#">Điều khoản</a>
+<a class="hover:text-primary" href="#">Bảo mật</a>
+<a class="hover:text-primary" href="#">Góp ý hệ thống</a>
+</div>
+</div>
+</footer>
+</main>
+<!-- Mobile Bottom Navigation (Shell Component) -->
+<nav class="md:hidden fixed bottom-0 left-0 right-0 bg-surface-container-lowest flex justify-around items-center h-16 shadow-[0_-4px_20px_rgba(0,0,0,0.05)] z-50">
+<button class="flex flex-col items-center gap-1 text-slate-500">
+<span class="material-symbols-outlined">dashboard</span>
+<span class="text-[10px] font-bold">Trang chủ</span>
+</button>
+<button class="flex flex-col items-center gap-1 text-slate-500">
+<span class="material-symbols-outlined">science</span>
+<span class="text-[10px] font-bold">Lab</span>
+</button>
+<button class="flex flex-col items-center gap-1 text-primary">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">help_center</span>
+<span class="text-[10px] font-bold">Hỗ trợ</span>
+</button>
+<button class="flex flex-col items-center gap-1 text-slate-500">
+<span class="material-symbols-outlined">account_circle</span>
+<span class="text-[10px] font-bold">Tôi</span>
+</button>
+</nav>
+</body></html>

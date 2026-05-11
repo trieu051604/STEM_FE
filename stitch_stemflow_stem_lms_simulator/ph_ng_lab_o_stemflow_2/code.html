@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+
+<html class="light" lang="vi"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&amp;family=Inter:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "on-primary": "#ffffff",
+                    "tertiary": "#233841",
+                    "on-tertiary-container": "#aac0cc",
+                    "tertiary-fixed-dim": "#b4cad6",
+                    "tertiary-fixed": "#cfe6f2",
+                    "surface-container-lowest": "#ffffff",
+                    "outline-variant": "#c0c8ca",
+                    "background": "#f8f9fa",
+                    "secondary-container": "#fc820c",
+                    "primary-fixed-dim": "#9acfda",
+                    "on-error": "#ffffff",
+                    "primary": "#003b43",
+                    "surface-container-high": "#e7e8e9",
+                    "on-primary-container": "#90c5cf",
+                    "surface-tint": "#30666f",
+                    "surface-container": "#edeeef",
+                    "secondary-fixed-dim": "#ffb786",
+                    "inverse-on-surface": "#f0f1f2",
+                    "on-tertiary-fixed-variant": "#354a53",
+                    "on-surface": "#191c1d",
+                    "on-secondary": "#ffffff",
+                    "outline": "#70797a",
+                    "on-primary-fixed-variant": "#134e57",
+                    "surface-container-low": "#f3f4f5",
+                    "inverse-surface": "#2e3132",
+                    "primary-container": "#1a535c",
+                    "on-secondary-fixed-variant": "#723600",
+                    "tertiary-container": "#3a4f59",
+                    "on-error-container": "#93000a",
+                    "on-secondary-container": "#5e2c00",
+                    "on-primary-fixed": "#001f24",
+                    "surface-bright": "#f8f9fa",
+                    "surface-variant": "#e1e3e4",
+                    "surface-container-highest": "#e1e3e4",
+                    "on-secondary-fixed": "#311300",
+                    "primary-fixed": "#b6ecf6",
+                    "on-surface-variant": "#40484a",
+                    "on-background": "#191c1d",
+                    "secondary": "#964900",
+                    "error": "#ba1a1a",
+                    "inverse-primary": "#9acfda",
+                    "secondary-fixed": "#ffdcc6",
+                    "on-tertiary": "#ffffff",
+                    "on-tertiary-fixed": "#071e27",
+                    "surface-dim": "#d9dadb",
+                    "surface": "#f8f9fa",
+                    "error-container": "#ffdad6"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "full": "9999px"
+            },
+            "fontFamily": {
+                    "headline": ["Manrope"],
+                    "body": ["Inter"],
+                    "label": ["Inter"]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        body { font-family: 'Inter', sans-serif; }
+        .font-headline { font-family: 'Manrope', sans-serif; }
+        .simulation-grid {
+            background-image: radial-gradient(circle, #c0c8ca 1px, transparent 1px);
+            background-size: 30px 30px;
+        }
+        .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #70797a; border-radius: 10px; }
+    </style>
+</head>
+<body class="bg-background text-on-background h-screen flex overflow-hidden">
+<!-- Sidebar Navigation (SideNavBar Anchor) -->
+<aside class="bg-[#f3f4f5] dark:bg-slate-900 fixed left-0 top-0 h-full w-[250px] flex flex-col h-screen py-6 px-4 z-50">
+<div class="flex items-center gap-3 mb-10 px-2">
+<div class="w-10 h-10 bg-primary-container rounded-lg flex items-center justify-center text-on-primary-container shadow-sm">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">science</span>
+</div>
+<div>
+<h1 class="text-2xl font-black text-[#1A535C] dark:text-teal-400 font-headline leading-none">StemFlow</h1>
+<p class="text-[10px] text-slate-500 font-semibold tracking-wider uppercase mt-1">Phòng Thí Nghiệm Tư Duy</p>
+</div>
+</div>
+<nav class="flex-1 space-y-2">
+<!-- Lab is Active -->
+<a class="bg-white dark:bg-slate-800 text-[#1A535C] border-l-4 border-amber-600 rounded-r-xl py-3 px-4 flex items-center gap-3 font-headline font-semibold transition-transform active:translate-x-1" href="#">
+<span class="material-symbols-outlined">science</span>
+<span>Phòng Lab</span>
+</a>
+<a class="text-slate-600 dark:text-slate-400 py-3 px-4 flex items-center gap-3 font-headline font-semibold hover:bg-white/40 dark:hover:bg-slate-800/50 transition-all" href="#">
+<span class="material-symbols-outlined">school</span>
+<span>Lớp học</span>
+</a>
+<a class="text-slate-600 dark:text-slate-400 py-3 px-4 flex items-center gap-3 font-headline font-semibold hover:bg-white/40 dark:hover:bg-slate-800/50 transition-all" href="#">
+<span class="material-symbols-outlined">library_books</span>
+<span>Thư viện</span>
+</a>
+<a class="text-slate-600 dark:text-slate-400 py-3 px-4 flex items-center gap-3 font-headline font-semibold hover:bg-white/40 dark:hover:bg-slate-800/50 transition-all" href="#">
+<span class="material-symbols-outlined">analytics</span>
+<span>Báo cáo</span>
+</a>
+</nav>
+<div class="mt-auto space-y-4">
+<button class="w-full bg-secondary text-white py-3 px-4 rounded-full font-headline font-bold text-sm shadow-lg hover:brightness-110 transition-all flex items-center justify-center gap-2">
+<span class="material-symbols-outlined text-sm">play_arrow</span>
+                Bắt đầu thí nghiệm
+            </button>
+<a class="text-slate-600 dark:text-slate-400 py-3 px-4 flex items-center gap-3 font-headline font-semibold hover:bg-white/40 dark:hover:bg-slate-800/50 transition-all" href="#">
+<span class="material-symbols-outlined">logout</span>
+<span>Đăng xuất</span>
+</a>
+</div>
+</aside>
+<!-- Main Workspace -->
+<main class="flex-1 ml-[250px] flex flex-col h-full relative">
+<!-- Top Toolbar (TopNavBar Anchor Partial) -->
+<header class="bg-[#f3f4f5]/80 backdrop-blur-md flex justify-between items-center w-full px-6 py-3 z-40 border-b border-surface-variant/30">
+<div class="flex items-center gap-4">
+<div class="flex items-center gap-2 bg-white px-3 py-1.5 rounded-lg shadow-sm border border-outline-variant/20">
+<span class="text-xs font-bold text-primary opacity-60 uppercase tracking-tighter">Dự án:</span>
+<span class="text-sm font-bold text-primary">Mạch Điều Khiển Đèn Giao Thông</span>
+</div>
+<div class="h-4 w-[1px] bg-outline-variant"></div>
+<div class="flex items-center gap-1">
+<button class="p-2 rounded-lg hover:bg-white/50 text-slate-500 transition-colors"><span class="material-symbols-outlined">undo</span></button>
+<button class="p-2 rounded-lg hover:bg-white/50 text-slate-500 transition-colors"><span class="material-symbols-outlined">redo</span></button>
+</div>
+</div>
+<div class="flex items-center gap-3">
+<button class="flex items-center gap-2 bg-primary text-on-primary px-4 py-2 rounded-full text-sm font-bold shadow-sm hover:opacity-90 transition-all">
+<span class="material-symbols-outlined text-sm">cloud_upload</span>
+                    Lưu dự án
+                </button>
+<div class="h-8 w-8 rounded-full overflow-hidden border-2 border-white shadow-sm">
+<img alt="Ảnh đại diện người dùng" data-alt="professional male portrait for user profile avatar with neutral background and soft studio lighting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAOHXOuRxneuP-FLuEVDHHk0XnqAJe3gVkkKMuAhUeK42jPZ5nXTPwhJvEvRr-1x-K0r8t98-srQGRbgccS-4U7r-dOdM_1RnojmNtQ-vz2x60M6XfTHZ5ueR0MK8ScqqKwlGbDEpDF9T2Q2trmlHtyLyw4oiU4ukKQknNhrD349UnbySnDDegEUWszREEZgXTiRny68M8fuYRMkfU-pimMQRBGcK6-Zf4rcZulYS-krtVOS56GJv868Trqb7vrqYjWwpn8ILBdUk0"/>
+</div>
+</div>
+</header>
+<!-- Simulation & Tooling Layout -->
+<section class="flex-1 flex overflow-hidden">
+<!-- Component Toolbox (Left) -->
+<div class="w-64 bg-surface-container-low p-4 flex flex-col gap-6 border-r border-outline-variant/10">
+<div>
+<h3 class="text-[10px] font-black uppercase tracking-widest text-outline mb-4 flex items-center gap-2">
+<span class="material-symbols-outlined text-xs">category</span> Linh kiện cơ bản
+                    </h3>
+<div class="grid grid-cols-2 gap-3">
+<!-- Toolbox Item -->
+<div class="bg-surface-container-lowest p-3 rounded-xl border border-outline-variant/30 hover:border-primary cursor-grab transition-all group">
+<div class="w-full h-12 flex items-center justify-center text-primary/40 group-hover:text-primary mb-2">
+<span class="material-symbols-outlined text-3xl">battery_full</span>
+</div>
+<span class="text-[10px] font-bold text-center block text-on-surface-variant">Pin 9V</span>
+</div>
+<div class="bg-surface-container-lowest p-3 rounded-xl border border-outline-variant/30 hover:border-primary cursor-grab transition-all group">
+<div class="w-full h-12 flex items-center justify-center text-primary/40 group-hover:text-primary mb-2">
+<span class="material-symbols-outlined text-3xl">light_mode</span>
+</div>
+<span class="text-[10px] font-bold text-center block text-on-surface-variant">Đèn LED</span>
+</div>
+<div class="bg-surface-container-lowest p-3 rounded-xl border border-outline-variant/30 hover:border-primary cursor-grab transition-all group">
+<div class="w-full h-12 flex items-center justify-center text-primary/40 group-hover:text-primary mb-2">
+<span class="material-symbols-outlined text-3xl" style="font-variation-settings: 'FILL' 1;">straighten</span>
+</div>
+<span class="text-[10px] font-bold text-center block text-on-surface-variant">Điện trở</span>
+</div>
+<div class="bg-surface-container-lowest p-3 rounded-xl border border-outline-variant/30 hover:border-primary cursor-grab transition-all group">
+<div class="w-full h-12 flex items-center justify-center text-primary/40 group-hover:text-primary mb-2">
+<span class="material-symbols-outlined text-3xl">sensors</span>
+</div>
+<span class="text-[10px] font-bold text-center block text-on-surface-variant">Cảm biến</span>
+</div>
+</div>
+</div>
+<div>
+<h3 class="text-[10px] font-black uppercase tracking-widest text-outline mb-4 flex items-center gap-2">
+<span class="material-symbols-outlined text-xs">memory</span> Vi điều khiển
+                    </h3>
+<div class="bg-surface-container-lowest p-4 rounded-xl border border-outline-variant/30 hover:border-primary cursor-grab transition-all group flex flex-col items-center">
+<div class="w-full h-20 mb-3 bg-tertiary-container/10 rounded-lg flex items-center justify-center overflow-hidden">
+<img alt="Arduino Uno" class="object-contain h-16 w-16" data-alt="close-up of an original Arduino Uno board with blue circuit board and silver ports against a clean tech background" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCdQiSYf3SOiQef_FgNohJZhO61loO5VRB9by7qZUqI7BhYTCiGY46gcwp3w9Z99lhm7eDL9JlHv9jVl6ojNLT2PJtgutFQjKAbbs5ZA8OJD3NYlstoUjRlPM04oSfF_-F4hjniIrg0llDTGbJwuz525tHt0-S4jwhUsX84avTj0uCErG5DzCkUJ9zN7I-vHJs25ybH37aR6oJCO-iY_jtGXzEL0iTJYxErpF0kGvQ5fgF2iCaam-LwAjK1umguW5P02SmVD-AASPI"/>
+</div>
+<span class="text-[11px] font-bold text-on-surface">Arduino Uno R3</span>
+</div>
+</div>
+<div class="mt-auto bg-primary-container p-4 rounded-2xl text-on-primary-container relative overflow-hidden group">
+<div class="relative z-10">
+<p class="text-xs font-bold leading-tight mb-2">Cần giúp đỡ với sơ đồ mạch?</p>
+<button class="text-[10px] bg-white text-primary px-3 py-1.5 rounded-full font-bold">Xem hướng dẫn</button>
+</div>
+<span class="material-symbols-outlined absolute -bottom-2 -right-2 text-6xl opacity-10 rotate-12 group-hover:scale-110 transition-transform">help_center</span>
+</div>
+</div>
+<!-- Simulation Canvas (Center) -->
+<div class="flex-1 bg-surface-container-lowest relative simulation-grid overflow-hidden group">
+<!-- Floating Controls -->
+<div class="absolute bottom-6 left-6 flex items-center gap-2 bg-white/80 backdrop-blur-md p-1.5 rounded-full shadow-lg border border-outline-variant/20 z-10">
+<button class="p-2 rounded-full hover:bg-surface-container-low text-primary transition-colors"><span class="material-symbols-outlined">zoom_in</span></button>
+<button class="p-2 rounded-full hover:bg-surface-container-low text-primary transition-colors"><span class="material-symbols-outlined">zoom_out</span></button>
+<div class="h-4 w-[1px] bg-outline-variant"></div>
+<button class="p-2 rounded-full hover:bg-surface-container-low text-primary transition-colors"><span class="material-symbols-outlined">center_focus_weak</span></button>
+</div>
+<div class="absolute top-6 left-6 flex items-center gap-3">
+<div class="bg-white/90 backdrop-blur shadow-sm border border-outline-variant/20 rounded-lg px-4 py-2 flex items-center gap-2">
+<span class="flex h-2 w-2 rounded-full bg-emerald-500 animate-pulse"></span>
+<span class="text-xs font-bold text-primary">Thời gian thực: 00:04:12</span>
+</div>
+</div>
+<!-- Simulation Elements Placeholder -->
+<div class="absolute inset-0 flex items-center justify-center pointer-events-none opacity-20">
+<span class="material-symbols-outlined text-[200px] text-primary">drag_pan</span>
+</div>
+<!-- Active Board Mock -->
+<div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 p-8 cursor-move active:scale-95 transition-transform">
+<div class="relative bg-tertiary-container w-64 h-48 rounded-lg shadow-2xl border-4 border-slate-700/50 flex flex-col p-4 text-white">
+<div class="flex justify-between items-start">
+<span class="text-[10px] font-mono opacity-50">DỰ_ÁN_ARDUINO_UNO</span>
+<div class="w-8 h-8 bg-zinc-400 rounded-sm"></div>
+</div>
+<div class="flex-1 flex items-end">
+<div class="flex gap-1">
+<div class="w-2 h-4 bg-zinc-600 rounded-t-sm"></div>
+<div class="w-2 h-6 bg-zinc-600 rounded-t-sm"></div>
+<div class="w-2 h-4 bg-zinc-600 rounded-t-sm"></div>
+</div>
+</div>
+</div>
+<!-- Virtual Wire Mock -->
+<svg class="absolute top-1/2 left-full w-48 h-32 -translate-y-1/2 pointer-events-none" viewbox="0 0 100 100">
+<path d="M 0 50 Q 50 100 100 0" fill="none" stroke="#ba1a1a" stroke-linecap="round" stroke-width="2"></path>
+</svg>
+</div>
+</div>
+<!-- Code Editor (Right) -->
+<div class="w-[450px] bg-tertiary flex flex-col border-l border-white/5">
+<!-- Editor Header -->
+<div class="p-4 flex items-center justify-between border-b border-white/5">
+<div class="flex gap-1 p-1 bg-tertiary-container/30 rounded-lg">
+<button class="px-4 py-1.5 rounded-md bg-tertiary text-white text-xs font-bold shadow-sm">Python</button>
+<button class="px-4 py-1.5 rounded-md text-tertiary-fixed-dim text-xs font-bold hover:text-white transition-colors">C++ Arduino</button>
+</div>
+<button class="bg-emerald-600 text-white px-5 py-2 rounded-full text-xs font-bold flex items-center gap-2 hover:bg-emerald-500 transition-colors shadow-lg shadow-emerald-900/20"><span class="material-symbols-outlined text-sm" style="font-variation-settings: 'FILL' 1;">play_circle</span>
+                        Tải lên &amp; Chạy</button>
+</div>
+<!-- Code Area -->
+<div class="flex-1 p-6 font-mono text-sm overflow-y-auto custom-scrollbar">
+<div class="flex gap-4">
+<div class="text-on-tertiary-container/30 text-right select-none">
+                            1<br/>2<br/>3<br/>4<br/>5<br/>6<br/>7<br/>8<br/>9<br/>10<br/>11<br/>12<br/>13<br/>14
+                        </div>
+<div class="text-tertiary-fixed">
+<span class="text-amber-400">import</span> machine<br/>
+<span class="text-amber-400">import</span> time<br/>
+<br/>
+<span class="text-teal-400"># Định nghĩa các chân Pin cho Đèn Giao Thông</span><br/>
+                            led_red = machine.Pin(<span class="text-orange-300">15</span>, machine.Pin.OUT)<br/>
+                            led_yellow = machine.Pin(<span class="text-orange-300">14</span>, machine.Pin.OUT)<br/>
+                            led_green = machine.Pin(<span class="text-orange-300">13</span>, machine.Pin.OUT)<br/>
+<br/>
+<span class="text-amber-400">while</span> <span class="text-blue-400">True</span>:<br/>
+                                led_red.value(<span class="text-orange-300">1</span>)<br/>
+                                time.sleep(<span class="text-orange-300">5</span>)<br/>
+                                led_red.value(<span class="text-orange-300">0</span>)<br/>
+                                led_green.value(<span class="text-orange-300">1</span>)
+                        </div>
+</div>
+</div>
+<!-- Console/Output (Bottom) -->
+<div class="h-48 bg-[#071e27] border-t border-white/5 flex flex-col">
+<div class="px-4 py-2 bg-tertiary-container/50 flex items-center justify-between">
+<span class="text-[10px] font-bold text-tertiary-fixed uppercase tracking-widest">Kết quả đầu ra</span>
+<button class="text-tertiary-fixed-dim hover:text-white transition-colors">
+<span class="material-symbols-outlined text-sm">delete_sweep</span>
+</button>
+</div>
+<div class="flex-1 p-4 font-mono text-[11px] text-emerald-400 overflow-y-auto custom-scrollbar">
+<p class="mb-1 text-tertiary-fixed-dim">[14:32:01] Kết nối thành công với Arduino Uno (COM3)</p>
+<p class="mb-1 text-tertiary-fixed-dim">[14:32:02] Đang biên dịch mã nguồn...</p>
+<p class="mb-1 text-tertiary-fixed-dim">[14:32:05] Upload hoàn tất. Kích thước: 4.2KB</p>
+<p class="mb-1 text-emerald-400">&gt; Simulation started.</p>
+<p class="mb-1 text-amber-300 animate-pulse">&gt; WARNING: Điện trở R1 có thể quá thấp cho LED1.</p>
+</div>
+</div>
+</div>
+</section>
+</main>
+</body></html>

@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+
+<html class="light" lang="vi"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>StemFlow - Quản lý Khóa học</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&amp;family=Inter:wght@300;400;500;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-primary-container": "#90c5cf",
+                        "error-container": "#ffdad6",
+                        "primary-fixed-dim": "#9acfda",
+                        "on-secondary-fixed": "#311300",
+                        "primary-fixed": "#b6ecf6",
+                        "surface-container-highest": "#e1e3e4",
+                        "on-secondary": "#ffffff",
+                        "tertiary-fixed-dim": "#b4cad6",
+                        "surface-container-lowest": "#ffffff",
+                        "secondary-fixed-dim": "#ffb786",
+                        "on-secondary-container": "#5e2c00",
+                        "on-error-container": "#93000a",
+                        "on-tertiary": "#ffffff",
+                        "secondary-fixed": "#ffdcc6",
+                        "inverse-primary": "#9acfda",
+                        "on-error": "#ffffff",
+                        "tertiary-fixed": "#cfe6f2",
+                        "secondary-container": "#fc820c",
+                        "surface-container": "#edeeef",
+                        "on-surface-variant": "#40484a",
+                        "primary": "#003b43",
+                        "outline-variant": "#c0c8ca",
+                        "tertiary": "#233841",
+                        "surface-bright": "#f8f9fa",
+                        "surface-container-high": "#e7e8e9",
+                        "on-tertiary-fixed": "#071e27",
+                        "surface": "#f8f9fa",
+                        "on-tertiary-container": "#aac0cc",
+                        "on-background": "#191c1d",
+                        "primary-container": "#1a535c",
+                        "surface-container-low": "#f3f4f5",
+                        "secondary": "#964900",
+                        "surface-dim": "#d9dadb",
+                        "on-surface": "#191c1d",
+                        "on-secondary-fixed-variant": "#723600",
+                        "surface-variant": "#e1e3e4",
+                        "on-primary-fixed-variant": "#134e57",
+                        "outline": "#70797a",
+                        "error": "#ba1a1a",
+                        "background": "#f8f9fa",
+                        "on-primary": "#ffffff",
+                        "tertiary-container": "#3a4f59",
+                        "on-tertiary-fixed-variant": "#354a53",
+                        "on-primary-fixed": "#001f24",
+                        "inverse-surface": "#2e3132",
+                        "inverse-on-surface": "#f0f1f2",
+                        "surface-tint": "#30666f"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "1rem",
+                        "xl": "1.25rem",
+                        "full": "9999px"
+                    },
+                    "fontFamily": {
+                        "headline": ["Manrope"],
+                        "body": ["Inter"],
+                        "label": ["Inter"]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        body { font-family: 'Inter', sans-serif; }
+        h1, h2, h3, .brand-font { font-family: 'Manrope', sans-serif; }
+        .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
+        .glass-panel { backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+    </style>
+</head>
+<body class="bg-background text-on-surface flex min-h-screen">
+<!-- SideNavBar Component -->
+<aside class="w-[250px] h-screen fixed left-0 top-0 bg-slate-100 flex flex-col py-6 px-0 z-50 overflow-y-auto border-none">
+<div class="px-6 mb-10">
+<span class="text-2xl font-black text-[#1A535C] font-manrope">StemFlow</span>
+<p class="text-[10px] uppercase tracking-[0.2em] text-slate-500 font-bold mt-1">Intellectual Atelier</p>
+</div>
+<nav class="flex-1 space-y-1">
+<a class="flex items-center px-6 py-3 text-slate-500 font-medium hover:text-[#1A535C] hover:bg-slate-200/50 transition-colors duration-200 font-manrope font-bold tracking-tight text-sm" href="#"><span class="material-symbols-outlined mr-3">dashboard</span> Bảng điều khiển</a>
+<a class="flex items-center px-6 py-3 border-l-4 border-[#964900] bg-[#1A535C]/5 text-[#1A535C] font-bold font-manrope tracking-tight text-sm" href="#"><span class="material-symbols-outlined mr-3">science</span> Phòng thí nghiệm ảo</a>
+<a class="flex items-center px-6 py-3 text-slate-500 font-medium hover:text-[#1A535C] hover:bg-slate-200/50 transition-colors duration-200 font-manrope font-bold tracking-tight text-sm" href="#"><span class="material-symbols-outlined mr-3">groups</span> Lớp học</a>
+<a class="flex items-center px-6 py-3 text-slate-500 font-medium hover:text-[#1A535C] hover:bg-slate-200/50 transition-colors duration-200 font-manrope font-bold tracking-tight text-sm" href="#"><span class="material-symbols-outlined mr-3">leaderboard</span> Phân tích</a>
+<a class="flex items-center px-6 py-3 text-slate-500 font-medium hover:text-[#1A535C] hover:bg-slate-200/50 transition-colors duration-200 font-manrope font-bold tracking-tight text-sm" href="#"><span class="material-symbols-outlined mr-3">settings</span> Cài đặt</a>
+</nav>
+<div class="px-4 mt-auto">
+<button class="w-full bg-secondary text-on-secondary py-3 rounded-full font-bold text-sm shadow-lg shadow-secondary/20 transition-transform active:scale-95">Bắt đầu Lab mới</button>
+</div>
+</aside>
+<!-- Main Content Shell -->
+<main class="flex-1 ml-[250px] min-h-screen flex flex-col">
+<!-- TopAppBar Component -->
+<header class="sticky top-0 right-0 w-full z-40 bg-white/80 backdrop-blur-xl flex justify-between items-center h-16 px-8 shadow-sm shadow-slate-200/50">
+<div class="flex items-center flex-1 max-w-xl">
+<div class="relative w-full group">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-[#1A535C]">search</span>
+<input class="w-full pl-10 pr-4 py-2 bg-surface-container-low border-none rounded-full text-sm focus:ring-2 focus:ring-[#1A535C]/20 outline-none" placeholder="Tìm kiếm bài học, tài liệu..." type="text"/>
+</div>
+</div>
+<div class="flex items-center space-x-6 ml-8">
+<button class="p-2 text-slate-400 hover:bg-slate-50 rounded-full transition-colors">
+<span class="material-symbols-outlined">notifications</span>
+</button>
+<button class="p-2 text-slate-400 hover:bg-slate-50 rounded-full transition-colors">
+<span class="material-symbols-outlined">help_outline</span>
+</button>
+<div class="flex items-center space-x-3 border-l pl-6 border-slate-100">
+<div class="text-right hidden sm:block">
+<p class="text-xs font-bold text-primary">Dr. Minh Tran</p>
+<p class="text-[10px] text-slate-500">Giảng viên cao cấp</p>
+</div>
+<img alt="Administrator Profile" class="w-10 h-10 rounded-full bg-primary-fixed" data-alt="Close-up professional headshot of a friendly Vietnamese male teacher with glasses in a modern office setting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBB4g0s_oUdyHzxu86fyvieZ7qgqoOKaws8PpWnbnDLScSy1aso6uT4XyagSd5m6dtBd2zPccbWa32GNAIdz9m09S6RKTU9sMErXgrbK88t5jwsBq6vg7CDV3jT_JIHGC1UQvDtUnKboRgyd-YoQCelSlxJWys65CaTBZ3V5EA7Rlsh1EDnC3KuBmL73HnpWsBWsXBDe5NLfAs2PzUhuNmnrMEYlQkgaGNB7iEstjJk7XHYKYvuq1KXkFcK6SRihU0HjwwNZPSbGrY"/>
+</div>
+</div>
+</header>
+<!-- Page Canvas -->
+<div class="p-8 space-y-8 flex-1">
+<!-- Header Section -->
+<div class="flex flex-col md:flex-row md:items-end justify-between gap-4">
+<div>
+<nav class="flex items-center text-xs font-medium text-slate-400 mb-2">
+<span>Khoá học của tôi</span>
+<span class="material-symbols-outlined text-sm mx-1">chevron_right</span>
+<span class="text-primary-container">Vật Lý Hạt Nhân &amp; Ứng dụng</span>
+</nav>
+<h1 class="text-3xl font-extrabold text-primary tracking-tight">Quản lý Học phần &amp; Giáo trình</h1>
+</div>
+<div class="flex space-x-3">
+<button class="px-5 py-2.5 rounded-full border border-outline-variant text-sm font-semibold text-primary hover:bg-surface-container transition-colors flex items-center">
+<span class="material-symbols-outlined text-sm mr-2">visibility</span>
+                        Xem bản học viên
+                    </button>
+<button class="px-5 py-2.5 rounded-full bg-primary text-white text-sm font-bold shadow-md hover:bg-primary-container transition-all flex items-center">
+<span class="material-symbols-outlined text-sm mr-2">save</span>
+                        Lưu thay đổi
+                    </button>
+</div>
+</div>
+<!-- Dashboard Layout (Bento Grid Style) -->
+<div class="grid grid-cols-12 gap-6">
+<!-- Curriculum Organizer (Left Column) -->
+<div class="col-span-12 lg:col-span-8 space-y-6">
+<!-- Drag-and-drop Curriculum List -->
+<div class="bg-surface-container-lowest rounded-xl p-1 shadow-sm border border-outline-variant/10">
+<div class="p-6 border-b border-surface-container">
+<div class="flex items-center justify-between">
+<h3 class="font-bold text-lg text-primary flex items-center">
+<span class="material-symbols-outlined mr-2 text-secondary">reorder</span>
+                                    Cấu trúc Chương trình (Modules)
+                                </h3>
+<button class="text-[#1A535C] text-sm font-bold hover:underline flex items-center">
+<span class="material-symbols-outlined text-sm mr-1">add_circle</span>
+                                    Thêm Chương mới
+                                </button>
+</div>
+</div>
+<div class="divide-y divide-surface-container">
+<!-- Module 1 -->
+<div class="p-4 bg-white hover:bg-surface-container-low transition-colors group">
+<div class="flex items-start">
+<div class="mt-1 cursor-grab active:cursor-grabbing text-slate-300 group-hover:text-slate-400">
+<span class="material-symbols-outlined">drag_indicator</span>
+</div>
+<div class="flex-1 ml-4">
+<div class="flex items-center justify-between mb-4">
+<div>
+<span class="text-[10px] font-black uppercase text-secondary tracking-widest">Chương 01</span>
+<h4 class="font-bold text-slate-800">Cơ sở lý thuyết &amp; Cấu trúc nguyên tử</h4>
+</div>
+<div class="flex space-x-2">
+<button class="p-1.5 rounded-lg hover:bg-slate-200 text-slate-400 transition-colors">
+<span class="material-symbols-outlined text-lg">edit</span>
+</button>
+<button class="p-1.5 rounded-lg hover:bg-error-container text-error transition-colors">
+<span class="material-symbols-outlined text-lg">delete</span>
+</button>
+</div>
+</div>
+<!-- Nested Lessons -->
+<div class="space-y-3 pl-2 border-l-2 border-slate-100 ml-2">
+<div class="flex items-center justify-between p-3 bg-slate-50 rounded-lg border border-slate-100/50">
+<div class="flex items-center">
+<span class="material-symbols-outlined text-primary-container mr-3">article</span>
+<span class="text-sm font-medium text-slate-600">Bài 1.1: Mô hình Bohr và lượng tử hóa</span>
+</div>
+<span class="text-[10px] font-bold px-2 py-1 bg-primary-fixed text-on-primary-fixed rounded">LÝ THUYẾT</span>
+</div>
+<div class="flex items-center justify-between p-3 bg-slate-50 rounded-lg border border-slate-100/50">
+<div class="flex items-center">
+<span class="material-symbols-outlined text-secondary mr-3">biotech</span>
+<span class="text-sm font-medium text-slate-600">Thí nghiệm 1.2: Quan sát quang phổ vạch</span>
+</div>
+<span class="text-[10px] font-bold px-2 py-1 bg-secondary-fixed text-on-secondary-fixed rounded">THÍ NGHIỆM</span>
+</div>
+<button class="w-full py-2 border-2 border-dashed border-slate-200 rounded-lg text-xs font-bold text-slate-400 hover:border-primary/30 hover:text-primary transition-all flex justify-center items-center">
+<span class="material-symbols-outlined text-sm mr-1">add</span> Chèn nội dung vào đây
+                                            </button>
+</div>
+</div>
+</div>
+</div>
+<!-- Module 2 -->
+<div class="p-4 bg-white hover:bg-surface-container-low transition-colors group">
+<div class="flex items-start">
+<div class="mt-1 cursor-grab active:cursor-grabbing text-slate-300 group-hover:text-slate-400">
+<span class="material-symbols-outlined">drag_indicator</span>
+</div>
+<div class="flex-1 ml-4">
+<div class="flex items-center justify-between mb-2">
+<div>
+<span class="text-[10px] font-black uppercase text-secondary tracking-widest">Chương 02</span>
+<h4 class="font-bold text-slate-800">Phóng xạ và Các định luật bảo toàn</h4>
+</div>
+<div class="flex space-x-2 opacity-0 group-hover:opacity-100 transition-opacity">
+<button class="p-1.5 rounded-lg hover:bg-slate-200 text-slate-400"><span class="material-symbols-outlined text-lg">edit</span></button>
+<button class="p-1.5 rounded-lg hover:bg-error-container text-error"><span class="material-symbols-outlined text-lg">delete</span></button>
+</div>
+</div>
+<p class="text-xs text-slate-400">Chưa có bài học nào trong chương này.</p>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Tools & Settings (Right Column) -->
+<div class="col-span-12 lg:col-span-4 space-y-6">
+<!-- Quick Actions Card -->
+<div class="bg-primary-container text-white rounded-xl p-6 shadow-xl shadow-primary-container/20">
+<h3 class="font-bold mb-4 flex items-center"><span class="material-symbols-outlined mr-2">bolt</span> Tạo nội dung nhanh</h3>
+<div class="grid grid-cols-2 gap-3">
+<button class="flex flex-col items-center justify-center p-4 bg-white/10 hover:bg-white/20 rounded-xl transition-colors">
+<span class="material-symbols-outlined text-2xl mb-2">upload_file</span>
+<span class="text-xs font-bold">Tải PDF</span>
+</button>
+<button class="flex flex-col items-center justify-center p-4 bg-white/10 hover:bg-white/20 rounded-xl transition-colors">
+<span class="material-symbols-outlined text-2xl mb-2">lab_research</span>
+<span class="text-xs font-bold">Gán Lab</span>
+</button>
+<button class="flex flex-col items-center justify-center p-4 bg-white/10 hover:bg-white/20 rounded-xl transition-colors">
+<span class="material-symbols-outlined text-2xl mb-2">quiz</span>
+<span class="text-xs font-bold">Tạo Quiz</span>
+</button>
+<button class="flex flex-col items-center justify-center p-4 bg-white/10 hover:bg-white/20 rounded-xl transition-colors">
+<span class="material-symbols-outlined text-2xl mb-2">link</span>
+<span class="text-xs font-bold">Liên kết ngoài</span>
+</button>
+</div>
+</div>
+<!-- Deadline & Settings -->
+<div class="bg-surface-container-lowest rounded-xl p-6 border border-outline-variant/10 shadow-sm">
+<h3 class="font-bold text-primary mb-4 flex items-center"><span class="material-symbols-outlined mr-2">bolt</span> Tạo nội dung nhanh</h3>
+<div class="space-y-4">
+<div>
+<label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Ngày bắt đầu khóa</label>
+<div class="relative">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm">calendar_today</span>
+<input class="w-full pl-9 pr-4 py-2 bg-surface-container-low border-none rounded-lg text-sm font-medium" type="date" value="2023-09-01"/>
+</div>
+</div>
+<div>
+<label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Ngày kết thúc dự kiến</label>
+<div class="relative">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm">event_busy</span>
+<input class="w-full pl-9 pr-4 py-2 bg-surface-container-low border-none rounded-lg text-sm font-medium" type="date" value="2024-01-15"/>
+</div>
+</div>
+<div class="pt-4 border-t border-slate-100">
+<label class="flex items-center cursor-pointer group">
+<div class="relative">
+<input checked="" class="sr-only" type="checkbox"/>
+<div class="w-10 h-5 bg-slate-200 rounded-full shadow-inner group-focus:ring-2 group-focus:ring-primary/20"></div>
+<div class="dot absolute left-1 top-1 bg-white w-3 h-3 rounded-full transition transform translate-x-5 !bg-primary"></div>
+</div>
+<span class="ml-3 text-sm font-semibold text-slate-600">Cho phép nộp muộn</span>
+</label>
+</div>
+</div>
+</div>
+<!-- Featured Media Preview -->
+<div class="bg-surface-container-lowest rounded-xl overflow-hidden border border-outline-variant/10 shadow-sm">
+<img alt="STEM Lab Illustration" class="w-full h-32 object-cover" data-alt="High-quality close up of a laboratory microscope with blue ambient lighting and scientific glassware in background" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDGoLe0zeXTcCFFxYyJ3xOG_2RxMdoOfMp3yRIwOBn4Y4dVblsKF5rpijdGpruj4noYqY5sm0O-REJQ1pQr13sj81ZQvLl3RoTc8mSNSYP68jzRvnjK4eFfu6Vp96Tq_4xc0qCSHb4fLLGcupen5djuZIVLKdTesDV24MTy8n5twptfX06WNeo4rscKPGqdVyNjJmStCY7Lejcl7G9ZtaznUh4C_kUEZYJvJOgc5GZrhJBApBgIibWoPfNakEwP4ynM_eNrqpLe7Z4"/>
+<div class="p-4">
+<h4 class="text-xs font-bold text-slate-400 uppercase mb-1">Thumbnail khóa học</h4>
+<div class="flex items-center justify-between">
+<span class="text-sm font-medium text-slate-700 truncate mr-2">nuclear_physics_hero.jpg</span>
+<button class="text-primary text-xs font-bold">Thay đổi</button>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Recently Uploaded Section -->
+<div class="bg-surface-container-lowest rounded-xl p-6 border border-outline-variant/10 shadow-sm">
+<div class="flex items-center justify-between mb-6">
+<h3 class="font-bold text-primary flex items-center">
+<span class="material-symbols-outlined mr-2">folder_open</span>
+                        Tài liệu đã tải lên gần đây
+                    </h3>
+<button class="text-sm text-primary font-bold">Xem tất cả</button>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+<div class="flex items-center p-3 rounded-xl border border-slate-100 hover:border-primary/20 hover:bg-slate-50 transition-all cursor-pointer">
+<div class="w-10 h-10 rounded-lg bg-red-50 text-red-600 flex items-center justify-center mr-3">
+<span class="material-symbols-outlined">picture_as_pdf</span>
+</div>
+<div class="flex-1 min-w-0">
+<p class="text-sm font-bold text-slate-700 truncate">Bai_giang_Phat_xa.pdf</p>
+<p class="text-[10px] text-slate-400">2.4 MB • 2 ngày trước</p>
+</div>
+</div>
+<div class="flex items-center p-3 rounded-xl border border-slate-100 hover:border-primary/20 hover:bg-slate-50 transition-all cursor-pointer">
+<div class="w-10 h-10 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center mr-3">
+<span class="material-symbols-outlined">video_library</span>
+</div>
+<div class="flex-1 min-w-0">
+<p class="text-sm font-bold text-slate-700 truncate">Huong_dan_Virtual_Lab.mp4</p>
+<p class="text-[10px] text-slate-400">45 MB • Hôm qua</p>
+</div>
+</div>
+<div class="flex items-center p-3 rounded-xl border border-slate-100 hover:border-primary/20 hover:bg-slate-50 transition-all cursor-pointer">
+<div class="w-10 h-10 rounded-lg bg-green-50 text-green-600 flex items-center justify-center mr-3">
+<span class="material-symbols-outlined">description</span>
+</div>
+<div class="flex-1 min-w-0">
+<p class="text-sm font-bold text-slate-700 truncate">Danh_sach_nhom.xlsx</p>
+<p class="text-[10px] text-slate-400">12 KB • 1 giờ trước</p>
+</div>
+</div>
+<div class="flex items-center p-3 rounded-xl border border-dashed border-slate-200 hover:border-primary/40 hover:bg-slate-50 transition-all cursor-pointer justify-center text-slate-400">
+<span class="material-symbols-outlined mr-2">add_circle</span>
+<span class="text-xs font-bold">Thêm tệp mới</span>
+</div>
+</div>
+</div>
+</div>
+</main>
+<!-- FAB for Quick Support (Contextual) -->
+<button class="fixed bottom-8 right-8 w-14 h-14 bg-secondary text-white rounded-full shadow-2xl flex items-center justify-center hover:scale-110 active:scale-95 transition-transform z-50">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">help</span>
+</button>
+</body></html>

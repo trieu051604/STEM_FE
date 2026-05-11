@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+
+<html class="light" lang="vi"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&amp;family=Inter:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-surface": "#191c1d",
+                        "inverse-surface": "#2e3132",
+                        "surface-bright": "#f8f9fa",
+                        "surface-variant": "#e1e3e4",
+                        "surface-container-low": "#f3f4f5",
+                        "error-container": "#ffdad6",
+                        "secondary-fixed-dim": "#ffb786",
+                        "surface-dim": "#d9dadb",
+                        "on-error-container": "#93000a",
+                        "secondary": "#964900",
+                        "on-surface-variant": "#40484a",
+                        "on-error": "#ffffff",
+                        "surface-container": "#edeeef",
+                        "inverse-primary": "#9acfda",
+                        "background": "#f8f9fa",
+                        "surface-container-highest": "#e1e3e4",
+                        "primary-container": "#1a535c",
+                        "tertiary-fixed": "#cfe6f2",
+                        "on-secondary-container": "#5e2c00",
+                        "secondary-fixed": "#ffdcc6",
+                        "on-background": "#191c1d",
+                        "on-tertiary-container": "#aac0cc",
+                        "on-secondary-fixed-variant": "#723600",
+                        "tertiary": "#233841",
+                        "on-primary-container": "#90c5cf",
+                        "tertiary-fixed-dim": "#b4cad6",
+                        "surface": "#f8f9fa",
+                        "surface-container-lowest": "#ffffff",
+                        "on-secondary": "#ffffff",
+                        "on-tertiary-fixed": "#071e27",
+                        "primary-fixed": "#b6ecf6",
+                        "primary-fixed-dim": "#9acfda",
+                        "on-secondary-fixed": "#311300",
+                        "surface-container-high": "#e7e8e9",
+                        "surface-tint": "#30666f",
+                        "on-primary": "#ffffff",
+                        "on-tertiary-fixed-variant": "#354a53",
+                        "on-tertiary": "#ffffff",
+                        "secondary-container": "#fc820c",
+                        "error": "#ba1a1a",
+                        "outline": "#70797a",
+                        "primary": "#003b43",
+                        "inverse-on-surface": "#f0f1f2",
+                        "on-primary-fixed-variant": "#134e57",
+                        "on-primary-fixed": "#001f24",
+                        "outline-variant": "#c0c8ca",
+                        "tertiary-container": "#3a4f59"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "1rem",
+                        "xl": "1.25rem",
+                        "full": "9999px"
+                    },
+                    "fontFamily": {
+                        "headline": ["Manrope"],
+                        "body": ["Inter"],
+                        "label": ["Inter"]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        body { font-family: 'Inter', sans-serif; }
+        h1, h2, h3 { font-family: 'Manrope', sans-serif; }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(20px);
+        }
+    </style>
+</head>
+<body class="bg-background text-on-background min-h-screen flex">
+<!-- SideNavBar Shell -->
+<aside class="h-screen w-[250px] fixed left-0 top-0 bg-[#f3f4f5] dark:bg-slate-900 flex flex-col py-6 px-4 gap-2 z-50">
+<div class="flex items-center gap-3 mb-8 px-2">
+<div class="w-10 h-10 bg-primary-container rounded-lg flex items-center justify-center text-white">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">science</span>
+</div>
+<div>
+<h1 class="text-lg font-extrabold text-[#1A535C]">StemFlow</h1>
+<p class="text-[10px] text-slate-500 uppercase tracking-widest font-bold">Phòng Thí Nghiệm Tư Duy</p>
+</div>
+</div>
+<nav class="flex-1 space-y-1">
+<a class="flex items-center gap-3 px-4 py-3 text-slate-600 hover:bg-slate-200/50 hover:translate-x-1 transition-transform duration-200 font-medium text-sm rounded-lg" href="#">
+<span class="material-symbols-outlined">dashboard</span> Dashboard
+            </a>
+<a class="flex items-center gap-3 px-4 py-3 bg-[#1A535C]/10 text-[#1A535C] border-l-4 border-[#ff9800] rounded-r-xl font-medium text-sm" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">groups</span> Classrooms
+            </a>
+<a class="flex items-center gap-3 px-4 py-3 text-slate-600 hover:bg-slate-200/50 hover:translate-x-1 transition-transform duration-200 font-medium text-sm rounded-lg" href="#">
+<span class="material-symbols-outlined">menu_book</span> Curriculum
+            </a>
+<a class="flex items-center gap-3 px-4 py-3 text-slate-600 hover:bg-slate-200/50 hover:translate-x-1 transition-transform duration-200 font-medium text-sm rounded-lg" href="#">
+<span class="material-symbols-outlined">science</span> Virtual Lab
+            </a>
+<a class="flex items-center gap-3 px-4 py-3 text-slate-600 hover:bg-slate-200/50 hover:translate-x-1 transition-transform duration-200 font-medium text-sm rounded-lg" href="#">
+<span class="material-symbols-outlined">folder_open</span> Resources
+            </a>
+<a class="flex items-center gap-3 px-4 py-3 text-slate-600 hover:bg-slate-200/50 hover:translate-x-1 transition-transform duration-200 font-medium text-sm rounded-lg" href="#">
+<span class="material-symbols-outlined">analytics</span> Reports
+            </a>
+</nav>
+<div class="pt-4 border-t border-slate-200 space-y-1">
+<a class="flex items-center gap-3 px-4 py-3 text-slate-600 hover:bg-slate-200/50 hover:translate-x-1 transition-transform duration-200 font-medium text-sm rounded-lg" href="#">
+<span class="material-symbols-outlined">contact_support</span> Hỗ trợ
+            </a>
+<a class="flex items-center gap-3 px-4 py-3 text-slate-600 hover:bg-slate-200/50 hover:translate-x-1 transition-transform duration-200 font-medium text-sm rounded-lg" href="#">
+<span class="material-symbols-outlined">logout</span> Đăng xuất
+            </a>
+</div>
+</aside>
+<!-- Main Canvas -->
+<main class="ml-[250px] flex-1 flex flex-col min-h-screen">
+<!-- TopAppBar Shell -->
+<header class="bg-[#f3f4f5] backdrop-blur-md sticky top-0 z-40 flex justify-between items-center px-8 py-4 w-full border-b border-slate-200/50">
+<div class="flex items-center gap-4">
+<div class="flex flex-col">
+<h2 class="text-xl font-black text-[#1A535C] tracking-tight">Lớp 12A1 - Khoa học Máy tính</h2>
+<p class="text-xs font-medium text-slate-500">Bài Lab: Cấu trúc Dữ liệu &amp; Giải thuật (Tuần 4)</p>
+</div>
+</div>
+<div class="flex items-center gap-6">
+<div class="flex items-center bg-white px-4 py-2 rounded-full shadow-sm border border-slate-200/50">
+<span class="w-2 h-2 rounded-full bg-green-500 animate-pulse mr-2"></span>
+<span class="text-xs font-bold text-primary">TRỰC TIẾP: 24/25 HỌC SINH</span>
+</div>
+<div class="flex items-center gap-2">
+<button class="p-2 text-slate-500 hover:bg-white/50 rounded-lg transition-all active:scale-90">
+<span class="material-symbols-outlined">notifications</span>
+</button>
+<button class="p-2 text-slate-500 hover:bg-white/50 rounded-lg transition-all active:scale-90">
+<span class="material-symbols-outlined">settings</span>
+</button>
+<div class="w-10 h-10 rounded-full bg-surface-container overflow-hidden ml-2 border-2 border-white shadow-sm">
+<img alt="Giảng viên" class="w-full h-full object-cover" data-alt="professional headshot of a smiling male teacher in a modern workspace with natural lighting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCWfu-nHl4ZiQ8GFF8ack3WbM975aUF3K3Kl81xEUdvwtsoZpUvtWIzPAHPYYwtX5egAfI6c2_SLAQZi1vO0DvK5uC4FQDCGfR1Wp3-UDFaTD-fSUoHAfgeW4nV0WETA5rr8dxgCJf0ojg7sfw8ZRMMopSHlSjqhsu-SfOrfv0h8Su2_cgpoWMAxnTkREU8Km12RTITS5YuRdTkQ-3PKZcPHWDNEZ_P0Y7wa2if-Og-TIu6hdJBmysiGuvYBmqrobGfFErIHHMizFM"/>
+</div>
+</div>
+</div>
+</header>
+<!-- Monitoring Content -->
+<section class="p-8 space-y-8">
+<!-- Quick Stats & Filters -->
+<div class="grid grid-cols-1 md:grid-cols-4 gap-6">
+<div class="bg-surface-container-lowest p-5 rounded-xl shadow-sm flex items-center justify-between">
+<div>
+<p class="text-xs font-semibold text-slate-500 uppercase">Đang Online</p>
+<p class="text-2xl font-black text-primary">24</p>
+</div>
+<span class="material-symbols-outlined text-green-500 text-3xl">wifi</span>
+</div>
+<div class="bg-surface-container-lowest p-5 rounded-xl shadow-sm flex items-center justify-between">
+<div>
+<p class="text-xs font-semibold text-slate-500 uppercase">Đang Code</p>
+<p class="text-2xl font-black text-primary">18</p>
+</div>
+<span class="material-symbols-outlined text-blue-500 text-3xl">code</span>
+</div>
+<div class="bg-red-50 p-5 rounded-xl shadow-sm flex items-center justify-between border border-red-100">
+<div>
+<p class="text-xs font-semibold text-red-600 uppercase">Gặp Lỗi</p>
+<p class="text-2xl font-black text-red-700">3</p>
+</div>
+<span class="material-symbols-outlined text-red-500 text-3xl">error</span>
+</div>
+<div class="bg-surface-container-lowest p-5 rounded-xl shadow-sm flex items-center justify-between">
+<div>
+<p class="text-xs font-semibold text-slate-500 uppercase">Hoàn Thành</p>
+<p class="text-2xl font-black text-primary">2</p>
+</div>
+<span class="material-symbols-outlined text-amber-500 text-3xl">verified</span>
+</div>
+</div>
+<!-- Dashboard Grid -->
+<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+<!-- Student Card 1: Alert State -->
+<div class="group relative bg-surface-container-lowest rounded-xl overflow-hidden shadow-sm border-2 border-transparent hover:border-error transition-all duration-300">
+<div class="aspect-video relative bg-tertiary overflow-hidden">
+<div class="absolute inset-0 bg-slate-900/60 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-10 backdrop-blur-[2px]">
+<div class="flex gap-2">
+<button class="bg-white text-primary px-3 py-2 rounded-lg font-bold text-xs flex items-center gap-1 active:scale-95 transition-transform">
+<span class="material-symbols-outlined text-sm">visibility</span> Xem chi tiết
+                                </button>
+<button class="bg-secondary-container text-white px-3 py-2 rounded-lg font-bold text-xs flex items-center gap-1 active:scale-95 transition-transform">
+<span class="material-symbols-outlined text-sm">chat</span> Hỗ trợ
+                                </button>
+</div>
+</div>
+<div class="p-4 font-mono text-[10px] text-on-tertiary-container overflow-hidden h-full">
+<p class="text-red-400">Error: Recursion depth exceeded</p>
+<p>def fibonacci(n):</p>
+<p>  return fibonacci(n-1) + fibonacci(n-2)</p>
+<p class="bg-red-900/40 text-red-200 mt-2 p-1">&gt;&gt;&gt; Fatal Crash detected</p>
+</div>
+<div class="absolute top-3 left-3 bg-red-600 text-white text-[10px] font-black px-2 py-1 rounded flex items-center gap-1">
+<span class="material-symbols-outlined text-[12px]">warning</span> GẶP LỖI
+                        </div>
+</div>
+<div class="p-4 flex items-center justify-between">
+<div class="flex items-center gap-3">
+<div class="w-8 h-8 rounded-full bg-slate-200 overflow-hidden border border-white">
+<img alt="Học sinh" class="w-full h-full object-cover" data-alt="portrait of a young student focused on a screen in a classroom setting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAIbXaOUk59dGXlsJc4_doJlFCPrHw8Xg-n-pV9rc1gU-xKUBLPSPNButuFN1PxrvEej3iX46-FEQZXispw_kqLrY7z03HfcVG2Q4kK1LE5L4DXPJgtCZ3rXDPjz_oZjxwod1y4Dft_av919NvBLrzLVTm-wm0OjRAMvtq7BxNWSAzrGfIq78-bJJF_zK3m0xWDFK49CF_YM1-xYM0Xg2GauQEH818ajQIRsIvyL4RYF8CmMMDaTgH_M3WdI_DMRuiEfB8voBWRciM"/>
+</div>
+<div>
+<p class="text-sm font-bold text-on-surface">Nguyễn Minh Quân</p>
+<p class="text-[10px] text-slate-500">Tiến độ: 45%</p>
+</div>
+</div>
+<span class="material-symbols-outlined text-red-500">error</span>
+</div>
+</div>
+<!-- Student Card 2: Active Coding -->
+<div class="group relative bg-surface-container-lowest rounded-xl overflow-hidden shadow-sm border-2 border-transparent hover:border-primary transition-all duration-300">
+<div class="aspect-video relative bg-tertiary overflow-hidden">
+<div class="absolute inset-0 bg-slate-900/60 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-10 backdrop-blur-[2px]">
+<div class="flex gap-2">
+<button class="bg-white text-primary px-3 py-2 rounded-lg font-bold text-xs flex items-center gap-1">
+<span class="material-symbols-outlined text-sm">visibility</span> Xem chi tiết
+                                </button>
+<button class="bg-secondary-container text-white px-3 py-2 rounded-lg font-bold text-xs flex items-center gap-1">
+<span class="material-symbols-outlined text-sm">chat</span> Hỗ trợ
+                                </button>
+</div>
+</div>
+<div class="p-4 font-mono text-[10px] text-on-tertiary-container">
+<p class="text-blue-300">import matplotlib.pyplot as plt</p>
+<p>def sort_visualizer(arr):</p>
+<p>  for i in range(len(arr)):</p>
+<p>    # rendering graph...</p>
+</div>
+<div class="absolute top-3 left-3 bg-blue-600 text-white text-[10px] font-black px-2 py-1 rounded flex items-center gap-1">
+<span class="material-symbols-outlined text-[12px]">code</span> ĐANG CODE
+                        </div>
+</div>
+<div class="p-4 flex items-center justify-between">
+<div class="flex items-center gap-3">
+<div class="w-8 h-8 rounded-full bg-slate-200 overflow-hidden border border-white">
+<img alt="Học sinh" class="w-full h-full object-cover" data-alt="portrait of a young female student with a smart expression in soft lighting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBm-Shwis0VywMa0KhtnBGFHuGSUup1y2SMLz_fG6mAfMflUhTsaC-en7OhfD4D4U2NK5i7yscHD_DLyI8onIiwVIbhet_g1CjvxEgRDPW1_6melmw3Yv6Ufk8owzHEJU7gwiHTUscgr_jO1ahkSuy0EYx9nibfJnrh-st-FaLTU6K4vDX7OpuWC62J7UcRZ9PPdcGPn9YftEmo9XMknKgrFqNN-Hh0oyZSroZgVsJtdkSqIwRO6rHJkahXw0aEM5O0Sr0aBSsDIEk"/>
+</div>
+<div>
+<p class="text-sm font-bold text-on-surface">Lê Thị Mai Anh</p>
+<p class="text-[10px] text-slate-500">Tiến độ: 82%</p>
+</div>
+</div>
+<span class="material-symbols-outlined text-blue-500">monitoring</span>
+</div>
+</div>
+<!-- Student Card 3: Idle/Online -->
+<div class="group relative bg-surface-container-lowest rounded-xl overflow-hidden shadow-sm border-2 border-transparent hover:border-slate-300 transition-all duration-300">
+<div class="aspect-video relative bg-slate-100 flex flex-col items-center justify-center">
+<div class="absolute inset-0 bg-slate-900/60 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-10 backdrop-blur-[2px]">
+<div class="flex gap-2">
+<button class="bg-white text-primary px-3 py-2 rounded-lg font-bold text-xs flex items-center gap-1">
+<span class="material-symbols-outlined text-sm">visibility</span> Xem chi tiết
+                                </button>
+<button class="bg-secondary-container text-white px-3 py-2 rounded-lg font-bold text-xs flex items-center gap-1">
+<span class="material-symbols-outlined text-sm">chat</span> Hỗ trợ
+                                </button>
+</div>
+</div>
+<span class="material-symbols-outlined text-slate-300 text-5xl">person_search</span>
+<p class="text-[10px] text-slate-400 mt-2 font-bold uppercase">Màn hình đang tắt</p>
+<div class="absolute top-3 left-3 bg-green-600 text-white text-[10px] font-black px-2 py-1 rounded flex items-center gap-1">
+<span class="material-symbols-outlined text-[12px]">wifi</span> ĐANG ONLINE
+                        </div>
+</div>
+<div class="p-4 flex items-center justify-between">
+<div class="flex items-center gap-3">
+<div class="w-8 h-8 rounded-full bg-slate-200 overflow-hidden border border-white">
+<img alt="Học sinh" class="w-full h-full object-cover" data-alt="calm male student looking directly at the camera with a friendly demeanor" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBKH6QFWFdasbI6TUm45hhx3s2W6oHBJ4BMpRQRfpZhPSgrfPXyyYkS4GebxlHEADBzbA8wzgQ6NA0Xv_blRTo7tQetqSv10w9iVPZCEWfZJdcG9BFi9YT6L2xllriryAsCc92XWbCgyVYcmEa-GofNHzdHG3SmwMZIwsL_1ey4IRJC442lzlRgoYPCKFCVPJ6-6lyIs7EsiQwIKbhzlsdoj4AoogOa2JMh17HauXmBMOPaBZvkT9ceVVDwOuHW9RJNur3ziztPTN8"/>
+</div>
+<div>
+<p class="text-sm font-bold text-on-surface">Trần Hoàng Nam</p>
+<p class="text-[10px] text-slate-500">Tiến độ: 15%</p>
+</div>
+</div>
+<span class="material-symbols-outlined text-green-500">circle</span>
+</div>
+</div>
+<!-- Additional grid items for visual rhythm -->
+<div class="group relative bg-surface-container-lowest rounded-xl overflow-hidden shadow-sm border-2 border-transparent hover:border-primary transition-all duration-300">
+<div class="aspect-video relative bg-tertiary overflow-hidden">
+<div class="p-4 font-mono text-[10px] text-on-tertiary-container">
+<p class="text-green-300">// Task 2: Implement Hash Map</p>
+<p>class MyHashMap:</p>
+<p>  def __init__(self):</p>
+<p>    self.data = [None] * 1000</p>
+</div>
+<div class="absolute top-3 left-3 bg-blue-600 text-white text-[10px] font-black px-2 py-1 rounded flex items-center gap-1">
+<span class="material-symbols-outlined text-[12px]">code</span> ĐANG CODE
+                        </div>
+</div>
+<div class="p-4 flex items-center justify-between">
+<div class="flex items-center gap-3">
+<div class="w-8 h-8 rounded-full bg-slate-200 overflow-hidden border border-white">
+<img alt="Học sinh" class="w-full h-full object-cover" data-alt="focused female student with glasses working in a brightly lit library or lab environment" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBU92G1qdGdF9NxUx-nptjRcpll5hk5jOgtDcZKdAl7bwK7UZYnm8yCre8v-QBEzpCG8gHuAKgP3Urfg0yru3t7M4B25R_cxE9Sq5_0jB8AUD0GCRcIdBztVbXq_GIHs-EjvSBTlvM_0RfxOLFU-8pcSvkrWQaC1zl3DHBMWj0jSTyIKQE4OxwPrXU-2VX1G8GvfN-NTcrgf-V14hMXfcCYV3-mAFyV2VTRdMhtCf81_pxc_7RQk2qClPh2FmDTF08yzIt0GXgLOeo"/>
+</div>
+<div>
+<p class="text-sm font-bold text-on-surface">Phạm Ngọc Bích</p>
+<p class="text-[10px] text-slate-500">Tiến độ: 60%</p>
+</div>
+</div>
+<span class="material-symbols-outlined text-blue-500">monitoring</span>
+</div>
+</div>
+<!-- Repeatable Student Card Pattern -->
+<div class="group relative bg-surface-container-lowest rounded-xl overflow-hidden shadow-sm border-2 border-transparent hover:border-primary transition-all duration-300">
+<div class="aspect-video relative bg-tertiary overflow-hidden">
+<div class="p-4 font-mono text-[10px] text-on-tertiary-container">
+<p class="text-yellow-300"># Warning: API deprecated</p>
+<p>result = model.predict(input_data)</p>
+<p>print(f"Accuracy: {result.acc}")</p>
+</div>
+<div class="absolute top-3 left-3 bg-blue-600 text-white text-[10px] font-black px-2 py-1 rounded flex items-center gap-1">
+<span class="material-symbols-outlined text-[12px]">code</span> ĐANG CODE
+                        </div>
+</div>
+<div class="p-4 flex items-center justify-between">
+<div class="flex items-center gap-3">
+<div class="w-8 h-8 rounded-full bg-slate-200 overflow-hidden border border-white">
+<img alt="Học sinh" class="w-full h-full object-cover" data-alt="young male student with an intense focused look during a technical lab session" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBInHm8BZ0KtITJGgBjl2OTS4SqZZhTDkDc8gVV2Ev8oVKspDilWdEIYwJRg-mpzhbJLnGplZL8epTs4NyN5NcLMOIJ016V0QLeQk7speMKHrPPDmmfjgIG2H6DwLDEcANLHKOS2sRXCv5_ZY1E1X-1tB4djJ0b2ALXUdoyb4JbF3jYR02rR9AYc71_GCMyuwXUWzr0b7ePOxe0lMiUsHNU2ln8TIsU8UDTsAu0VvPfr_C1vZBmMmt0HLh3b5QlL53jaT1w9aR5imU"/>
+</div>
+<div>
+<p class="text-sm font-bold text-on-surface">Đỗ Tiến Dũng</p>
+<p class="text-[10px] text-slate-500">Tiến độ: 33%</p>
+</div>
+</div>
+<span class="material-symbols-outlined text-blue-500">monitoring</span>
+</div>
+</div>
+<div class="group relative bg-surface-container-lowest rounded-xl overflow-hidden shadow-sm border-2 border-transparent hover:border-red-500 transition-all duration-300">
+<div class="aspect-video relative bg-tertiary overflow-hidden">
+<div class="p-4 font-mono text-[10px] text-on-tertiary-container">
+<p class="text-red-400">SyntaxError: unexpected EOF while parsing</p>
+<p>if x &gt; 10:</p>
+<p>  print("x is large")</p>
+<p>  </p>
+</div>
+<div class="absolute top-3 left-3 bg-red-600 text-white text-[10px] font-black px-2 py-1 rounded flex items-center gap-1">
+<span class="material-symbols-outlined text-[12px]">warning</span> GẶP LỖI
+                        </div>
+</div>
+<div class="p-4 flex items-center justify-between">
+<div class="flex items-center gap-3">
+<div class="w-8 h-8 rounded-full bg-slate-200 overflow-hidden border border-white">
+<img alt="Học sinh" class="w-full h-full object-cover" data-alt="smart female student with a curious expression during a collaborative classroom activity" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBVAJ4mYZBJgMBd3u64jCW4UC5rwaZk9cfWoR7I6LYBzagRZSTFbV0hYAiNnb9JmK5ypytr7-9U99gJhKZ61r7vgdtI5XHRPsyHwmTwOLX8-gMweJhrMJdWJClr-Q5SBr-Z06abGnrlNOPf3JXOdSYb7v2htX7ZAorR0K1Y5TtL9LZKCBQ-2NazTu-xINrtpn9_qImIMU4bO8b8Jn59D8ejEULxm_gC7BzUmn2NyxPrnZGwz6YRi6cOLO8EC3p-JVzB1iB8olYkyl8"/>
+</div>
+<div>
+<p class="text-sm font-bold text-on-surface">Vũ Thùy Linh</p>
+<p class="text-[10px] text-slate-500">Tiến độ: 55%</p>
+</div>
+</div>
+<span class="material-symbols-outlined text-red-500">error</span>
+</div>
+</div>
+<div class="group relative bg-surface-container-lowest rounded-xl overflow-hidden shadow-sm border-2 border-transparent hover:border-amber-500 transition-all duration-300">
+<div class="aspect-video relative bg-slate-800 flex items-center justify-center">
+<div class="text-center">
+<span class="material-symbols-outlined text-amber-400 text-4xl mb-2" style="font-variation-settings: 'FILL' 1;">task_alt</span>
+<p class="text-[10px] text-white font-bold uppercase tracking-widest">Lab Completed</p>
+</div>
+<div class="absolute top-3 left-3 bg-amber-500 text-white text-[10px] font-black px-2 py-1 rounded flex items-center gap-1">
+<span class="material-symbols-outlined text-[12px]">check_circle</span> HOÀN THÀNH
+                        </div>
+</div>
+<div class="p-4 flex items-center justify-between">
+<div class="flex items-center gap-3">
+<div class="w-8 h-8 rounded-full bg-slate-200 overflow-hidden border border-white">
+<img alt="Học sinh" class="w-full h-full object-cover" data-alt="successful looking female student smiling after completing a task in a modern lab" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDT4slIPDLZXMntBq6mYbGhuC1p9moQCNG7QhV3eR6DjoihZYyIR0Z7hlqdqjX3Vr55IO8-pm7uD8M2a7pqmvZKDJw-dOX6apCXrnLf_W_CZ4pjDQwqoupKA-rbyptvJ8Kc72IdstMD889lrb-9fJVy0l9OFuinwEugABjnfSoWTPq5BDbCD_BuyINKgGNjYkfffi1yuFvctmcrpbwtoO5zntu_hjyny638vWEgG_co_K1nHRZ7aYOAEbDbKmf1cYdB9InVChQ2Ny8"/>
+</div>
+<div>
+<p class="text-sm font-bold text-on-surface">Hoàng Mỹ Duyên</p>
+<p class="text-[10px] text-slate-500">Tiến độ: 100%</p>
+</div>
+</div>
+<span class="material-symbols-outlined text-amber-500" style="font-variation-settings: 'FILL' 1;">verified</span>
+</div>
+</div>
+<div class="group relative bg-surface-container-lowest rounded-xl overflow-hidden shadow-sm border-2 border-transparent hover:border-primary transition-all duration-300">
+<div class="aspect-video relative bg-tertiary overflow-hidden">
+<div class="p-4 font-mono text-[10px] text-on-tertiary-container">
+<p>const data = fetch('/api/stats')</p>
+<p>.then(res =&gt; res.json())</p>
+<p>.then(data =&gt; console.log(data));</p>
+</div>
+<div class="absolute top-3 left-3 bg-blue-600 text-white text-[10px] font-black px-2 py-1 rounded flex items-center gap-1">
+<span class="material-symbols-outlined text-[12px]">code</span> ĐANG CODE
+                        </div>
+</div>
+<div class="p-4 flex items-center justify-between">
+<div class="flex items-center gap-3">
+<div class="w-8 h-8 rounded-full bg-slate-200 overflow-hidden border border-white">
+<img alt="Học sinh" class="w-full h-full object-cover" data-alt="focused male student working on a computer in a tech-heavy laboratory environment" src="https://lh3.googleusercontent.com/aida-public/AB6AXuA3hvhPrTG14p0yR0wErjn09xyh7dGdtz70_LVbo6VWCoocD0luQqmp4Bd_aFPSW_eIN1t4I80YxjjoE3NhzOFtGLph8buxekhfC7hSUKfntzpNaqYvT3kRCEbhM7YvaC-G5DyIwgJGDCsAGqIXIGIoYYArNycPWbp0zONoiS5V15-RTGaBSs583FaLhcSSW_6dOdnUMim-TpVVGDzCxjMWB3T69sIctUPtxIcwvKSIrW7iotsgGvTwQgMod6MqPAoypr9SGaDjFrs"/>
+</div>
+<div>
+<p class="text-sm font-bold text-on-surface">Ngô Gia Bảo</p>
+<p class="text-[10px] text-slate-500">Tiến độ: 74%</p>
+</div>
+</div>
+<span class="material-symbols-outlined text-blue-500">monitoring</span>
+</div>
+</div>
+</div>
+</section>
+<!-- Contextual Help Panel (Glassmorphism) -->
+<div class="fixed bottom-8 right-8 z-50 flex flex-col items-end gap-4">
+<div class="glass-panel p-4 rounded-xl shadow-xl border border-white/40 max-w-[300px] hidden md:block">
+<div class="flex items-center gap-3 mb-3">
+<div class="w-8 h-8 rounded-full bg-red-100 flex items-center justify-center text-red-600">
+<span class="material-symbols-outlined text-sm">emergency</span>
+</div>
+<p class="text-xs font-bold text-slate-700">Yêu cầu hỗ trợ mới (3)</p>
+</div>
+<div class="space-y-2">
+<div class="bg-white/60 p-2 rounded-lg text-[10px] border border-white/20">
+<p class="font-bold">Quân (Máy 04):</p>
+<p class="text-slate-500 italic">"Em bị lỗi recursion depth, nhờ thầy xem giúp..."</p>
+</div>
+<div class="bg-white/60 p-2 rounded-lg text-[10px] border border-white/20">
+<p class="font-bold">Linh (Máy 12):</p>
+<p class="text-slate-500 italic">"Code của em không chạy được vòng lặp for..."</p>
+</div>
+</div>
+</div>
+<button class="bg-secondary-container text-white px-6 py-4 rounded-full shadow-2xl flex items-center gap-3 active:scale-95 transition-transform font-bold">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">broadcast_on_home</span>
+                BẮT ĐẦU THÍ NGHIỆM
+            </button>
+</div>
+</main>
+</body></html>

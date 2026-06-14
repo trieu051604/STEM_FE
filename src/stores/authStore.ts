@@ -1,6 +1,19 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import type { User, UserRole } from '@/types';
+import { api } from '@/services';
+
+export type UserRole = 'master_admin' | 'school_admin' | 'teacher' | 'student';
+
+export interface User {
+  id: string;
+  email: string;
+  fullName: string;
+  avatar?: string;
+  role: UserRole;
+  schoolId?: string;
+  isOnline?: boolean;
+  createdAt: string;
+}
 
 // Mock users for demo
 const MOCK_USERS: Record<string, User & { password: string }> = {
@@ -50,14 +63,14 @@ export const useAuthStore = create<AuthStore>()(
 
       login: async (email: string, password: string) => {
         set({ isLoading: true });
-        await new Promise(r => setTimeout(r, 800)); // simulate API delay
-        const mockUser = MOCK_USERS[email];
-        if (!mockUser || mockUser.password !== password) {
+        try {
+          const response = await api.post('/auth/login', { email, password });
+          const { user, token } = response.data.data || response.data;
+          set({ user, token, isAuthenticated: true, isLoading: false });
+        } catch (err: any) {
           set({ isLoading: false });
-          throw new Error('Email hoặc mật khẩu không đúng');
+          throw new Error(err.response?.data?.message || 'Đăng nhập thất bại. Vui lòng kiểm tra lại.');
         }
-        const { password: _, ...user } = mockUser;
-        set({ user, token: 'mock-jwt-token', isAuthenticated: true, isLoading: false });
       },
 
       logout: () => {

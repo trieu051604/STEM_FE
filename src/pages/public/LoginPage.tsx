@@ -3,22 +3,24 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { AlertCircle, Loader2 } from 'lucide-react';
+import { AlertCircle, Loader2, ArrowLeft } from 'lucide-react';
+import { Icon } from '@/components/ui/Icon';
+import ThemeToggle from '@/components/ui/ThemeToggle';
 import { useAuthStore } from '@/stores';
 
-const schema = z.object({
-  email: z.string().email('Email không hợp lệ'),
-  password: z.string().min(6, 'Mật khẩu tối thiểu 6 ký tự'),
+// Zod Schema with Vietnamese messages
+const loginSchema = z.object({
+  email: z
+    .string()
+    .min(1, { message: 'Email không được để trống.' })
+    .email({ message: 'Địa chỉ email không đúng định dạng.' }),
+  password: z
+    .string()
+    .min(1, { message: 'Mật khẩu không được để trống.' })
+    .min(6, { message: 'Mật khẩu phải chứa ít nhất 6 ký tự.' }),
 });
 
-type FormData = z.infer<typeof schema>;
-
-const DEMO_ACCOUNTS = [
-  { label: 'Master Admin', email: 'master@stem.edu', color: 'border-brand-500/50 hover:border-brand-500 text-brand-500' },
-  { label: 'School Admin', email: 'admin@stem.edu', color: 'border-amber-500/50 hover:border-amber-500 text-amber-500' },
-  { label: 'Teacher', email: 'teacher@stem.edu', color: 'border-emerald-500/50 hover:border-emerald-500 text-emerald-500' },
-  { label: 'Student', email: 'student@stem.edu', color: 'border-accent-500/50 hover:border-accent-500 text-accent-500' },
-];
+type LoginFormData = z.infer<typeof loginSchema>;
 
 export function LoginPage() {
   const [showPass, setShowPass] = useState(false);
@@ -26,190 +28,257 @@ export function LoginPage() {
   const { login, isLoading } = useAuthStore();
   const navigate = useNavigate();
 
-  const { register, handleSubmit, setValue, formState: { errors } } = useForm<FormData>({
-    resolver: zodResolver(schema),
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+  } = useForm<LoginFormData>({
+    resolver: zodResolver(loginSchema),
   });
 
-  const onSubmit = async (data: FormData) => {
+  const onSubmit = async (data: LoginFormData) => {
     try {
       setError('');
       await login(data.email, data.password);
       navigate('/dashboard');
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : 'Đăng nhập thất bại');
+      setError(e instanceof Error ? e.message : 'Đăng nhập thất bại. Vui lòng kiểm tra lại.');
     }
   };
 
-  const fillDemo = (email: string) => {
-    setValue('email', email);
-    setValue('password', 'password');
-  };
-
   return (
-    <div className="min-h-screen flex flex-col font-body bg-surface text-on-surface">
-      {/* Top Navigation Bar */}
-      <header className="fixed top-0 w-full flex justify-between items-center px-8 h-20 z-50 bg-surface-container-low/80 backdrop-blur-xl">
-        <div className="flex items-center gap-2">
-          <Link to="/" className="font-headline font-black text-2xl tracking-tighter text-primary">StemFlow</Link>
+    <div className="min-h-screen grid lg:grid-cols-2 bg-slate-950 font-sans selection:bg-blue-500/30 relative text-slate-100">
+      
+      {/* Left Side (Forms Area) */}
+      <main className="flex items-center justify-center p-8 sm:p-12 md:p-16 lg:p-20 bg-slate-900 transition-colors duration-300 relative">
+        
+        {/* Top-Right Theme Toggle */}
+        <div className="absolute top-6 right-6 z-50">
+          <ThemeToggle />
         </div>
-        <div className="hidden md:flex gap-4">
-          <span className="text-on-surface-variant font-body text-label-md">Chưa có tài khoản?</span>
-          <Link className="text-primary font-bold hover:underline transition-all" to="/register">Đăng ký ngay</Link>
-        </div>
-      </header>
 
-      <main className="flex-grow flex items-center justify-center pt-20 px-4 md:px-0">
-        <div className="max-w-6xl w-full grid grid-cols-1 md:grid-cols-2 bg-surface-container-lowest rounded-xl overflow-hidden shadow-sm">
-          {/* Left Side: Login Form */}
-          <div className="p-8 md:p-16 flex flex-col justify-center">
-            <div className="mb-10">
-              <h1 className="text-headline-sm font-headline font-extrabold text-primary text-3xl mb-2">Chào mừng trở lại</h1>
-              <p className="text-on-surface-variant font-body leading-relaxed">Truy cập vào phòng thí nghiệm tư duy của bạn và tiếp tục hành trình khám phá tri thức.</p>
-            </div>
+        <div className="w-full max-w-md space-y-8">
+          
+          <Link 
+            to="/" 
+            className="inline-flex items-center gap-2 text-xs font-bold text-slate-400 hover:text-white uppercase tracking-wider transition-colors mb-2"
+          >
+            <ArrowLeft size={14} /> Quay lại trang chủ
+          </Link>
 
-            {/* Demo accounts */}
-            <div className="mb-6">
-              <p className="text-xs text-on-surface-variant mb-2 font-medium uppercase tracking-wider">Tài khoản demo</p>
-              <div className="grid grid-cols-2 gap-2">
-                {DEMO_ACCOUNTS.map(acc => (
-                  <button
-                    key={acc.email}
-                    type="button"
-                    onClick={() => fillDemo(acc.email)}
-                    className={`text-xs px-3 py-2 rounded-lg border bg-surface-container-low hover:bg-surface-container transition-colors ${acc.color}`}
-                  >
-                    {acc.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-              <div>
-                <label className="block text-label-md font-medium text-on-surface-variant mb-2" htmlFor="identifier">Email</label>
-                <div className="relative">
-                  <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-outline">mail</span>
-                  <input 
-                    {...register('email')}
-                    className="w-full pl-12 pr-4 py-3 bg-surface-container rounded-lg border-none focus:ring-2 focus:ring-primary transition-all text-on-surface" 
-                    id="identifier" 
-                    placeholder="name@stem.edu" 
-                    type="email"
-                  />
-                </div>
-                {errors.email && (
-                  <p className="text-xs text-error mt-1 flex items-center gap-1">
-                    <AlertCircle size={12} /> {errors.email.message}
-                  </p>
-                )}
-              </div>
-
-              <div>
-                <label className="block text-label-md font-medium text-on-surface-variant mb-2" htmlFor="password">Mật khẩu</label>
-                <div className="relative">
-                  <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-outline">lock</span>
-                  <input 
-                    {...register('password')}
-                    className="w-full pl-12 pr-12 py-3 bg-surface-container rounded-lg border-none focus:ring-2 focus:ring-primary transition-all text-on-surface" 
-                    id="password" 
-                    placeholder="••••••••" 
-                    type={showPass ? 'text' : 'password'}
-                  />
-                  <button 
-                    className="absolute right-4 top-1/2 -translate-y-1/2 text-outline hover:text-primary transition-colors" 
-                    type="button"
-                    onClick={() => setShowPass(!showPass)}
-                  >
-                    <span className="material-symbols-outlined">{showPass ? 'visibility_off' : 'visibility'}</span>
-                  </button>
-                </div>
-                {errors.password && (
-                  <p className="text-xs text-error mt-1 flex items-center gap-1">
-                    <AlertCircle size={12} /> {errors.password.message}
-                  </p>
-                )}
-              </div>
-
-              {/* Server error */}
-              {error && (
-                <div className="flex items-center gap-2 p-3 rounded-xl bg-error-container border border-error/30 text-on-error-container text-sm">
-                  <AlertCircle size={14} />
-                  {error}
-                </div>
-              )}
-
-              <div className="flex items-center justify-between">
-                <label className="flex items-center gap-2 cursor-pointer group">
-                  <input className="w-5 h-5 rounded border-outline-variant text-primary focus:ring-primary" type="checkbox"/>
-                  <span className="text-label-md text-on-surface-variant group-hover:text-on-surface transition-colors">Ghi nhớ đăng nhập</span>
-                </label>
-                <Link className="text-label-md font-semibold text-secondary hover:text-on-secondary-fixed-variant transition-colors" to="/forgot-password">Quên mật khẩu?</Link>
-              </div>
-
-              <button 
-                className="w-full flex items-center justify-center gap-2 bg-primary text-on-primary font-headline font-bold py-4 rounded-full hover:shadow-lg transform active:scale-95 transition-all duration-200 disabled:opacity-50" 
-                type="submit"
-                disabled={isLoading}
-              >
-                {isLoading ? <><Loader2 size={20} className="animate-spin" /> Đang đăng nhập...</> : 'Đăng nhập'}
-              </button>
-            </form>
-
-            <div className="mt-10 pt-8 border-t border-outline-variant/20">
-              <p className="text-center text-label-md text-on-surface-variant mb-4">Hoặc đăng nhập với</p>
-              <div className="grid grid-cols-2 gap-4">
-                <button type="button" className="flex items-center justify-center gap-2 py-3 px-4 bg-surface-container-low rounded-lg hover:bg-surface-container transition-all">
-                  <img alt="Google" className="w-5 h-5" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDretTC-6O9xZFlcRiICZ3Boiie74ltH-5u4dzzC69jkWx57AlYuLQwRsRS-Zr5fENFWqQfWLwUpzMBcUq9Wg-wkCBeqgrSBfoypTWB8OEIOZy5Iq25hZz0DsgTZ1aUOUVJ1Rb9Bx0ScFfgzH6qCML6HwZ_Ep1l_OmF5hqsWkF4ANt5Z-gq5q58uBysVEzxvtw39xby8Y1yaCDz7VFP3iH_LEVKQoQ3zbDhAKFMSLb3WoKuqvxFyffY7QIiVTOGyDp5eQI3VtyE0Po"/>
-                  <span className="font-medium text-on-surface">Google</span>
-                </button>
-                <button type="button" className="flex items-center justify-center gap-2 py-3 px-4 bg-surface-container-low rounded-lg hover:bg-surface-container transition-all">
-                  <span className="material-symbols-outlined text-on-surface">account_circle</span>
-                  <span className="font-medium text-on-surface">Tổ chức</span>
-                </button>
-              </div>
-            </div>
+          {/* Logo (Visible on mobile/tablet) */}
+          <div className="flex lg:hidden items-center gap-2 mb-8 select-none">
+            <Icon name="Cpu" className="text-blue-500 w-8 h-8 animate-pulse" />
+            <span className="font-extrabold text-2xl tracking-tight text-white">
+              Stem<span className="text-blue-500">Flow</span>
+            </span>
           </div>
 
-          {/* Right Side: Visual Illustration */}
-          <div className="hidden md:block relative bg-primary-container overflow-hidden">
-            <div className="absolute inset-0 bg-gradient-to-br from-primary/80 to-primary-container z-10 opacity-60"></div>
-            <img className="absolute inset-0 w-full h-full object-cover" data-alt="A sophisticated digital rendering of a modern laboratory space with translucent glass panels and floating holographic scientific equations." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBlYeoaEbAleM9k3jqNqI78YnBUFVYqRFnO7DNBNKFYzW6vBuUFY6edxFHX5_65HAcx7AP2cq6vfodUG1f8SrmqXOqHbdK54KfFA_8KI8QnwOkIuM6cafmN_qgFVIxYN1viWyGp1NwQqVe6SWHiPiHkJQeKhcfjtuHiRa7aLYeNZBgMikq5vBwpy3EI_mS7_JCtPRUIOMPz6yKBl8cE_6dnK0cJrRUdYJlQjcyZWlGvzBxciDNLCe01ib4iD1gdpQplSk7tvzR4Ru4"/>
-            <div className="relative z-20 h-full flex flex-col justify-end p-16 text-on-primary">
-              <div className="p-8 backdrop-blur-md bg-surface-container-low/10 rounded-xl border border-white/10 shadow-2xl">
-                <span className="material-symbols-outlined text-secondary-fixed-dim text-4xl mb-4" style={{ fontVariationSettings: "'FILL' 1" }}>science</span>
-                <h2 className="text-headline-sm font-headline font-bold mb-4">Hành trình từ lý thuyết đến thực tiễn</h2>
-                <p className="font-body opacity-90 leading-relaxed italic">
-                    "Khoa học không chỉ là những công thức, đó là cách chúng ta đặt câu hỏi và tìm kiếm câu trả lời về thế giới xung quanh."
+          <div className="space-y-2">
+            <h1 className="text-3xl font-extrabold text-white tracking-tight">
+              Chào mừng quay trở lại
+            </h1>
+            <p className="text-slate-400 text-sm">
+              Nhập thông tin đăng nhập của bạn để tiếp tục hành trình STEM.
+            </p>
+          </div>
+
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+            
+            {/* Email Field */}
+            <div>
+              <label className="block text-sm font-semibold text-slate-300 mb-2" htmlFor="email">
+                Địa chỉ Email
+              </label>
+              <div className="relative">
+                <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500">
+                  <Icon name="Mail" size={16} />
+                </div>
+                <input
+                  {...register('email')}
+                  className="w-full pl-12 pr-4 py-3 bg-slate-950 border border-slate-800 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 rounded-xl transition-all text-white placeholder-slate-600 outline-none text-sm"
+                  id="email"
+                  placeholder="name@example.com"
+                  type="email"
+                  disabled={isLoading}
+                />
+              </div>
+              {errors.email && (
+                <p className="text-xs text-red-400 mt-1 flex items-center gap-1">
+                  <AlertCircle size={12} className="shrink-0" /> {errors.email.message}
                 </p>
-                <div className="mt-6 flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-secondary"></div>
-                  <div>
-                    <p className="text-sm font-bold">Ban Cố vấn Học thuật</p>
-                    <p className="text-xs opacity-70">Dự án StemFlow</p>
-                  </div>
-                </div>
-              </div>
+              )}
             </div>
-            {/* Abstract decorative elements */}
-            <div className="absolute top-10 right-10 z-20 w-32 h-32 border-t-2 border-r-2 border-white/20 rounded-tr-3xl"></div>
-            <div className="absolute bottom-10 left-10 z-20 w-32 h-32 border-b-2 border-l-2 border-white/20 rounded-bl-3xl"></div>
+
+            {/* Password Field */}
+            <div>
+              <div className="flex justify-between items-center mb-2">
+                <label className="text-sm font-semibold text-slate-300" htmlFor="password">
+                  Mật khẩu
+                </label>
+                <Link
+                  to="/forgot-password"
+                  className="text-xs text-blue-400 font-medium hover:underline hover:text-blue-300 transition-colors"
+                >
+                  Quên mật khẩu?
+                </Link>
+              </div>
+              <div className="relative">
+                <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500">
+                  <Icon name="Lock" size={16} />
+                </div>
+                <input
+                  {...register('password')}
+                  className="w-full pl-12 pr-12 py-3 bg-slate-950 border border-slate-800 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 rounded-xl transition-all text-white placeholder-slate-600 outline-none text-sm"
+                  id="password"
+                  placeholder="••••••••"
+                  type={showPass ? 'text' : 'password'}
+                  disabled={isLoading}
+                />
+                <button
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 hover:text-blue-400 transition-colors"
+                  type="button"
+                  onClick={() => setShowPass(!showPass)}
+                  disabled={isLoading}
+                >
+                  <Icon name={showPass ? 'EyeOff' : 'Eye'} />
+                </button>
+              </div>
+              {errors.password && (
+                <p className="text-xs text-red-400 mt-1 flex items-center gap-1">
+                  <AlertCircle size={12} className="shrink-0" /> {errors.password.message}
+                </p>
+              )}
+            </div>
+
+            {/* Error alerts from Server */}
+            {error && (
+              <div className="flex items-center gap-2 p-3.5 rounded-xl bg-red-950/20 border border-red-500/30 text-red-400 text-sm">
+                <AlertCircle size={14} className="shrink-0" />
+                <span>{error}</span>
+              </div>
+            )}
+
+            <div className="flex items-center justify-between py-1">
+              <label className="flex items-center gap-2 cursor-pointer group select-none">
+                <input
+                  className="w-4 h-4 rounded border-slate-800 text-blue-600 bg-slate-950 focus:ring-blue-500 focus:ring-offset-slate-900"
+                  type="checkbox"
+                  disabled={isLoading}
+                />
+                <span className="text-sm text-slate-400 group-hover:text-slate-200 transition-colors">
+                  Ghi nhớ đăng nhập
+                </span>
+              </label>
+            </div>
+
+            {/* Submit Button */}
+            <button
+              type="submit"
+              disabled={isLoading}
+              className="w-full flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-500 text-white font-bold py-3.5 rounded-xl hover:shadow-[0_0_20px_rgba(37,99,235,0.4)] active:scale-95 transition-all duration-150 disabled:opacity-50 disabled:pointer-events-none"
+            >
+              {isLoading ? (
+                <>
+                  <Loader2 size={18} className="animate-spin" />
+                  Đang đăng nhập...
+                </>
+              ) : (
+                'Đăng nhập'
+              )}
+            </button>
+          </form>
+
+          {/* Link to Register */}
+          <div className="text-center pt-2 border-t border-slate-800/40">
+            <p className="text-sm text-slate-400">
+              Chưa có tài khoản?{' '}
+              <Link
+                to="/register"
+                className="text-blue-400 font-bold hover:underline hover:text-blue-300 transition-colors"
+              >
+                Đăng ký ngay
+              </Link>
+            </p>
           </div>
+
         </div>
       </main>
 
-      {/* Footer */}
-      <footer className="flex flex-col md:flex-row justify-between items-center px-12 py-10 w-full mt-auto bg-surface-container-low rounded-t-xl">
-        <div className="flex flex-col mb-6 md:mb-0">
-          <span className="font-headline font-bold text-lg text-primary mb-2">StemFlow</span>
-          <p className="font-body text-label-md text-on-surface-variant max-w-sm">© 2024 StemFlow. Môi trường nuôi dưỡng những nhà khoa học tương lai.</p>
+      {/* Right Side (Branding & Showcase Area) */}
+      <section className="hidden lg:flex relative bg-slate-950 border-l border-slate-800 text-white flex-col justify-between p-16 overflow-hidden select-none">
+        
+        {/* Wokwi-style Engineering dot grid background */}
+        <div className="absolute inset-0 z-0 bg-[radial-gradient(#334155_1px,transparent_1px)] [background-size:24px_24px] opacity-25"></div>
+        
+        {/* Soft Radial Ambient Glows */}
+        <div className="absolute top-1/4 left-1/3 w-[500px] h-[500px] bg-blue-600/10 rounded-full blur-[140px] pointer-events-none"></div>
+        <div className="absolute bottom-1/4 right-1/4 w-[400px] h-[400px] bg-emerald-500/5 rounded-full blur-[120px] pointer-events-none"></div>
+
+        {/* Brand Header */}
+        <div className="relative z-10 flex items-center gap-2.5">
+          <Icon name="Cpu" className="text-blue-500 w-8 h-8 animate-pulse" />
+          <span className="font-extrabold text-2xl tracking-tight text-white">
+            Stem<span className="text-blue-500">Flow</span>
+          </span>
         </div>
-        <div className="flex flex-wrap justify-center gap-8">
-          <a className="font-body text-label-md text-on-surface-variant hover:text-secondary transition-colors" href="#">Điều khoản sử dụng</a>
-          <a className="font-body text-label-md text-on-surface-variant hover:text-secondary transition-colors" href="#">Chính sách bảo mật</a>
-          <a className="font-body text-label-md text-on-surface-variant hover:text-secondary transition-colors" href="#">Liên hệ hỗ trợ</a>
-          <a className="font-body text-label-md text-on-surface-variant hover:text-secondary transition-colors" href="#">Tài liệu API</a>
+
+        {/* Main Branding copy */}
+        <div className="relative z-10 space-y-8 max-w-lg">
+          <h2 className="text-4xl font-extrabold text-white leading-tight">
+            Nền tảng thực hành <br />
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-emerald-400">
+              STEM không giới hạn.
+            </span>
+          </h2>
+          <p className="text-slate-400 leading-relaxed text-lg">
+            Viết code, nối mạch điện tử và chạy mô phỏng cảm biến trực tuyến y như thật ngay trên trình duyệt mà không lo cháy nổ hay hao tổn thiết bị.
+          </p>
+
+          {/* Simulation diagram showcase */}
+          <div className="bg-slate-900/60 backdrop-blur-xl border border-slate-800/80 rounded-2xl p-6 shadow-2xl relative overflow-hidden">
+            <div className="absolute inset-0 bg-[radial-gradient(#1e293b_1px,transparent_1px)] [background-size:12px_12px] opacity-25"></div>
+            <div className="flex items-center gap-2 mb-4">
+              <div className="w-2.5 h-2.5 rounded-full bg-rose-500"></div>
+              <div className="w-2.5 h-2.5 rounded-full bg-amber-500"></div>
+              <div className="w-2.5 h-2.5 rounded-full bg-emerald-500"></div>
+              <span className="text-xs text-slate-500 font-mono ml-2">esp32_wlan_node.json</span>
+            </div>
+
+            <div className="border border-slate-800 bg-slate-950/40 rounded-xl p-4 flex items-center justify-between">
+              <div className="space-y-2">
+                <div className="h-2 w-20 bg-slate-800 rounded"></div>
+                <div className="h-2 w-32 bg-slate-800 rounded"></div>
+                <div className="h-2 w-16 bg-slate-800 rounded"></div>
+              </div>
+              <div className="relative flex items-center justify-center mr-4">
+                <div className="w-8 h-8 rounded bg-blue-500/10 border border-blue-500/30 flex items-center justify-center">
+                  <Icon name="Cpu" className="w-4 h-4 text-blue-500 animate-pulse" />
+                </div>
+                <div className="absolute -right-6 w-6 h-0.5 bg-rose-500/50"></div>
+                <div className="absolute -right-8 w-2 h-2 rounded-full bg-rose-500 animate-ping"></div>
+              </div>
+            </div>
+          </div>
         </div>
-      </footer>
+
+        {/* Customer testimonial */}
+        <div className="relative z-10 border-t border-slate-800/60 pt-8 max-w-lg">
+          <blockquote className="text-slate-400 text-sm italic leading-relaxed">
+            &ldquo;StemFlow giúp học sinh của chúng tôi tiếp cận với lập trình nhúng và thiết kế mạch điện tử chỉ trong vài phút, loại bỏ hoàn toàn chi phí phần cứng vật lý đắt đỏ.&rdquo;
+          </blockquote>
+          <div className="mt-4">
+            <cite className="not-italic text-sm font-semibold text-white block">
+              Thầy Nguyễn Văn An
+            </cite>
+            <span className="text-xs text-slate-500">
+              Giám đốc Trung tâm STEM EduTech
+            </span>
+          </div>
+        </div>
+
+      </section>
+
     </div>
   );
 }

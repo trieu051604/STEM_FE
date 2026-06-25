@@ -1,15 +1,14 @@
 import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { AlertCircle, Loader2, ArrowLeft } from 'lucide-react';
+import { AlertCircle, Loader2, ArrowLeft, User, Shield } from 'lucide-react';
 import { Icon } from '@/components/ui/Icon';
 import ThemeToggle from '@/components/ui/ThemeToggle';
 import { useAuthStore } from '@/stores';
 
-// Zod Schema with Vietnamese messages
-const loginSchema = z.object({
+// Zod Schema for School Admin login
+const adminLoginSchema = z.object({
   email: z
     .string()
     .min(1, { message: 'Email không được để trống.' })
@@ -20,27 +19,48 @@ const loginSchema = z.object({
     .min(6, { message: 'Mật khẩu phải chứa ít nhất 6 ký tự.' }),
 });
 
-type LoginFormData = z.infer<typeof loginSchema>;
+type AdminLoginFormData = z.infer<typeof adminLoginSchema>;
+
+// Google OAuth configuration
+const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || '';
 
 export function LoginPage() {
   const [showPass, setShowPass] = useState(false);
   const [error, setError] = useState('');
+  const [loginType, setLoginType] = useState<'student' | 'admin'>('student');
+  const [googleLoading, setGoogleLoading] = useState(false);
   const { login, isLoading } = useAuthStore();
-  const navigate = useNavigate();
 
   const {
     register,
     handleSubmit,
     formState: { errors },
-  } = useForm<LoginFormData>({
-    resolver: zodResolver(loginSchema),
+  } = useForm<AdminLoginFormData>({
+    resolver: zodResolver(adminLoginSchema),
   });
 
-  const onSubmit = async (data: LoginFormData) => {
+  // Google OAuth login - Native approach
+  const initiateGoogleLogin = () => {
+    setError('');
+    setGoogleLoading(true);
+    
+    // Redirect to Google OAuth
+    const googleAuthUrl = new URL('https://accounts.google.com/o/oauth2/v2/auth');
+    googleAuthUrl.searchParams.set('client_id', GOOGLE_CLIENT_ID);
+    googleAuthUrl.searchParams.set('redirect_uri', `${window.location.origin}/login/google/callback`);
+    googleAuthUrl.searchParams.set('response_type', 'id_token');
+    googleAuthUrl.searchParams.set('scope', 'email profile');
+    googleAuthUrl.searchParams.set('nonce', crypto.randomUUID());
+    googleAuthUrl.searchParams.set('prompt', 'select_account');
+    
+    window.location.href = googleAuthUrl.toString();
+  };
+
+  const handleAdminLogin = async (data: AdminLoginFormData) => {
     try {
       setError('');
       await login(data.email, data.password);
-      navigate('/dashboard');
+      window.location.href = '/dashboard';
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : 'Đăng nhập thất bại. Vui lòng kiểm tra lại.');
     }
@@ -59,12 +79,12 @@ export function LoginPage() {
 
         <div className="w-full max-w-md space-y-8">
           
-          <Link 
-            to="/" 
+          <a 
+            href="/" 
             className="inline-flex items-center gap-2 text-xs font-bold text-slate-400 hover:text-white uppercase tracking-wider transition-colors mb-2"
           >
             <ArrowLeft size={14} /> Quay lại trang chủ
-          </Link>
+          </a>
 
           {/* Logo (Visible on mobile/tablet) */}
           <div className="flex lg:hidden items-center gap-2 mb-8 select-none">
@@ -79,128 +99,208 @@ export function LoginPage() {
               Chào mừng quay trở lại
             </h1>
             <p className="text-slate-400 text-sm">
-              Nhập thông tin đăng nhập của bạn để tiếp tục hành trình STEM.
+              Đăng nhập để tiếp tục hành trình STEM của bạn.
             </p>
           </div>
 
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-            
-            {/* Email Field */}
-            <div>
-              <label className="block text-sm font-semibold text-slate-300 mb-2" htmlFor="email">
-                Địa chỉ Email
-              </label>
-              <div className="relative">
-                <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500">
-                  <Icon name="Mail" size={16} />
-                </div>
-                <input
-                  {...register('email')}
-                  className="w-full pl-12 pr-4 py-3 bg-slate-950 border border-slate-800 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 rounded-xl transition-all text-white placeholder-slate-600 outline-none text-sm"
-                  id="email"
-                  placeholder="name@example.com"
-                  type="email"
-                  disabled={isLoading}
-                />
-              </div>
-              {errors.email && (
-                <p className="text-xs text-red-400 mt-1 flex items-center gap-1">
-                  <AlertCircle size={12} className="shrink-0" /> {errors.email.message}
-                </p>
-              )}
-            </div>
-
-            {/* Password Field */}
-            <div>
-              <div className="flex justify-between items-center mb-2">
-                <label className="text-sm font-semibold text-slate-300" htmlFor="password">
-                  Mật khẩu
-                </label>
-                <Link
-                  to="/forgot-password"
-                  className="text-xs text-blue-400 font-medium hover:underline hover:text-blue-300 transition-colors"
-                >
-                  Quên mật khẩu?
-                </Link>
-              </div>
-              <div className="relative">
-                <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500">
-                  <Icon name="Lock" size={16} />
-                </div>
-                <input
-                  {...register('password')}
-                  className="w-full pl-12 pr-12 py-3 bg-slate-950 border border-slate-800 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 rounded-xl transition-all text-white placeholder-slate-600 outline-none text-sm"
-                  id="password"
-                  placeholder="••••••••"
-                  type={showPass ? 'text' : 'password'}
-                  disabled={isLoading}
-                />
-                <button
-                  className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 hover:text-blue-400 transition-colors"
-                  type="button"
-                  onClick={() => setShowPass(!showPass)}
-                  disabled={isLoading}
-                >
-                  <Icon name={showPass ? 'EyeOff' : 'Eye'} />
-                </button>
-              </div>
-              {errors.password && (
-                <p className="text-xs text-red-400 mt-1 flex items-center gap-1">
-                  <AlertCircle size={12} className="shrink-0" /> {errors.password.message}
-                </p>
-              )}
-            </div>
-
-            {/* Error alerts from Server */}
-            {error && (
-              <div className="flex items-center gap-2 p-3.5 rounded-xl bg-red-950/20 border border-red-500/30 text-red-400 text-sm">
-                <AlertCircle size={14} className="shrink-0" />
-                <span>{error}</span>
-              </div>
-            )}
-
-            <div className="flex items-center justify-between py-1">
-              <label className="flex items-center gap-2 cursor-pointer group select-none">
-                <input
-                  className="w-4 h-4 rounded border-slate-800 text-blue-600 bg-slate-950 focus:ring-blue-500 focus:ring-offset-slate-900"
-                  type="checkbox"
-                  disabled={isLoading}
-                />
-                <span className="text-sm text-slate-400 group-hover:text-slate-200 transition-colors">
-                  Ghi nhớ đăng nhập
-                </span>
-              </label>
-            </div>
-
-            {/* Submit Button */}
+          {/* Login Type Toggle */}
+          <div className="flex rounded-xl bg-slate-800 p-1">
             <button
-              type="submit"
-              disabled={isLoading}
-              className="w-full flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-500 text-white font-bold py-3.5 rounded-xl hover:shadow-[0_0_20px_rgba(37,99,235,0.4)] active:scale-95 transition-all duration-150 disabled:opacity-50 disabled:pointer-events-none"
+              type="button"
+              onClick={() => setLoginType('student')}
+              className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-lg text-sm font-medium transition-all ${
+                loginType === 'student'
+                  ? 'bg-blue-600 text-white'
+                  : 'text-slate-400 hover:text-white'
+              }`}
             >
-              {isLoading ? (
-                <>
-                  <Loader2 size={18} className="animate-spin" />
-                  Đang đăng nhập...
-                </>
-              ) : (
-                'Đăng nhập'
-              )}
+              <User size={18} />
+              Học sinh / Giáo viên
             </button>
-          </form>
-
-          {/* Link to Register */}
-          <div className="text-center pt-2 border-t border-slate-800/40">
-            <p className="text-sm text-slate-400">
-              Chưa có tài khoản?{' '}
-              <Link
-                to="/register"
-                className="text-blue-400 font-bold hover:underline hover:text-blue-300 transition-colors"
-              >
-                Đăng ký ngay
-              </Link>
-            </p>
+            <button
+              type="button"
+              onClick={() => setLoginType('admin')}
+              className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-lg text-sm font-medium transition-all ${
+                loginType === 'admin'
+                  ? 'bg-blue-600 text-white'
+                  : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              <Shield size={18} />
+              Quản trị viên
+            </button>
           </div>
+
+          {loginType === 'student' ? (
+            /* Student/Teacher Login (Google OAuth) */
+            <div className="space-y-4">
+              <div className="p-4 bg-blue-950/30 border border-blue-500/30 rounded-xl">
+                <p className="text-sm text-blue-300">
+                  <strong>Lưu ý:</strong> Tài khoản của bạn cần được Quản trị viên trường tạo trước. 
+                  Nếu chưa có tài khoản, vui lòng liên hệ Quản trị viên trường để được cấp.
+                </p>
+              </div>
+
+              {/* Error Message */}
+              {error && (
+                <div className="flex items-center gap-2 p-3.5 rounded-xl bg-red-950/20 border border-red-500/30 text-red-400 text-sm">
+                  <AlertCircle size={14} className="shrink-0" />
+                  <span>{error}</span>
+                </div>
+              )}
+
+              {/* Google Login Button */}
+              <button
+                type="button"
+                onClick={initiateGoogleLogin}
+                disabled={googleLoading}
+                className="w-full flex items-center justify-center gap-3 bg-white hover:bg-gray-100 text-gray-800 font-semibold py-3.5 rounded-xl transition-all duration-150 disabled:opacity-50 disabled:pointer-events-none"
+              >
+                {googleLoading ? (
+                  <>
+                    <Loader2 size={18} className="animate-spin" />
+                    Đang chuyển hướng...
+                  </>
+                ) : (
+                  <>
+                    <svg className="w-5 h-5" viewBox="0 0 24 24">
+                      <path
+                        fill="#4285F4"
+                        d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+                      />
+                      <path
+                        fill="#34A853"
+                        d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+                      />
+                      <path
+                        fill="#FBBC05"
+                        d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"
+                      />
+                      <path
+                        fill="#EA4335"
+                        d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
+                      />
+                    </svg>
+                    Đăng nhập bằng Google
+                  </>
+                )}
+              </button>
+
+              <p className="text-xs text-slate-500 text-center">
+                Bằng việc đăng nhập, bạn đồng ý với{' '}
+                <a href="#" className="text-blue-400 hover:underline">Điều khoản sử dụng</a>
+                {' '}và{' '}
+                <a href="#" className="text-blue-400 hover:underline">Chính sách bảo mật</a>
+              </p>
+            </div>
+          ) : (
+            /* Admin Login (Email/Password) */
+            <form onSubmit={handleSubmit(handleAdminLogin)} className="space-y-4">
+              
+              {/* Email Field */}
+              <div>
+                <label className="block text-sm font-semibold text-slate-300 mb-2" htmlFor="email">
+                  Địa chỉ Email
+                </label>
+                <div className="relative">
+                  <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500">
+                    <Icon name="Mail" size={16} />
+                  </div>
+                  <input
+                    {...register('email')}
+                    className="w-full pl-12 pr-4 py-3 bg-slate-950 border border-slate-800 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 rounded-xl transition-all text-white placeholder-slate-600 outline-none text-sm"
+                    id="email"
+                    placeholder="admin@school.edu"
+                    type="email"
+                    disabled={isLoading}
+                  />
+                </div>
+                {errors.email && (
+                  <p className="text-xs text-red-400 mt-1 flex items-center gap-1">
+                    <AlertCircle size={12} className="shrink-0" /> {errors.email.message}
+                  </p>
+                )}
+              </div>
+
+              {/* Password Field */}
+              <div>
+                <div className="flex justify-between items-center mb-2">
+                  <label className="text-sm font-semibold text-slate-300" htmlFor="password">
+                    Mật khẩu
+                  </label>
+                  <a
+                    href="/forgot-password"
+                    className="text-xs text-blue-400 font-medium hover:underline hover:text-blue-300 transition-colors"
+                  >
+                    Quên mật khẩu?
+                  </a>
+                </div>
+                <div className="relative">
+                  <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500">
+                    <Icon name="Lock" size={16} />
+                  </div>
+                  <input
+                    {...register('password')}
+                    className="w-full pl-12 pr-12 py-3 bg-slate-950 border border-slate-800 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 rounded-xl transition-all text-white placeholder-slate-600 outline-none text-sm"
+                    id="password"
+                    placeholder="••••••••"
+                    type={showPass ? 'text' : 'password'}
+                    disabled={isLoading}
+                  />
+                  <button
+                    type="button"
+                    className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 hover:text-blue-400 transition-colors"
+                    onClick={() => setShowPass(!showPass)}
+                    disabled={isLoading}
+                  >
+                    <Icon name={showPass ? 'EyeOff' : 'Eye'} />
+                  </button>
+                </div>
+                {errors.password && (
+                  <p className="text-xs text-red-400 mt-1 flex items-center gap-1">
+                    <AlertCircle size={12} className="shrink-0" /> {errors.password.message}
+                  </p>
+                )}
+              </div>
+
+              {/* Error Message */}
+              {error && (
+                <div className="flex items-center gap-2 p-3.5 rounded-xl bg-red-950/20 border border-red-500/30 text-red-400 text-sm">
+                  <AlertCircle size={14} className="shrink-0" />
+                  <span>{error}</span>
+                </div>
+              )}
+
+              {/* Submit Button */}
+              <button
+                type="submit"
+                disabled={isLoading}
+                className="w-full flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-500 text-white font-bold py-3.5 rounded-xl hover:shadow-[0_0_20px_rgba(37,99,235,0.4)] active:scale-95 transition-all duration-150 disabled:opacity-50 disabled:pointer-events-none"
+              >
+                {isLoading ? (
+                  <>
+                    <Loader2 size={18} className="animate-spin" />
+                    Đang đăng nhập...
+                  </>
+                ) : (
+                  'Đăng nhập'
+                )}
+              </button>
+
+              {/* Link to Register */}
+              <div className="text-center pt-2 border-t border-slate-800/40">
+                <p className="text-sm text-slate-400">
+                  Chưa có tài khoản?{' '}
+                  <a
+                    href="/register"
+                    className="text-blue-400 font-bold hover:underline hover:text-blue-300 transition-colors"
+                  >
+                    Đăng ký trường học
+                  </a>
+                </p>
+              </div>
+            </form>
+          )}
 
         </div>
       </main>

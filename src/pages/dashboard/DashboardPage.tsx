@@ -1,33 +1,24 @@
 import { useState, useEffect } from 'react';
 import { useAuthStore } from '@/stores/authStore';
 import {
-  MasterAdminStats,
   SchoolAdminStats,
   TeacherStats,
   StudentStats,
 } from '@/components/Dashboard/StatsCards';
 import { Icon } from '@/components/ui/Icon';
 import { Button } from '@/components/ui/button';
-import { Link } from 'react-router-dom';
+import { Link, Navigate } from 'react-router-dom';
 import { formatDistanceToNow } from 'date-fns';
 import { vi } from 'date-fns/locale';
 import {
   Activity,
-  Users,
-  BookOpen,
-  GraduationCap,
   AlertCircle,
   ArrowRight,
 } from 'lucide-react';
+import { MasterAdminDashboard } from './master-admin/DashboardPage';
 
-// Mock data for demo (sẽ thay bằng API call thực tế)
+// Mock data for other roles (will be replaced by the user later)
 const mockStatsByRole = {
-  master_admin: {
-    totalSchools: 12,
-    pendingSchoolRequests: 3,
-    totalUsers: 248,
-    totalCourses: 45,
-  },
   school_admin: {
     totalTeachers: 24,
     totalStudents: 520,
@@ -79,14 +70,6 @@ const mockRecentActivity = [
     timestamp: new Date(Date.now() - 1000 * 60 * 60 * 8).toISOString(),
     user: { name: 'Phạm Thị D' },
   },
-  {
-    id: '5',
-    type: 'school_request',
-    title: 'Yêu cầu mới',
-    description: 'Trường THPT XYZ gửi yêu cầu đăng ký',
-    timestamp: new Date(Date.now() - 1000 * 60 * 60 * 24).toISOString(),
-    user: { name: 'Trường THPT XYZ' },
-  },
 ];
 
 const activityIcons: Record<string, string> = {
@@ -99,13 +82,20 @@ const activityIcons: Record<string, string> = {
 
 export const DashboardPage = () => {
   const { user } = useAuthStore();
+
+  // If the role is master_admin, redirect to schools page
+  if (user?.role === 'master_admin') {
+    return <Navigate to="/dashboard/schools" replace />;
+  }
+
+  // Otherwise, render the original dashboard with mock data for other roles
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState<any>(null);
 
   useEffect(() => {
-    // Simulate API call
+    // Simulate API call for other roles
     const timer = setTimeout(() => {
-      setStats(mockStatsByRole[user?.role || 'student']);
+      setStats((mockStatsByRole as any)[user?.role || 'student']);
       setLoading(false);
     }, 500);
 
@@ -113,7 +103,6 @@ export const DashboardPage = () => {
   }, [user?.role]);
 
   const roleGreeting: Record<string, string> = {
-    master_admin: 'Quản trị viên hệ thống',
     school_admin: 'Quản trị trường học',
     teacher: 'Giáo viên',
     student: 'Học sinh',
@@ -123,8 +112,6 @@ export const DashboardPage = () => {
     if (!stats) return null;
 
     switch (user?.role) {
-      case 'master_admin':
-        return <MasterAdminStats stats={stats} />;
       case 'school_admin':
         return <SchoolAdminStats stats={stats} />;
       case 'teacher':
@@ -138,12 +125,6 @@ export const DashboardPage = () => {
 
   const getQuickActions = () => {
     switch (user?.role) {
-      case 'master_admin':
-        return [
-          { label: 'Duyệt trường mới', path: '/dashboard/requests', icon: 'Building2' },
-          { label: 'Quản lý người dùng', path: '/dashboard/users', icon: 'Users' },
-          { label: 'Xem khóa học', path: '/dashboard/courses', icon: 'BookOpen' },
-        ];
       case 'school_admin':
         return [
           { label: 'Thêm giáo viên', path: '/dashboard/users?action=add', icon: 'UserPlus' },
@@ -245,28 +226,8 @@ export const DashboardPage = () => {
           ))}
         </div>
       </div>
-
-      {/* Alerts for pending items */}
-      {(user?.role === 'master_admin' || user?.role === 'school_admin') && stats?.pendingSchoolRequests > 0 && (
-        <div className="bg-yellow-50 dark:bg-yellow-950/20 border border-yellow-200 dark:border-yellow-800 rounded-xl p-4 flex items-center gap-4">
-          <div className="w-10 h-10 rounded-full bg-yellow-100 dark:bg-yellow-900/50 flex items-center justify-center flex-shrink-0">
-            <AlertCircle className="w-5 h-5 text-yellow-600 dark:text-yellow-400" />
-          </div>
-          <div className="flex-1">
-            <p className="font-medium text-yellow-800 dark:text-yellow-200">
-              Có {stats.pendingSchoolRequests} yêu cầu đang chờ duyệt
-            </p>
-            <p className="text-sm text-yellow-700 dark:text-yellow-300">
-              Vui lòng kiểm tra và phê duyệt các đơn đăng ký trường mới
-            </p>
-          </div>
-          <Link to="/dashboard/requests">
-            <Button variant="outline" size="sm" className="border-yellow-300 dark:border-yellow-700">
-              Xem ngay
-            </Button>
-          </Link>
-        </div>
-      )}
     </div>
   );
 };
+
+export default DashboardPage;

@@ -61,6 +61,14 @@ export interface School {
   representativeEmail?: string;
   status: 'Pending' | 'Approved' | 'Rejected';
   createdAt: string;
+  representativePosition?: string;
+  studentScale?: string;
+  website?: string;
+  notes?: string;
+  phone?: string;
+  usersCount?: number;
+  membersCount?: number;
+  users?: any[];
 }
 
 export const schoolsApi = {
@@ -230,10 +238,19 @@ export interface SchoolRequest {
   representativeEmail: string;
   proofOfActivity?: string;
   createdAt: string;
+  representativePosition?: string;
+  studentScale?: string;
+  website?: string;
+  notes?: string;
+  phone?: string;
+  usersCount?: number;
+  membersCount?: number;
+  users?: any[];
   adminUser?: {
     id: number;
     email: string;
     fullName: string;
+    phone?: string;
   };
 }
 

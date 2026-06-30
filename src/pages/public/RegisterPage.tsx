@@ -38,6 +38,13 @@ const B2BSchema = z.object({
     .regex(VN_PHONE_REGEX, {
       message: 'Số điện thoại không đúng định dạng Việt Nam.',
     }),
+  password: z
+    .string()
+    .min(1, { message: 'Mật khẩu không được để trống.' })
+    .min(6, { message: 'Mật khẩu phải chứa ít nhất 6 ký tự.' }),
+  confirmPassword: z
+    .string()
+    .min(1, { message: 'Xác nhận mật khẩu không được để trống.' }),
   website: z
     .string()
     .optional()
@@ -45,6 +52,9 @@ const B2BSchema = z.object({
       message: 'Website phải bắt đầu bằng http:// hoặc https://',
     }),
   notes: z.string().optional(),
+}).refine((data) => data.password === data.confirmPassword, {
+  message: 'Mật khẩu xác nhận không khớp.',
+  path: ['confirmPassword'],
 });
 
 type B2BFormData = z.infer<typeof B2BSchema>;
@@ -69,7 +79,20 @@ export function RegisterPage() {
     setIsLoading(true);
     setServerError('');
     try {
-      await api.post('/auth/register-b2b', data);
+      const payload = {
+        schoolName: data.orgName,
+        schoolAddress: data.address,
+        representativeName: data.repName,
+        representativeEmail: data.email,
+        representativePosition: data.title,
+        studentScale: data.studentSize,
+        website: data.website,
+        notes: data.notes,
+        fullName: data.repName, // Map representative name to user full name
+        phone: data.phone,
+        password: data.password,
+      };
+      await api.post('/schools/register', payload);
       setIsLoading(false);
       navigate(`/verify-email?email=${encodeURIComponent(data.email)}`);
     } catch (err: any) {
@@ -269,6 +292,46 @@ export function RegisterPage() {
                     {B2BErrors.phone && (
                       <p className="text-xs text-red-400 mt-1 flex items-center gap-1">
                         <AlertCircle size={12} className="shrink-0" /> {B2BErrors.phone.message}
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Mật khẩu */}
+                  <div>
+                    <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2" htmlFor="rep-password">
+                      Mật khẩu tài khoản
+                    </label>
+                    <input
+                      {...regB2B('password')}
+                      className="w-full px-4 py-3 bg-slate-950 border border-slate-800 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 rounded-xl transition-all text-white placeholder-slate-600 outline-none text-sm"
+                      id="rep-password"
+                      placeholder="••••••••"
+                      type="password"
+                      disabled={isLoading}
+                    />
+                    {B2BErrors.password && (
+                      <p className="text-xs text-red-400 mt-1 flex items-center gap-1">
+                        <AlertCircle size={12} className="shrink-0" /> {B2BErrors.password.message}
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Xác nhận mật khẩu */}
+                  <div>
+                    <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2" htmlFor="rep-confirm-password">
+                      Xác nhận mật khẩu
+                    </label>
+                    <input
+                      {...regB2B('confirmPassword')}
+                      className="w-full px-4 py-3 bg-slate-950 border border-slate-800 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 rounded-xl transition-all text-white placeholder-slate-600 outline-none text-sm"
+                      id="rep-confirm-password"
+                      placeholder="••••••••"
+                      type="password"
+                      disabled={isLoading}
+                    />
+                    {B2BErrors.confirmPassword && (
+                      <p className="text-xs text-red-400 mt-1 flex items-center gap-1">
+                        <AlertCircle size={12} className="shrink-0" /> {B2BErrors.confirmPassword.message}
                       </p>
                     )}
                   </div>

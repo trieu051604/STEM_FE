@@ -2,6 +2,7 @@ import { Navigate } from 'react-router-dom';
 import { useAuthStore } from '@/stores/authStore';
 import { DashboardLayout } from '@/components/Dashboard/DashboardLayout';
 import { DashboardPage } from '@/pages/dashboard/DashboardPage';
+import { SchoolsPage } from '@/pages/dashboard/master-admin/SchoolsPage';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -33,11 +34,9 @@ export const dashboardRoutes = [
     children: [
       { index: true, element: <DashboardPage /> },
       // Schools
-      { path: 'schools', element: <div>Schools Page</div> },
+      { path: 'schools', element: <SchoolsPage defaultTab="list" /> },
       // Requests
-      { path: 'requests', element: <div>Requests Page</div> },
-      // Users
-      { path: 'users', element: <div>Users Page</div> },
+      { path: 'requests', element: <SchoolsPage defaultTab="requests" /> },
       // Courses
       { path: 'courses', element: <div>Courses Page</div> },
       // Classes

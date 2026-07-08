@@ -1,10 +1,45 @@
-/** @type {import('tailwindcss').Config} */
 export default {
   darkMode: 'class',
   content: ['./index.html', './src/**/*.{ts,tsx}'],
   theme: {
     extend: {
       colors: {
+        // Shadcn/UI base colors
+        border: 'hsl(var(--border))',
+        input: 'hsl(var(--input))',
+        ring: 'hsl(var(--ring))',
+        background: 'hsl(var(--background))',
+        foreground: 'hsl(var(--foreground))',
+        primary: {
+          DEFAULT: 'hsl(var(--primary))',
+          foreground: 'hsl(var(--primary-foreground))',
+        },
+        secondary: {
+          DEFAULT: 'hsl(var(--secondary))',
+          foreground: 'hsl(var(--secondary-foreground))',
+        },
+        destructive: {
+          DEFAULT: 'hsl(var(--destructive))',
+          foreground: 'hsl(var(--destructive-foreground))',
+        },
+        muted: {
+          DEFAULT: 'hsl(var(--muted))',
+          foreground: 'hsl(var(--muted-foreground))',
+        },
+        accent: {
+          DEFAULT: 'hsl(var(--accent))',
+          foreground: 'hsl(var(--accent-foreground))',
+        },
+        popover: {
+          DEFAULT: 'hsl(var(--popover))',
+          foreground: 'hsl(var(--popover-foreground))',
+        },
+        card: {
+          DEFAULT: 'hsl(var(--card))',
+          foreground: 'hsl(var(--card-foreground))',
+        },
+        
+        // Original custom colors
         "on-primary": "#ffffff",
         "tertiary": "#233841",
         "on-tertiary-container": "#aac0cc",
@@ -12,11 +47,11 @@ export default {
         "tertiary-fixed": "#cfe6f2",
         "surface-container-lowest": "#ffffff",
         "outline-variant": "#c0c8ca",
-        "background": "#f8f9fa",
+        "background": "hsl(var(--background))",
         "secondary-container": "#fc820c",
         "primary-fixed-dim": "#9acfda",
         "on-error": "#ffffff",
-        "primary": "#003b43",
+        "primary": "hsl(var(--primary))",
         "surface-container-high": "#e7e8e9",
         "on-primary-container": "#90c5cf",
         "surface-tint": "#30666f",
@@ -43,7 +78,7 @@ export default {
         "primary-fixed": "#b6ecf6",
         "on-surface-variant": "#40484a",
         "on-background": "#191c1d",
-        "secondary": "#964900",
+        "secondary": "hsl(var(--secondary))",
         "error": "#ba1a1a",
         "inverse-primary": "#9acfda",
         "secondary-fixed": "#ffdcc6",
@@ -91,6 +126,14 @@ export default {
           950: '#020617',
         },
       },
+      borderRadius: {
+        lg: 'var(--radius)',
+        md: 'calc(var(--radius) - 2px)',
+        sm: 'calc(var(--radius) - 4px)',
+        xl: '0.75rem',
+        '2xl': '1rem',
+        '3xl': '1.5rem',
+      },
       fontFamily: {
         headline: ['Manrope', 'sans-serif'],
         body: ['Inter', 'sans-serif'],
@@ -126,11 +169,6 @@ export default {
         slideUp:   { from: { opacity: '0', transform: 'translateY(20px)' }, to: { opacity: '1', transform: 'translateY(0)' } },
         slideIn:   { from: { opacity: '0', transform: 'translateX(-20px)' }, to: { opacity: '1', transform: 'translateX(0)' } },
         bounceSoft:{ '0%, 100%': { transform: 'translateY(-4px)' }, '50%': { transform: 'translateY(0)' } },
-      },
-      borderRadius: {
-        'xl':  '0.75rem',
-        '2xl': '1rem',
-        '3xl': '1.5rem',
       },
     },
   },

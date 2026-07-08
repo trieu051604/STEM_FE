@@ -6,18 +6,18 @@ export interface DashboardStats {
   pendingSchoolRequests?: number;
   totalUsers?: number;
   totalCourses?: number;
-  
+
   // School Admin
   totalTeachers?: number;
   totalStudents?: number;
   totalClasses?: number;
   activeClasses?: number;
-  
+
   // Teacher
   myClasses?: number;
   myStudents?: number;
   pendingAssignments?: number;
-  
+
   // Student
   enrolledClasses?: number;
   completedLessons?: number;
@@ -142,8 +142,11 @@ export const usersApi = {
 // Courses API
 export interface Course {
   id: number;
-  title: string;
+  name: string;
+  title?: string; // alias for name
   description?: string;
+  teacherId?: number;
+  teacherName?: string;
   schoolId: number;
   schoolName?: string;
   createdAt: string;
@@ -159,22 +162,36 @@ export interface CoursesListResponse {
 
 export const coursesApi = {
   getAll: async (params?: {
-    page?: number;
+    searchTerm?: string;
+    schoolId?: number;
+    pageNumber?: number;
     pageSize?: number;
-    search?: string;
   }): Promise<CoursesListResponse> => {
     const response = await api.get('/courses', { params });
-    return response.data.data;
+    const raw = response.data.data as {
+      totalCount: number;
+      pageNumber: number;
+      pageSize: number;
+      totalPages: number;
+      items: Course[];
+    };
+
+    return {
+      items: raw.items.map((item) => ({ ...item, title: item.name })),
+      total: raw.totalCount,
+      page: raw.pageNumber,
+      pageSize: raw.pageSize,
+    };
   },
   getById: async (id: number): Promise<Course> => {
     const response = await api.get(`/courses/${id}`);
     return response.data.data;
   },
-  create: async (data: Partial<Course>): Promise<number> => {
+  create: async (data: { name: string; description?: string }): Promise<number> => {
     const response = await api.post('/courses', data);
     return response.data.data.id;
   },
-  update: async (id: number, data: Partial<Course>): Promise<void> => {
+  update: async (id: number, data: { name: string; description?: string }): Promise<void> => {
     await api.put(`/courses/${id}`, data);
   },
   delete: async (id: number): Promise<void> => {
@@ -193,6 +210,9 @@ export interface ClassEntity {
   teacherName?: string;
   schoolId: number;
   studentCount: number;
+  classCode?: string;
+  startDate?: string;
+  endDate?: string;
   createdAt: string;
 }
 
@@ -205,9 +225,9 @@ export interface ClassesListResponse {
 
 export const classesApi = {
   getAll: async (params?: {
-    page?: number;
+    pageNumber?: number;
     pageSize?: number;
-    search?: string;
+    searchTerm?: string;
     courseId?: number;
   }): Promise<ClassesListResponse> => {
     const response = await api.get('/classes', { params });

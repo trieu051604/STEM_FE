@@ -2,12 +2,12 @@ import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { AlertCircle, Loader2, ArrowLeft, User, Shield } from 'lucide-react';
+import { AlertCircle, Loader2, ArrowLeft, User, Shield, Building2, Crown } from 'lucide-react';
 import { Icon } from '@/components/ui/Icon';
 import ThemeToggle from '@/components/ui/ThemeToggle';
 import { useAuthStore } from '@/stores';
 
-// Zod Schema for School Admin login
+// Zod Schema for Admin login
 const adminLoginSchema = z.object({
   email: z
     .string()
@@ -24,10 +24,13 @@ type AdminLoginFormData = z.infer<typeof adminLoginSchema>;
 // Google OAuth configuration
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || '';
 
+// Login types
+type LoginType = 'student' | 'school_admin' | 'master_admin';
+
 export function LoginPage() {
   const [showPass, setShowPass] = useState(false);
   const [error, setError] = useState('');
-  const [loginType, setLoginType] = useState<'student' | 'admin'>('student');
+  const [loginType, setLoginType] = useState<LoginType>('student');
   const [googleLoading, setGoogleLoading] = useState(false);
   const { login, isLoading } = useAuthStore();
 
@@ -44,7 +47,6 @@ export function LoginPage() {
     setError('');
     setGoogleLoading(true);
     
-    // Redirect to Google OAuth
     const googleAuthUrl = new URL('https://accounts.google.com/o/oauth2/v2/auth');
     googleAuthUrl.searchParams.set('client_id', GOOGLE_CLIENT_ID);
     googleAuthUrl.searchParams.set('redirect_uri', `${window.location.origin}/login/google/callback`);
@@ -103,7 +105,7 @@ export function LoginPage() {
             </p>
           </div>
 
-          {/* Login Type Toggle */}
+          {/* Login Type Toggle - 3 options */}
           <div className="flex rounded-xl bg-slate-800 p-1">
             <button
               type="button"
@@ -119,15 +121,27 @@ export function LoginPage() {
             </button>
             <button
               type="button"
-              onClick={() => setLoginType('admin')}
+              onClick={() => setLoginType('school_admin')}
               className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-lg text-sm font-medium transition-all ${
-                loginType === 'admin'
-                  ? 'bg-blue-600 text-white'
+                loginType === 'school_admin'
+                  ? 'bg-emerald-600 text-white'
                   : 'text-slate-400 hover:text-white'
               }`}
             >
-              <Shield size={18} />
-              Quản trị viên
+              <Building2 size={18} />
+              Quản trị trường
+            </button>
+            <button
+              type="button"
+              onClick={() => setLoginType('master_admin')}
+              className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-lg text-sm font-medium transition-all ${
+                loginType === 'master_admin'
+                  ? 'bg-purple-600 text-white'
+                  : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              <Crown size={18} />
+              Quản trị hệ thống
             </button>
           </div>
 
@@ -193,99 +207,109 @@ export function LoginPage() {
                 <a href="#" className="text-blue-400 hover:underline">Chính sách bảo mật</a>
               </p>
             </div>
-          ) : (
-            /* Admin Login (Email/Password) */
-            <form onSubmit={handleSubmit(handleAdminLogin)} className="space-y-4">
-              
-              {/* Email Field */}
-              <div>
-                <label className="block text-sm font-semibold text-slate-300 mb-2" htmlFor="email">
-                  Địa chỉ Email
-                </label>
-                <div className="relative">
-                  <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500">
-                    <Icon name="Mail" size={16} />
-                  </div>
-                  <input
-                    {...register('email')}
-                    className="w-full pl-12 pr-4 py-3 bg-slate-950 border border-slate-800 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 rounded-xl transition-all text-white placeholder-slate-600 outline-none text-sm"
-                    id="email"
-                    placeholder="admin@school.edu"
-                    type="email"
-                    disabled={isLoading}
-                  />
-                </div>
-                {errors.email && (
-                  <p className="text-xs text-red-400 mt-1 flex items-center gap-1">
-                    <AlertCircle size={12} className="shrink-0" /> {errors.email.message}
-                  </p>
-                )}
+          ) : loginType === 'school_admin' ? (
+            /* School Admin Login (Email/Password) */
+            <div className="space-y-4">
+              <div className="p-4 bg-emerald-950/30 border border-emerald-500/30 rounded-xl">
+                <p className="text-sm text-emerald-300">
+                  <strong>Quản trị trường học:</strong> Đăng nhập để quản lý học sinh, giáo viên, khóa học và lớp học của trường bạn.
+                </p>
               </div>
 
-              {/* Password Field */}
-              <div>
-                <div className="flex justify-between items-center mb-2">
-                  <label className="text-sm font-semibold text-slate-300" htmlFor="password">
-                    Mật khẩu
+              <form onSubmit={handleSubmit(handleAdminLogin)} className="space-y-4">
+                {/* Email Field */}
+                <div>
+                  <label className="block text-sm font-semibold text-slate-300 mb-2" htmlFor="school-admin-email">
+                    Email Quản trị trường
                   </label>
-                  <a
-                    href="/forgot-password"
-                    className="text-xs text-blue-400 font-medium hover:underline hover:text-blue-300 transition-colors"
-                  >
-                    Quên mật khẩu?
-                  </a>
-                </div>
-                <div className="relative">
-                  <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500">
-                    <Icon name="Lock" size={16} />
+                  <div className="relative">
+                    <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500">
+                      <Icon name="Mail" size={16} />
+                    </div>
+                    <input
+                      {...register('email')}
+                      className="w-full pl-12 pr-4 py-3 bg-slate-950 border border-slate-800 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 rounded-xl transition-all text-white placeholder-slate-600 outline-none text-sm"
+                      id="school-admin-email"
+                      placeholder="admin@truong.edu.vn"
+                      type="email"
+                      disabled={isLoading}
+                    />
                   </div>
-                  <input
-                    {...register('password')}
-                    className="w-full pl-12 pr-12 py-3 bg-slate-950 border border-slate-800 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 rounded-xl transition-all text-white placeholder-slate-600 outline-none text-sm"
-                    id="password"
-                    placeholder="••••••••"
-                    type={showPass ? 'text' : 'password'}
-                    disabled={isLoading}
-                  />
-                  <button
-                    type="button"
-                    className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 hover:text-blue-400 transition-colors"
-                    onClick={() => setShowPass(!showPass)}
-                    disabled={isLoading}
-                  >
-                    <Icon name={showPass ? 'EyeOff' : 'Eye'} />
-                  </button>
+                  {errors.email && (
+                    <p className="text-xs text-red-400 mt-1 flex items-center gap-1">
+                      <AlertCircle size={12} className="shrink-0" /> {errors.email.message}
+                    </p>
+                  )}
                 </div>
-                {errors.password && (
-                  <p className="text-xs text-red-400 mt-1 flex items-center gap-1">
-                    <AlertCircle size={12} className="shrink-0" /> {errors.password.message}
-                  </p>
-                )}
-              </div>
 
-              {/* Error Message */}
-              {error && (
-                <div className="flex items-center gap-2 p-3.5 rounded-xl bg-red-950/20 border border-red-500/30 text-red-400 text-sm">
-                  <AlertCircle size={14} className="shrink-0" />
-                  <span>{error}</span>
+                {/* Password Field */}
+                <div>
+                  <div className="flex justify-between items-center mb-2">
+                    <label className="text-sm font-semibold text-slate-300" htmlFor="school-admin-password">
+                      Mật khẩu
+                    </label>
+                    <a
+                      href="/forgot-password"
+                      className="text-xs text-emerald-400 font-medium hover:underline hover:text-emerald-300 transition-colors"
+                    >
+                      Quên mật khẩu?
+                    </a>
+                  </div>
+                  <div className="relative">
+                    <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500">
+                      <Icon name="Lock" size={16} />
+                    </div>
+                    <input
+                      {...register('password')}
+                      className="w-full pl-12 pr-12 py-3 bg-slate-950 border border-slate-800 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 rounded-xl transition-all text-white placeholder-slate-600 outline-none text-sm"
+                      id="school-admin-password"
+                      placeholder="••••••••"
+                      type={showPass ? 'text' : 'password'}
+                      disabled={isLoading}
+                    />
+                    <button
+                      type="button"
+                      className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 hover:text-emerald-400 transition-colors"
+                      onClick={() => setShowPass(!showPass)}
+                      disabled={isLoading}
+                    >
+                      <Icon name={showPass ? 'EyeOff' : 'Eye'} />
+                    </button>
+                  </div>
+                  {errors.password && (
+                    <p className="text-xs text-red-400 mt-1 flex items-center gap-1">
+                      <AlertCircle size={12} className="shrink-0" /> {errors.password.message}
+                    </p>
+                  )}
                 </div>
-              )}
 
-              {/* Submit Button */}
-              <button
-                type="submit"
-                disabled={isLoading}
-                className="w-full flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-500 text-white font-bold py-3.5 rounded-xl hover:shadow-[0_0_20px_rgba(37,99,235,0.4)] active:scale-95 transition-all duration-150 disabled:opacity-50 disabled:pointer-events-none"
-              >
-                {isLoading ? (
-                  <>
-                    <Loader2 size={18} className="animate-spin" />
-                    Đang đăng nhập...
-                  </>
-                ) : (
-                  'Đăng nhập'
+                {/* Error Message */}
+                {error && (
+                  <div className="flex items-center gap-2 p-3.5 rounded-xl bg-red-950/20 border border-red-500/30 text-red-400 text-sm">
+                    <AlertCircle size={14} className="shrink-0" />
+                    <span>{error}</span>
+                  </div>
                 )}
-              </button>
+
+                {/* Submit Button */}
+                <button
+                  type="submit"
+                  disabled={isLoading}
+                  className="w-full flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3.5 rounded-xl hover:shadow-[0_0_20px_rgba(16,185,129,0.4)] active:scale-95 transition-all duration-150 disabled:opacity-50 disabled:pointer-events-none"
+                >
+                  {isLoading ? (
+                    <>
+                      <Loader2 size={18} className="animate-spin" />
+                      Đang đăng nhập...
+                    </>
+                  ) : (
+                    <>
+                      <Building2 size={18} />
+                      Đăng nhập Quản trị trường
+                    </>
+                  )}
+                </button>
+              </form>
 
               {/* Link to Register */}
               <div className="text-center pt-2 border-t border-slate-800/40">
@@ -293,13 +317,117 @@ export function LoginPage() {
                   Chưa có tài khoản?{' '}
                   <a
                     href="/register"
-                    className="text-blue-400 font-bold hover:underline hover:text-blue-300 transition-colors"
+                    className="text-emerald-400 font-bold hover:underline hover:text-emerald-300 transition-colors"
                   >
                     Đăng ký trường học
                   </a>
                 </p>
               </div>
-            </form>
+            </div>
+          ) : (
+            /* Master Admin Login (Email/Password) */
+            <div className="space-y-4">
+              <div className="p-4 bg-purple-950/30 border border-purple-500/30 rounded-xl">
+                <p className="text-sm text-purple-300">
+                  <strong>Quản trị hệ thống:</strong> Đăng nhập để quản lý toàn bộ hệ thống STEM, duyệt trường học và người dùng.
+                </p>
+              </div>
+
+              <form onSubmit={handleSubmit(handleAdminLogin)} className="space-y-4">
+                {/* Email Field */}
+                <div>
+                  <label className="block text-sm font-semibold text-slate-300 mb-2" htmlFor="master-admin-email">
+                    Email Quản trị hệ thống
+                  </label>
+                  <div className="relative">
+                    <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500">
+                      <Icon name="Mail" size={16} />
+                    </div>
+                    <input
+                      {...register('email')}
+                      className="w-full pl-12 pr-4 py-3 bg-slate-950 border border-slate-800 focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 rounded-xl transition-all text-white placeholder-slate-600 outline-none text-sm"
+                      id="master-admin-email"
+                      placeholder="superadmin@stemflow.com"
+                      type="email"
+                      disabled={isLoading}
+                    />
+                  </div>
+                  {errors.email && (
+                    <p className="text-xs text-red-400 mt-1 flex items-center gap-1">
+                      <AlertCircle size={12} className="shrink-0" /> {errors.email.message}
+                    </p>
+                  )}
+                </div>
+
+                {/* Password Field */}
+                <div>
+                  <div className="flex justify-between items-center mb-2">
+                    <label className="text-sm font-semibold text-slate-300" htmlFor="master-admin-password">
+                      Mật khẩu
+                    </label>
+                    <a
+                      href="/forgot-password"
+                      className="text-xs text-purple-400 font-medium hover:underline hover:text-purple-300 transition-colors"
+                    >
+                      Quên mật khẩu?
+                    </a>
+                  </div>
+                  <div className="relative">
+                    <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500">
+                      <Icon name="Lock" size={16} />
+                    </div>
+                    <input
+                      {...register('password')}
+                      className="w-full pl-12 pr-12 py-3 bg-slate-950 border border-slate-800 focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 rounded-xl transition-all text-white placeholder-slate-600 outline-none text-sm"
+                      id="master-admin-password"
+                      placeholder="••••••••"
+                      type={showPass ? 'text' : 'password'}
+                      disabled={isLoading}
+                    />
+                    <button
+                      type="button"
+                      className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 hover:text-purple-400 transition-colors"
+                      onClick={() => setShowPass(!showPass)}
+                      disabled={isLoading}
+                    >
+                      <Icon name={showPass ? 'EyeOff' : 'Eye'} />
+                    </button>
+                  </div>
+                  {errors.password && (
+                    <p className="text-xs text-red-400 mt-1 flex items-center gap-1">
+                      <AlertCircle size={12} className="shrink-0" /> {errors.password.message}
+                    </p>
+                  )}
+                </div>
+
+                {/* Error Message */}
+                {error && (
+                  <div className="flex items-center gap-2 p-3.5 rounded-xl bg-red-950/20 border border-red-500/30 text-red-400 text-sm">
+                    <AlertCircle size={14} className="shrink-0" />
+                    <span>{error}</span>
+                  </div>
+                )}
+
+                {/* Submit Button */}
+                <button
+                  type="submit"
+                  disabled={isLoading}
+                  className="w-full flex items-center justify-center gap-2 bg-purple-600 hover:bg-purple-500 text-white font-bold py-3.5 rounded-xl hover:shadow-[0_0_20px_rgba(147,51,234,0.4)] active:scale-95 transition-all duration-150 disabled:opacity-50 disabled:pointer-events-none"
+                >
+                  {isLoading ? (
+                    <>
+                      <Loader2 size={18} className="animate-spin" />
+                      Đang đăng nhập...
+                    </>
+                  ) : (
+                    <>
+                      <Crown size={18} />
+                      Đăng nhập Quản trị hệ thống
+                    </>
+                  )}
+                </button>
+              </form>
+            </div>
           )}
 
         </div>
@@ -335,28 +463,33 @@ export function LoginPage() {
             Viết code, nối mạch điện tử và chạy mô phỏng cảm biến trực tuyến y như thật ngay trên trình duyệt mà không lo cháy nổ hay hao tổn thiết bị.
           </p>
 
-          {/* Simulation diagram showcase */}
-          <div className="bg-slate-900/60 backdrop-blur-xl border border-slate-800/80 rounded-2xl p-6 shadow-2xl relative overflow-hidden">
-            <div className="absolute inset-0 bg-[radial-gradient(#1e293b_1px,transparent_1px)] [background-size:12px_12px] opacity-25"></div>
-            <div className="flex items-center gap-2 mb-4">
-              <div className="w-2.5 h-2.5 rounded-full bg-rose-500"></div>
-              <div className="w-2.5 h-2.5 rounded-full bg-amber-500"></div>
-              <div className="w-2.5 h-2.5 rounded-full bg-emerald-500"></div>
-              <span className="text-xs text-slate-500 font-mono ml-2">esp32_wlan_node.json</span>
-            </div>
-
-            <div className="border border-slate-800 bg-slate-950/40 rounded-xl p-4 flex items-center justify-between">
-              <div className="space-y-2">
-                <div className="h-2 w-20 bg-slate-800 rounded"></div>
-                <div className="h-2 w-32 bg-slate-800 rounded"></div>
-                <div className="h-2 w-16 bg-slate-800 rounded"></div>
+          {/* Role-based features */}
+          <div className="space-y-3">
+            <div className="flex items-center gap-3 p-3 rounded-lg bg-slate-900/60 border border-slate-800">
+              <div className="w-8 h-8 rounded-lg bg-blue-500/20 flex items-center justify-center">
+                <User size={16} className="text-blue-400" />
               </div>
-              <div className="relative flex items-center justify-center mr-4">
-                <div className="w-8 h-8 rounded bg-blue-500/10 border border-blue-500/30 flex items-center justify-center">
-                  <Icon name="Cpu" className="w-4 h-4 text-blue-500 animate-pulse" />
-                </div>
-                <div className="absolute -right-6 w-6 h-0.5 bg-rose-500/50"></div>
-                <div className="absolute -right-8 w-2 h-2 rounded-full bg-rose-500 animate-ping"></div>
+              <div>
+                <p className="text-sm font-medium">Học sinh & Giáo viên</p>
+                <p className="text-xs text-slate-500">Đăng nhập bằng Google</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-3 p-3 rounded-lg bg-slate-900/60 border border-emerald-500/30">
+              <div className="w-8 h-8 rounded-lg bg-emerald-500/20 flex items-center justify-center">
+                <Building2 size={16} className="text-emerald-400" />
+              </div>
+              <div>
+                <p className="text-sm font-medium">Quản trị trường học</p>
+                <p className="text-xs text-slate-500">Quản lý HS, GV, khóa học</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-3 p-3 rounded-lg bg-slate-900/60 border border-purple-500/30">
+              <div className="w-8 h-8 rounded-lg bg-purple-500/20 flex items-center justify-center">
+                <Crown size={16} className="text-purple-400" />
+              </div>
+              <div>
+                <p className="text-sm font-medium">Quản trị hệ thống</p>
+                <p className="text-xs text-slate-500">Toàn quyền quản lý</p>
               </div>
             </div>
           </div>

@@ -1,11 +1,13 @@
 import { api } from './api';
 
 export interface LoginResponse {
+  id: number;
   token: string;
   refreshToken: string;
   email: string;
   fullName: string;
   role: string;
+  schoolId?: number;
 }
 
 export interface GoogleLoginRequest {

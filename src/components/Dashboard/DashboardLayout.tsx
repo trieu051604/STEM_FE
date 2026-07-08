@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { Link, useLocation, Outlet } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { Link, useLocation, Outlet, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuthStore } from '@/stores/authStore';
 import { getSidebarItems } from './SidebarItems';
@@ -12,36 +12,67 @@ import {
   LogOut,
   User,
   ChevronDown,
+  ChevronLeft,
+  ChevronRight,
+  Bell,
+  Home,
+  PanelLeftClose,
+  PanelLeftOpen,
 } from 'lucide-react';
 
 export const DashboardLayout = () => {
   const location = useLocation();
+  const navigate = useNavigate();
   const { user, logout } = useAuthStore();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
-  const [isMobile, setIsMobile] = useState(false);
-
-  useEffect(() => {
-    const handleResize = () => {
-      setIsMobile(window.innerWidth < 1024);
-    };
-    handleResize();
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, []);
+  const [isDesktop, setIsDesktop] = useState(
+    typeof window !== 'undefined' && window.innerWidth >= 1024
+  );
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
+    try {
+      return localStorage.getItem('ui:sidebarCollapsed') === 'true';
+    } catch (e) {
+      return false;
+    }
+  });
 
   const sidebarItems = getSidebarItems(user?.role || 'student');
   const isMasterAdmin = user?.role === 'master_admin';
 
   const roleLabels: Record<string, string> = {
-    master_admin: 'Quản trị viên hệ thống',
-    school_admin: 'Quản trị trường',
+    master_admin: 'Quản trị hệ thống',
+    school_admin: 'Quản trị trường học',
     teacher: 'Giáo viên',
     student: 'Học sinh',
   };
 
+  // Get page title from path
+  const getPageTitle = () => {
+    const path = location.pathname;
+    const item = sidebarItems.find((item) => path.startsWith(item.path));
+    return item?.label || 'Dashboard';
+  };
+
+  useEffect(() => {
+    const media = window.matchMedia('(min-width: 1024px)');
+    const handleChange = (event: MediaQueryListEvent) => {
+      setIsDesktop(event.matches);
+    };
+
+    setIsDesktop(media.matches);
+    media.addEventListener('change', handleChange);
+
+    return () => {
+      media.removeEventListener('change', handleChange);
+    };
+  }, []);
+
+  const sidebarWidth = sidebarCollapsed ? '0px' : '280px';
+  const isSidebarVisible = isDesktop ? !sidebarCollapsed : sidebarOpen;
+
   return (
-    <div className={cn("min-h-screen transition-colors duration-200", isMasterAdmin ? "bg-slate-950 text-slate-100" : "bg-background")}>
+    <div className="min-h-screen bg-background text-foreground flex flex-col">
       {/* Mobile overlay */}
       <AnimatePresence>
         {sidebarOpen && (
@@ -56,21 +87,13 @@ export const DashboardLayout = () => {
       </AnimatePresence>
 
       {/* Sidebar */}
-      <motion.aside
-        initial={false}
-        animate={{
-          x: isMobile ? (sidebarOpen ? 0 : -280) : 0,
-        }}
-        transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+      <aside
         className={cn(
-          "fixed left-0 top-0 z-50 h-full w-[280px] flex flex-col lg:translate-x-0 transition-colors duration-200",
-          isMasterAdmin 
-            ? "bg-slate-900 border-r border-slate-800 text-slate-300" 
-            : "bg-card border-r border-border"
+          'fixed left-0 top-0 z-50 h-full bg-card border-r border-border flex flex-col transition-all duration-200',
+          isSidebarVisible ? 'w-[280px]' : 'w-0 overflow-hidden border-r-0'
         )}
       >
-        {/* Logo */}
-        <div className={cn("h-16 flex items-center justify-between px-4 border-b", isMasterAdmin ? "border-slate-800" : "border-border")}>
+        <div className="h-16 flex items-center justify-between px-4 border-b border-border shrink-0">
           <Link to="/dashboard" className="flex items-center gap-2">
             <div className={cn(
               "w-8 h-8 rounded-lg flex items-center justify-center font-bold text-sm",
@@ -78,13 +101,23 @@ export const DashboardLayout = () => {
             )}>
               <span>ST</span>
             </div>
-            <span className={cn("font-semibold text-lg", isMasterAdmin ? "text-white" : "text-foreground")}>STEM</span>
+            <span className="font-semibold text-lg text-foreground">STEM</span>
           </Link>
           <button
-            onClick={() => setSidebarOpen(false)}
-            className="lg:hidden p-2 hover:bg-accent rounded-md"
+            onClick={() => {
+              const next = !sidebarCollapsed;
+              setSidebarCollapsed(next);
+              try {
+                localStorage.setItem('ui:sidebarCollapsed', String(next));
+              } catch (e) {}
+            }}
+            className="hidden lg:flex p-2 hover:bg-accent rounded-md"
           >
-            <X className="w-5 h-5" />
+            {sidebarCollapsed ? (
+              <PanelLeftOpen className="w-5 h-5 text-foreground" />
+            ) : (
+              <PanelLeftClose className="w-5 h-5 text-foreground" />
+            )}
           </button>
         </div>
 
@@ -101,16 +134,12 @@ export const DashboardLayout = () => {
                     className={cn(
                       'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors',
                       isActive
-                        ? isMasterAdmin 
-                          ? 'bg-blue-600 text-white shadow-md' 
-                          : 'bg-primary text-primary-foreground'
-                        : isMasterAdmin
-                          ? 'text-slate-400 hover:bg-slate-800 hover:text-white'
-                          : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
+                        ? 'bg-primary text-primary-foreground'
+                        : 'text-foreground hover:bg-accent'
                     )}
                   >
-                    <Icon name={item.icon} className="w-5 h-5" />
-                    {item.label}
+                    <Icon name={item.icon} className="w-5 h-5 shrink-0" />
+                    <span className="truncate">{item.label}</span>
                   </Link>
                 </li>
               );
@@ -119,12 +148,9 @@ export const DashboardLayout = () => {
         </nav>
 
         {/* User section */}
-        <div className={cn("p-4 border-t", isMasterAdmin ? "border-slate-800" : "border-border")}>
+        <div className="p-4 border-t border-border shrink-0">
           <div className="flex items-center gap-3">
-            <div className={cn(
-              "w-10 h-10 rounded-full flex items-center justify-center shrink-0",
-              isMasterAdmin ? "bg-blue-500/10 text-blue-400" : "bg-primary/10 text-primary"
-            )}>
+            <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
               {user?.avatar ? (
                 <img
                   src={user.avatar}
@@ -136,32 +162,78 @@ export const DashboardLayout = () => {
               )}
             </div>
             <div className="flex-1 min-w-0">
-              <p className={cn("text-sm font-medium truncate", isMasterAdmin ? "text-white" : "text-foreground")}>{user?.fullName}</p>
+              <p className="text-sm font-medium truncate text-foreground">{user?.fullName}</p>
               <p className="text-xs text-muted-foreground truncate">
                 {roleLabels[user?.role || 'student']}
               </p>
             </div>
           </div>
         </div>
-      </motion.aside>
+      </aside>
 
-      {/* Main content */}
-      <div className="lg:pl-[280px]">
+      {/* Main content wrapper */}
+      <div
+        className="flex flex-col flex-1 transition-all duration-200"
+        style={{ marginLeft: isDesktop && !sidebarCollapsed ? sidebarWidth : '0px' }}
+      >
         {/* Header */}
-        <header className={cn(
-          "h-16 sticky top-0 z-30 backdrop-blur border-b flex items-center justify-between px-4 lg:px-6 transition-colors duration-200",
-          isMasterAdmin 
-            ? "bg-slate-950/95 border-slate-800 text-white" 
-            : "bg-background/95 border-border"
-        )}>
-          <button
-            onClick={() => setSidebarOpen(true)}
-            className="lg:hidden p-2 hover:bg-accent rounded-md"
-          >
-            <Menu className="w-5 h-5" />
-          </button>
+        <header className="h-16 sticky top-0 z-30 bg-card/95 backdrop-blur border-b border-border flex items-center justify-between px-4 lg:px-6">
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => setSidebarOpen(true)}
+              className="lg:hidden p-2 hover:bg-accent rounded-md"
+            >
+              <Menu className="w-5 h-5 text-foreground" />
+            </button>
 
-          <div className="flex items-center gap-4 ml-auto">
+            {/* Breadcrumb / Back button */}
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => navigate(-1)}
+                className="p-1.5 hover:bg-accent rounded-md transition-colors"
+              >
+                <ChevronLeft className="w-4 h-4 text-foreground" />
+              </button>
+
+              <Link
+                to="/dashboard"
+                className="p-1.5 hover:bg-accent rounded-md transition-colors"
+              >
+                <Home className="w-4 h-4 text-foreground" />
+              </Link>
+
+              <span className="text-foreground/50">/</span>
+              <span className="text-sm font-medium text-foreground">
+                {getPageTitle()}
+              </span>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2">
+            {/* Notifications */}
+            <button className="relative p-2 hover:bg-accent rounded-md transition-colors">
+              <Bell className="w-5 h-5 text-foreground" />
+              <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full" />
+            </button>
+
+            {/* Sidebar toggle (desktop) */}
+            <button
+              onClick={() => {
+                const next = !sidebarCollapsed;
+                setSidebarCollapsed(next);
+                try {
+                  localStorage.setItem('ui:sidebarCollapsed', String(next));
+                } catch (e) {}
+              }}
+              className="hidden lg:flex p-2 hover:bg-accent rounded-md transition-colors"
+            >
+              {sidebarCollapsed ? (
+                <PanelLeftOpen className="w-5 h-5 text-foreground" />
+              ) : (
+                <PanelLeftClose className="w-5 h-5 text-foreground" />
+              )}
+            </button>
+
             <ThemeToggle />
 
             {/* User dropdown */}
@@ -191,10 +263,10 @@ export const DashboardLayout = () => {
                     </div>
                   )}
                 </div>
-                <span className="hidden sm:block text-sm font-medium">
+                <span className="hidden sm:block text-sm font-medium text-foreground">
                   {user?.fullName}
                 </span>
-                <ChevronDown className="w-4 h-4 text-muted-foreground" />
+                <ChevronDown className="w-4 h-4 text-foreground" />
               </button>
 
               <AnimatePresence>
@@ -210,17 +282,14 @@ export const DashboardLayout = () => {
                         : "bg-card border-border"
                     )}
                   >
-                    <div className={cn("px-4 py-2 border-b", isMasterAdmin ? "border-slate-800" : "border-border")}>
-                      <p className={cn("text-sm font-medium", isMasterAdmin ? "text-white" : "text-foreground")}>{user?.fullName}</p>
-                      <p className="text-xs text-muted-foreground truncate">{user?.email}</p>
+                    <div className="px-4 py-2 border-b border-border">
+                      <p className="text-sm font-medium text-foreground">{user?.fullName}</p>
+                      <p className="text-xs text-muted-foreground">{user?.email}</p>
                     </div>
                     <Link
                       to="/dashboard/profile"
                       onClick={() => setUserMenuOpen(false)}
-                      className={cn(
-                        "flex items-center gap-2 px-4 py-2 text-sm transition-colors",
-                        isMasterAdmin ? "hover:bg-slate-800 text-slate-300 hover:text-white" : "hover:bg-accent"
-                      )}
+                      className="flex items-center gap-2 px-4 py-2 text-sm text-foreground hover:bg-accent transition-colors"
                     >
                       <User className="w-4 h-4" />
                       Hồ sơ cá nhân
@@ -246,9 +315,34 @@ export const DashboardLayout = () => {
         </header>
 
         {/* Page content */}
-        <main className={cn("p-4 lg:p-6", isMasterAdmin ? "bg-slate-950" : "bg-background")}>
+        <main className="flex-1 p-4 lg:p-6 bg-background">
           <Outlet />
         </main>
+
+        {/* Footer */}
+        <footer className="bg-card border-t border-border px-4 lg:px-6 py-4">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <div className="w-6 h-6 rounded bg-primary flex items-center justify-center">
+                <span className="text-primary-foreground font-bold text-xs">ST</span>
+              </div>
+              <span className="text-sm text-foreground">
+                © 2026 StemFlow. Nền tảng STEM thực hành.
+              </span>
+            </div>
+            <div className="flex items-center gap-4 text-sm text-foreground">
+              <Link to="/help" className="hover:text-foreground/70 transition-colors">
+                Trợ giúp
+              </Link>
+              <Link to="/terms" className="hover:text-foreground/70 transition-colors">
+                Điều khoản
+              </Link>
+              <Link to="/privacy" className="hover:text-foreground/70 transition-colors">
+                Bảo mật
+              </Link>
+            </div>
+          </div>
+        </footer>
       </div>
     </div>
   );

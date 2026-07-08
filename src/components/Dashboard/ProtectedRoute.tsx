@@ -2,7 +2,7 @@ import { Navigate } from 'react-router-dom';
 import { useAuthStore } from '@/stores/authStore';
 import { DashboardLayout } from '@/components/Dashboard/DashboardLayout';
 import { DashboardPage } from '@/pages/dashboard/DashboardPage';
-import { SchoolsPage } from '@/pages/dashboard/master-admin/SchoolsPage';
+import { StudentsPage, CoursesPage, ClassesPage, TeachersPage, LoginHistoryPage } from '@/pages/dashboard/school-admin';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -33,15 +33,43 @@ export const dashboardRoutes = [
     ),
     children: [
       { index: true, element: <DashboardPage /> },
-      // Schools
-      { path: 'schools', element: <SchoolsPage defaultTab="list" /> },
-      // Requests
-      { path: 'requests', element: <SchoolsPage defaultTab="requests" /> },
-      // Courses
-      { path: 'courses', element: <div>Courses Page</div> },
-      // Classes
-      { path: 'classes', element: <div>Classes Page</div> },
+      // Schools (Master Admin only)
+      { 
+        path: 'schools', 
+        element: <div>Schools Page</div>,
+      },
+      // Requests (Master Admin only)
+      { 
+        path: 'requests', 
+        element: <div>Requests Page</div>,
+      },
+      // Students (School Admin)
+      { 
+        path: 'students', 
+        element: <StudentsPage />,
+      },
+      // Courses (School Admin)
+      { 
+        path: 'courses', 
+        element: <CoursesPage />,
+      },
+      // Classes (School Admin)
+      { 
+        path: 'classes', 
+        element: <ClassesPage />,
+      },
+      // Teachers (School Admin)
+      { 
+        path: 'teachers', 
+        element: <TeachersPage />,
+      },
+      // My Classes (Teacher/Student)
       { path: 'my-classes', element: <div>My Classes Page</div> },
+      // Login History (School Admin)
+      { 
+        path: 'login-history', 
+        element: <LoginHistoryPage />,
+      },
       // Assignments
       { path: 'assignments', element: <div>Assignments Page</div> },
       // Simulations

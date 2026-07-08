@@ -13,9 +13,11 @@ const roleSidebarItems: Record<UserRole, SidebarItem[]> = {
   ],
   school_admin: [
     { label: 'Tổng quan', path: '/dashboard', icon: 'LayoutDashboard' },
-    { label: 'Quản lý người dùng', path: '/dashboard/users', icon: 'Users' },
+    { label: 'Quản lý học sinh', path: '/dashboard/students', icon: 'GraduationCap' },
+    { label: 'Quản lý giáo viên', path: '/dashboard/teachers', icon: 'UserCheck' },
     { label: 'Khóa học', path: '/dashboard/courses', icon: 'BookOpen' },
-    { label: 'Lớp học', path: '/dashboard/classes', icon: 'GraduationCap' },
+    { label: 'Lớp học', path: '/dashboard/classes', icon: 'School' },
+    { label: 'Lịch sử đăng nhập', path: '/dashboard/login-history', icon: 'History' },
     { label: 'Thông báo', path: '/dashboard/notifications', icon: 'Bell' },
   ],
   teacher: [

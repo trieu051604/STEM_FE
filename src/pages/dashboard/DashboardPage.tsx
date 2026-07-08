@@ -18,6 +18,7 @@ import {
   ArrowRight,
   RefreshCw,
 } from 'lucide-react';
+import { MasterAdminDashboard } from '@/pages/dashboard/master-admin';
 
 const activityIcons: Record<string, string> = {
   user_register: 'UserPlus',
@@ -71,6 +72,10 @@ export const DashboardPage = () => {
         return <StudentStats stats={stats} />;
     }
   };
+
+  if (user?.role === 'master_admin') {
+    return <MasterAdminDashboard />;
+  }
 
   const getQuickActions = () => {
     switch (user?.role) {

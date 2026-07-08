@@ -22,7 +22,7 @@ export const Switch = React.forwardRef<HTMLButtonElement, SwitchProps>(
           transition-colors duration-200 ease-in-out
           focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2
           disabled:cursor-not-allowed disabled:opacity-50
-          ${checked ? 'bg-primary' : 'bg-muted'}
+          ${checked ? 'bg-brand-600' : 'bg-muted'}
           ${className}
         `}
       >

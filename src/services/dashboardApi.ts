@@ -59,7 +59,7 @@ export interface School {
   address: string;
   representativeName?: string;
   representativeEmail?: string;
-  status: 'Pending' | 'Approved' | 'Rejected';
+  status: 'Pending' | 'Approved' | 'Rejected' | 1 | 2;
   createdAt: string;
   representativePosition?: string;
   studentScale?: string;

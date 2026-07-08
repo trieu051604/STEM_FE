@@ -2,7 +2,14 @@ import { Navigate } from 'react-router-dom';
 import { useAuthStore } from '@/stores/authStore';
 import { DashboardLayout } from '@/components/Dashboard/DashboardLayout';
 import { DashboardPage } from '@/pages/dashboard/DashboardPage';
-import { StudentsPage, CoursesPage, ClassesPage, TeachersPage, LoginHistoryPage } from '@/pages/dashboard/school-admin';
+import {
+  StudentsPage,
+  CoursesPage,
+  ClassesPage,
+  TeachersPage,
+  LoginHistoryPage,
+} from '@/pages/dashboard/school-admin';
+import { SchoolsPage, UsersPage } from '@/pages/dashboard/master-admin';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -36,12 +43,12 @@ export const dashboardRoutes = [
       // Schools (Master Admin only)
       { 
         path: 'schools', 
-        element: <div>Schools Page</div>,
+        element: <SchoolsPage />,
       },
       // Requests (Master Admin only)
       { 
         path: 'requests', 
-        element: <div>Requests Page</div>,
+        element: <SchoolsPage defaultTab="requests" />,
       },
       // Students (School Admin)
       { 
@@ -78,6 +85,8 @@ export const dashboardRoutes = [
       { path: 'notifications', element: <div>Notifications Page</div> },
       // Profile
       { path: 'profile', element: <div>Profile Page</div> },
+      // Users (Master Admin only)
+      { path: 'users', element: <UsersPage /> },
     ],
   },
 ];

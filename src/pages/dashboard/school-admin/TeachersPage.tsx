@@ -246,8 +246,8 @@ export const TeachersPage = () => {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold">Quản lý giáo viên</h1>
-          <p className="text-muted-foreground">
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Quản lý giáo viên</h1>
+          <p className="text-gray-500 dark:text-gray-400">
             Quản lý tài khoản và thông tin giáo viên trong trường
           </p>
         </div>
@@ -299,8 +299,8 @@ export const TeachersPage = () => {
           </div>
           <div className="bg-card rounded-xl border border-border p-4">
             <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-lg bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
-                <BookOpen className="w-6 h-6 text-blue-600 dark:text-blue-400" />
+              <div className="w-12 h-12 rounded-lg bg-brand-100 dark:bg-brand-900/30 flex items-center justify-center">
+                <BookOpen className="w-6 h-6 text-brand-600 dark:text-brand-400" />
               </div>
               <div>
                 <p className="text-2xl font-bold">—</p>
@@ -462,9 +462,9 @@ export const TeachersPage = () => {
                 <p className="text-sm text-muted-foreground">Email xác thực</p>
                 <p className="font-medium">
                   {selectedTeacher.isEmailVerified ? (
-                    <span className="text-green-600">Đã xác thực</span>
+                    <span className="text-success">Đã xác thực</span>
                   ) : (
-                    <span className="text-orange-600">Chưa xác thực</span>
+                    <span className="text-destructive">Chưa xác thực</span>
                   )}
                 </p>
               </div>

@@ -9,12 +9,12 @@ const buttonVariants = cva(
   {
     variants: {
       variant: {
-        default: "gradient-brand text-white hover:opacity-95 shadow-soft",
-        primary: "gradient-brand text-white hover:opacity-95 shadow-soft",
+        default: "bg-gradient-to-r from-brand-600 via-brand-500 to-accent-500 text-white hover:opacity-90 shadow-soft",
+        primary: "bg-gradient-to-r from-brand-600 via-brand-500 to-accent-500 text-white hover:opacity-90 shadow-soft",
         outline:
           "border-border bg-background hover:bg-muted hover:text-foreground aria-expanded:bg-muted aria-expanded:text-foreground dark:border-input dark:bg-input/30 dark:hover:bg-input/50",
         secondary:
-          "bg-slate-700 hover:bg-slate-600 text-slate-200 border border-slate-600",
+          "bg-brand-700 hover:bg-brand-600 text-brand-200 border border-brand-600",
         ghost:
           "hover:bg-white/5 text-slate-400 hover:text-white",
         destructive:

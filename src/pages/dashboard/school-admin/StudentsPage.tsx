@@ -164,7 +164,7 @@ export const StudentsPage = () => {
       header: 'Điểm TB',
       render: (student) => (
         <span className="flex items-center gap-1.5 text-sm">
-          <CheckCircle className="w-3.5 h-3.5 text-green-500" />
+          <CheckCircle className="w-3.5 h-3.5 text-success" />
           {student.averageScore?.toFixed(1) || '—'}
         </span>
       ),
@@ -319,8 +319,8 @@ export const StudentsPage = () => {
           </div>
           <div className="bg-card rounded-xl border border-border p-4">
             <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-lg bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
-                <BookOpen className="w-6 h-6 text-blue-600 dark:text-blue-400" />
+              <div className="w-12 h-12 rounded-lg bg-brand-100 dark:bg-brand-900/30 flex items-center justify-center">
+                <BookOpen className="w-6 h-6 text-brand-600 dark:text-brand-400" />
               </div>
               <div>
                 <p className="text-2xl font-bold">
@@ -332,8 +332,8 @@ export const StudentsPage = () => {
           </div>
           <div className="bg-card rounded-xl border border-border p-4">
             <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-lg bg-yellow-100 dark:bg-yellow-900/30 flex items-center justify-center">
-                <Award className="w-6 h-6 text-yellow-600 dark:text-yellow-400" />
+              <div className="w-12 h-12 rounded-lg bg-accent-100 dark:bg-accent-900/30 flex items-center justify-center">
+                <Award className="w-6 h-6 text-accent-600 dark:text-accent-400" />
               </div>
               <div>
                 <p className="text-2xl font-bold">
@@ -538,9 +538,9 @@ export const StudentsPage = () => {
                   <p className="text-sm text-muted-foreground">Email xác thực</p>
                   <p className="font-medium">
                     {selectedStudent.isEmailVerified ? (
-                      <span className="text-green-600">Đã xác thực</span>
+                      <span className="text-success">Đã xác thực</span>
                     ) : (
-                      <span className="text-orange-600">Chưa xác thực</span>
+                      <span className="text-destructive">Chưa xác thực</span>
                     )}
                   </p>
                 </div>
@@ -597,17 +597,17 @@ export const StudentsPage = () => {
             {/* Stats Grid */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
               <div className="bg-card rounded-xl border border-border p-4 text-center">
-                <BookOpen className="w-6 h-6 text-blue-500 mx-auto mb-2" />
+                <BookOpen className="w-6 h-6 text-brand-500 mx-auto mb-2" />
                 <p className="text-2xl font-bold">{progressData.totalEnrolledClasses}</p>
                 <p className="text-sm text-muted-foreground">Lớp đã tham gia</p>
               </div>
               <div className="bg-card rounded-xl border border-border p-4 text-center">
-                <CheckCircle className="w-6 h-6 text-green-500 mx-auto mb-2" />
+                <CheckCircle className="w-6 h-6 text-success mx-auto mb-2" />
                 <p className="text-2xl font-bold">{progressData.completedClasses}</p>
                 <p className="text-sm text-muted-foreground">Lớp hoàn thành</p>
               </div>
               <div className="bg-card rounded-xl border border-border p-4 text-center">
-                <Award className="w-6 h-6 text-yellow-500 mx-auto mb-2" />
+                <Award className="w-6 h-6 text-accent-500 mx-auto mb-2" />
                 <p className="text-2xl font-bold">{progressData.completedAssignments}/{progressData.totalAssignments}</p>
                 <p className="text-sm text-muted-foreground">Bài tập</p>
               </div>
@@ -625,11 +625,11 @@ export const StudentsPage = () => {
               <h3 className="font-semibold mb-3">Tiến độ học tập</h3>
               <div className="grid grid-cols-3 gap-4">
                 <div className="text-center p-4 bg-card rounded-xl border border-border">
-                  <p className="text-2xl font-bold text-blue-500">{progressData.inProgressClasses}</p>
+                  <p className="text-2xl font-bold text-brand-500">{progressData.inProgressClasses}</p>
                   <p className="text-sm text-muted-foreground">Đang học</p>
                 </div>
                 <div className="text-center p-4 bg-card rounded-xl border border-border">
-                  <p className="text-2xl font-bold text-green-500">{progressData.certificatesEarned}</p>
+                  <p className="text-2xl font-bold text-success">{progressData.certificatesEarned}</p>
                   <p className="text-sm text-muted-foreground">Chứng chỉ</p>
                 </div>
                 <div className="text-center p-4 bg-card rounded-xl border border-border">

@@ -243,8 +243,8 @@ export const CoursesPage = () => {
           </div>
           <div className="bg-card rounded-xl border border-border p-4">
             <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-lg bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
-                <Users className="w-6 h-6 text-blue-600 dark:text-blue-400" />
+              <div className="w-12 h-12 rounded-lg bg-brand-100 dark:bg-brand-900/30 flex items-center justify-center">
+                <Users className="w-6 h-6 text-brand-600 dark:text-brand-400" />
               </div>
               <div>
                 <p className="text-2xl font-bold">—</p>

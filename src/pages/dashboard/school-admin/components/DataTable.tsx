@@ -199,7 +199,7 @@ export function ConfirmDialog({
 }: ConfirmDialogProps) {
   const variantStyles = {
     danger: 'bg-destructive text-white hover:bg-destructive/90',
-    warning: 'bg-yellow-600 text-white hover:bg-yellow-700',
+    warning: 'bg-accent text-white hover:bg-accent/90',
     default: 'bg-primary text-white hover:opacity-90',
   };
 
@@ -212,10 +212,10 @@ export function ConfirmDialog({
     >
       <div className="text-center">
         <div className={`w-12 h-12 rounded-full mx-auto mb-4 flex items-center justify-center ${
-          variant === 'danger' ? 'bg-destructive/10' : 'bg-yellow-100'
+          variant === 'danger' ? 'bg-destructive/10' : 'bg-accent/10'
         }`}>
           <AlertTriangle className={`w-6 h-6 ${
-            variant === 'danger' ? 'text-destructive' : 'text-yellow-600'
+            variant === 'danger' ? 'text-destructive' : 'text-accent'
           }`} />
         </div>
         <h3 className="text-lg font-semibold mb-2">{title}</h3>
@@ -363,11 +363,11 @@ interface StatusBadgeProps {
 
 export function StatusBadge({ status, variant = 'default' }: StatusBadgeProps) {
   const variantStyles = {
-    success: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400',
-    warning: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400',
-    danger: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400',
-    info: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400',
-    default: 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-400',
+    success: 'bg-success/10 text-success dark:bg-success/20',
+    warning: 'bg-accent/10 text-accent dark:bg-accent/20',
+    danger: 'bg-destructive/10 text-destructive dark:bg-destructive/20',
+    info: 'bg-brand-100 text-brand-700 dark:bg-brand-900/30 dark:text-brand-400',
+    default: 'bg-muted text-muted-foreground dark:bg-muted/50',
   };
 
   const getVariant = (s: string): typeof variantStyles[keyof typeof variantStyles] => {

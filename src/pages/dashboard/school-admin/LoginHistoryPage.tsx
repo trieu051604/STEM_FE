@@ -229,8 +229,8 @@ export const LoginHistoryPage = () => {
               </div>
               <div className="bg-card rounded-xl border border-border p-4">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-lg bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
-                    <Calendar className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                  <div className="w-10 h-10 rounded-lg bg-brand-100 dark:bg-brand-900/30 flex items-center justify-center">
+                    <Calendar className="w-5 h-5 text-brand-600 dark:text-brand-400" />
                   </div>
                   <div>
                     <p className="text-2xl font-bold">{historyData.total}</p>
@@ -253,12 +253,12 @@ export const LoginHistoryPage = () => {
                     <div className={`w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0 ${
                       history.loginStatus === 'Success' 
                         ? 'bg-green-100 dark:bg-green-900/30' 
-                        : 'bg-red-100 dark:bg-red-900/30'
+                        : 'bg-destructive/10'
                     }`}>
                       {history.loginStatus === 'Success' ? (
                         <LogIn className={`w-6 h-6 text-green-600 dark:text-green-400`} />
                       ) : (
-                        <AlertCircle className={`w-6 h-6 text-red-600 dark:text-red-400`} />
+                        <AlertCircle className={`w-6 h-6 text-destructive`} />
                       )}
                     </div>
                     <div className="space-y-1">

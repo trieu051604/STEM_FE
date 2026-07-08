@@ -97,7 +97,7 @@ export const DashboardLayout = () => {
           <Link to="/dashboard" className="flex items-center gap-2">
             <div className={cn(
               "w-8 h-8 rounded-lg flex items-center justify-center font-bold text-sm",
-              isMasterAdmin ? "bg-blue-600 text-white" : "bg-primary text-primary-foreground"
+              isMasterAdmin ? "bg-brand text-brand-foreground" : "bg-primary text-primary-foreground"
             )}>
               <span>ST</span>
             </div>
@@ -243,13 +243,13 @@ export const DashboardLayout = () => {
                 className={cn(
                   "flex items-center gap-2 p-2 rounded-lg transition-colors",
                   isMasterAdmin 
-                    ? "hover:bg-slate-900 text-slate-350 hover:text-white" 
+                    ? "hover:bg-primary/10" 
                     : "hover:bg-accent"
                 )}
               >
                 <div className={cn(
                   "w-8 h-8 rounded-full overflow-hidden shrink-0",
-                  isMasterAdmin ? "bg-blue-500/10 text-blue-400" : "bg-primary/10 text-primary"
+                  isMasterAdmin ? "bg-primary/10 text-primary" : "bg-primary/10 text-primary"
                 )}>
                   {user?.avatar ? (
                     <img
@@ -278,18 +278,18 @@ export const DashboardLayout = () => {
                     className={cn(
                       "absolute right-0 mt-2 w-56 rounded-lg shadow-lg border py-1 transition-colors duration-200",
                       isMasterAdmin 
-                        ? "bg-slate-900 border-slate-800 text-slate-200" 
+                        ? "bg-card border-border" 
                         : "bg-card border-border"
                     )}
                   >
-                    <div className="px-4 py-2 border-b border-border">
+                    <div className="px-4 py-3 border-b border-border">
                       <p className="text-sm font-medium text-foreground">{user?.fullName}</p>
-                      <p className="text-xs text-muted-foreground">{user?.email}</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">{user?.email}</p>
                     </div>
                     <Link
                       to="/dashboard/profile"
                       onClick={() => setUserMenuOpen(false)}
-                      className="flex items-center gap-2 px-4 py-2 text-sm text-foreground hover:bg-accent transition-colors"
+                      className="flex items-center gap-2 px-4 py-2.5 text-sm text-foreground hover:bg-accent transition-colors"
                     >
                       <User className="w-4 h-4" />
                       Hồ sơ cá nhân
@@ -300,8 +300,7 @@ export const DashboardLayout = () => {
                         window.location.href = '/login';
                       }}
                       className={cn(
-                        "w-full flex items-center gap-2 px-4 py-2 text-sm text-destructive transition-colors",
-                        isMasterAdmin ? "hover:bg-slate-800" : "hover:bg-accent"
+                        "w-full flex items-center gap-2 px-4 py-2.5 text-sm text-destructive hover:bg-destructive/10 transition-colors"
                       )}
                     >
                       <LogOut className="w-4 h-4" />

@@ -9,6 +9,7 @@ import {
 import { Icon } from '@/components/ui/Icon';
 import { Button } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
+import { TeacherDashboard } from './TeacherDashboard';
 import { formatDistanceToNow } from 'date-fns';
 import { vi } from 'date-fns/locale';
 import {
@@ -178,6 +179,10 @@ export const DashboardPage = () => {
         </div>
       </div>
     );
+  }
+
+  if (user?.role === 'teacher') {
+    return <TeacherDashboard />;
   }
 
   return (

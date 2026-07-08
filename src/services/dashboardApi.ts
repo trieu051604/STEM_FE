@@ -1,4 +1,4 @@
-import { api } from './api';
+import { api, API_BASE_URL } from './api';
 
 export interface DashboardStats {
   // Master Admin
@@ -85,11 +85,25 @@ export interface UserProfile {
   id: number;
   email: string;
   fullName: string;
+  phone?: string;
   avatar?: string;
   role: string;
+  gender?: string;
+  dateOfBirth?: string;
+  address?: string;
   schoolId?: number;
   isActive: boolean;
+  isEmailVerified?: boolean;
   createdAt: string;
+  updatedAt?: string;
+}
+
+export interface UpdateProfileRequest {
+  fullName?: string;
+  phone?: string;
+  gender?: string;
+  dateOfBirth?: string;
+  address?: string;
 }
 
 export interface UsersListResponse {
@@ -99,22 +113,68 @@ export interface UsersListResponse {
   pageSize: number;
 }
 
+function unwrapApiData<T>(payload: unknown): T {
+  if (
+    payload &&
+    typeof payload === 'object' &&
+    'data' in payload &&
+    (payload as { data?: unknown }).data !== undefined
+  ) {
+    return (payload as { data: T }).data;
+  }
+
+  return payload as T;
+}
+
+function resolveFileUrl(value?: string | null) {
+  if (!value) return undefined;
+
+  if (/^(https?:|data:|blob:)/i.test(value)) {
+    return value;
+  }
+
+  const assetBaseUrl = API_BASE_URL.replace(/\/api\/?$/i, '/');
+  return new URL(value, assetBaseUrl).toString();
+}
+
+function normalizeUserProfile<T extends Partial<UserProfile> | undefined>(profile: T): T {
+  if (!profile) return profile;
+
+  return {
+    ...profile,
+    avatar: resolveFileUrl(profile.avatar),
+  } as T;
+}
+
 export const usersApi = {
   getProfile: async (): Promise<UserProfile> => {
-    const response = await api.get('/users/profile');
-    return response.data.data;
+    const response = await api.get('/Users/profile');
+    return normalizeUserProfile(unwrapApiData<UserProfile>(response.data));
   },
-  updateProfile: async (data: Partial<UserProfile>): Promise<UserProfile> => {
-    const response = await api.put('/users/profile', data);
-    return response.data.data;
+  updateProfile: async (data: UpdateProfileRequest): Promise<UserProfile> => {
+    const response = await api.put('/Users/profile', data);
+    return normalizeUserProfile(unwrapApiData<UserProfile>(response.data));
   },
   uploadAvatar: async (file: File): Promise<string> => {
     const formData = new FormData();
     formData.append('file', file);
-    const response = await api.post('/users/avatar', formData, {
+    const response = await api.post('/Users/avatar', formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
     });
-    return response.data.data.avatarUrl;
+    const data = unwrapApiData<
+      | string
+      | {
+          avatarUrl?: string;
+          avatar?: string;
+          url?: string;
+        }
+      | undefined
+    >(response.data);
+
+    const avatarUrl =
+      typeof data === 'string' ? data : data?.avatarUrl ?? data?.avatar ?? data?.url;
+
+    return resolveFileUrl(avatarUrl) ?? '';
   },
   getList: async (params?: {
     page?: number;
@@ -122,12 +182,19 @@ export const usersApi = {
     search?: string;
     role?: string;
   }): Promise<UsersListResponse> => {
-    const response = await api.get('/users', { params });
-    return response.data.data;
+    const response = await api.get('/Users', {
+      params: {
+        PageNumber: params?.page,
+        PageSize: params?.pageSize,
+        SearchTerm: params?.search,
+        RoleId: params?.role,
+      },
+    });
+    return unwrapApiData<UsersListResponse>(response.data);
   },
   getById: async (id: number): Promise<UserProfile> => {
-    const response = await api.get(`/users/${id}`);
-    return response.data.data;
+    const response = await api.get(`/Users/${id}`);
+    return normalizeUserProfile(unwrapApiData<UserProfile>(response.data));
   },
 };
 
@@ -178,6 +245,7 @@ export const coursesApi = {
 export interface ClassEntity {
   id: number;
   name: string;
+  classCode?: string;
   description?: string;
   courseId: number;
   courseName?: string;
@@ -195,6 +263,65 @@ export interface ClassesListResponse {
   pageSize: number;
 }
 
+export interface MyClassesResponse {
+  items: ClassEntity[];
+  total: number;
+}
+
+export interface MyClassesParams {
+  searchTerm?: string;
+  courseId?: number;
+}
+
+function normalizeClassesResponse(payload: unknown): MyClassesResponse {
+  const data = unwrapApiData<unknown>(payload);
+
+  if (Array.isArray(data)) {
+    return {
+      items: data as ClassEntity[],
+      total: data.length,
+    };
+  }
+
+  if (data && typeof data === 'object') {
+    const response = data as {
+      items?: ClassEntity[];
+      Items?: ClassEntity[];
+      data?: ClassEntity[];
+      Data?: ClassEntity[];
+      classes?: ClassEntity[];
+      Classes?: ClassEntity[];
+      total?: number;
+      Total?: number;
+      totalCount?: number;
+      TotalCount?: number;
+    };
+    const items =
+      response.items ??
+      response.Items ??
+      response.data ??
+      response.Data ??
+      response.classes ??
+      response.Classes ??
+      [];
+
+    return {
+      items,
+      total:
+        response.total ??
+        response.Total ??
+        response.totalCount ??
+        response.TotalCount ??
+        items.length,
+    };
+  }
+
+  return {
+    items: [],
+    total: 0,
+  };
+}
+
 export const classesApi = {
   getAll: async (params?: {
     page?: number;
@@ -209,6 +336,33 @@ export const classesApi = {
     const response = await api.get(`/classes/${id}`);
     return response.data.data;
   },
+  getMyClasses: async (
+    userId: number,
+    params?: MyClassesParams
+  ): Promise<MyClassesResponse> => {
+    const numericUserId = Number(userId);
+
+    if (!Number.isFinite(numericUserId) || numericUserId <= 0) {
+      throw new Error('Missing user id for my classes request');
+    }
+
+    const queryParams: Record<string, string | number> = {};
+
+    if (params?.searchTerm) {
+      queryParams.SearchTerm = params.searchTerm;
+    }
+
+    if (params?.courseId) {
+      queryParams.CourseId = params.courseId;
+    }
+
+    const response = await api.get(
+      `/Classes/my-classes/${numericUserId}`,
+      Object.keys(queryParams).length ? { params: queryParams } : undefined
+    );
+
+    return normalizeClassesResponse(response.data);
+  },
   create: async (data: Partial<ClassEntity>): Promise<number> => {
     const response = await api.post('/classes', data);
     return response.data.data.id;
@@ -218,6 +372,166 @@ export const classesApi = {
   },
   delete: async (id: number): Promise<void> => {
     await api.delete(`/classes/${id}`);
+  },
+};
+
+// Assignments API
+export interface AssignmentEntity {
+  id: number;
+  classId: number;
+  classCode: string;
+  courseId: number;
+  courseTitle: string;
+  teacherId: number;
+  teacherName: string;
+  schoolId: number;
+  schoolName: string;
+  title: string;
+  submissionCount: number;
+  metricCount: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AssignmentsListResponse {
+  items: AssignmentEntity[];
+  total: number;
+  pageNumber: number;
+  pageSize: number;
+  totalPages: number;
+}
+
+export interface AssignmentsListParams {
+  searchTerm?: string;
+  classId?: number;
+  courseId?: number;
+  studentId?: number;
+  pageNumber?: number;
+  pageSize?: number;
+}
+
+export interface CreateAssignmentRequest {
+  classId: number;
+  title: string;
+}
+
+export type UpdateAssignmentRequest = CreateAssignmentRequest;
+
+function normalizeAssignmentResponse(payload: unknown): AssignmentEntity {
+  return unwrapApiData<AssignmentEntity>(payload);
+}
+
+function normalizeAssignmentsResponse(payload: unknown): AssignmentsListResponse {
+  const data = unwrapApiData<unknown>(payload);
+
+  if (Array.isArray(data)) {
+    return {
+      items: data as AssignmentEntity[],
+      total: data.length,
+      pageNumber: 1,
+      pageSize: data.length,
+      totalPages: data.length ? 1 : 0,
+    };
+  }
+
+  if (data && typeof data === 'object') {
+    const response = data as {
+      items?: AssignmentEntity[];
+      Items?: AssignmentEntity[];
+      total?: number;
+      Total?: number;
+      totalCount?: number;
+      TotalCount?: number;
+      pageNumber?: number;
+      PageNumber?: number;
+      pageSize?: number;
+      PageSize?: number;
+      totalPages?: number;
+      TotalPages?: number;
+    };
+    const items = response.items ?? response.Items ?? [];
+
+    return {
+      items,
+      total:
+        response.total ??
+        response.Total ??
+        response.totalCount ??
+        response.TotalCount ??
+        items.length,
+      pageNumber: response.pageNumber ?? response.PageNumber ?? 1,
+      pageSize: response.pageSize ?? response.PageSize ?? items.length,
+      totalPages: response.totalPages ?? response.TotalPages ?? 0,
+    };
+  }
+
+  return {
+    items: [],
+    total: 0,
+    pageNumber: 1,
+    pageSize: 0,
+    totalPages: 0,
+  };
+}
+
+function buildAssignmentsParams(params?: AssignmentsListParams) {
+  if (!params) return undefined;
+
+  const queryParams: Record<string, string | number> = {};
+
+  if (params.searchTerm?.trim()) {
+    queryParams.SearchTerm = params.searchTerm.trim();
+  }
+
+  if (params.classId) {
+    queryParams.ClassId = params.classId;
+  }
+
+  if (params.courseId) {
+    queryParams.CourseId = params.courseId;
+  }
+
+  if (params.studentId) {
+    queryParams.StudentId = params.studentId;
+  }
+
+  if (params.pageNumber) {
+    queryParams.PageNumber = params.pageNumber;
+  }
+
+  if (params.pageSize) {
+    queryParams.PageSize = params.pageSize;
+  }
+
+  return Object.keys(queryParams).length ? queryParams : undefined;
+}
+
+export const assignmentsApi = {
+  getAll: async (params?: AssignmentsListParams): Promise<AssignmentsListResponse> => {
+    const queryParams = buildAssignmentsParams(params);
+    const response = await api.get(
+      '/Assignments',
+      queryParams ? { params: queryParams } : undefined
+    );
+    return normalizeAssignmentsResponse(response.data);
+  },
+  getById: async (id: number): Promise<AssignmentEntity> => {
+    const response = await api.get(`/Assignments/${id}`);
+    return normalizeAssignmentResponse(response.data);
+  },
+  create: async (data: CreateAssignmentRequest): Promise<AssignmentEntity> => {
+    const response = await api.post('/Assignments', data);
+    return normalizeAssignmentResponse(response.data);
+  },
+  update: async (
+    id: number,
+    data: UpdateAssignmentRequest
+  ): Promise<AssignmentEntity> => {
+    const response = await api.put(`/Assignments/${id}`, data);
+    return normalizeAssignmentResponse(response.data);
+  },
+  delete: async (id: number): Promise<void> => {
+    await api.delete(`/Assignments/${id}`);
   },
 };
 

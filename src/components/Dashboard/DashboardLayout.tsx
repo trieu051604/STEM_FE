@@ -12,6 +12,10 @@ import {
   LogOut,
   User,
   ChevronDown,
+  Bell,
+  Settings,
+  Plus,
+  Sun,
 } from 'lucide-react';
 
 export const DashboardLayout = () => {
@@ -45,33 +49,39 @@ export const DashboardLayout = () => {
       </AnimatePresence>
 
       {/* Sidebar */}
-      <motion.aside
-        initial={false}
-        animate={{
-          x: sidebarOpen ? 0 : -280,
-        }}
-        transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-        className="fixed left-0 top-0 z-50 h-full w-[280px] bg-card border-r border-border flex flex-col lg:translate-x-0"
+      <aside
+        className={cn(
+          "fixed left-0 top-0 z-50 h-full w-[280px] bg-card border-r border-border flex flex-col transition-transform duration-300 lg:translate-x-0",
+          sidebarOpen ? "translate-x-0" : "-translate-x-full"
+        )}
       >
         {/* Logo */}
-        <div className="h-16 flex items-center justify-between px-4 border-b border-border">
-          <Link to="/dashboard" className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
-              <span className="text-primary-foreground font-bold text-sm">ST</span>
-            </div>
-            <span className="font-semibold text-lg">STEM</span>
+        <div className="h-16 flex items-center px-6">
+          <Link to="/dashboard" className="flex items-center">
+            <span className="font-bold text-xl text-[#0f4c5c]">STEM</span>
           </Link>
           <button
             onClick={() => setSidebarOpen(false)}
-            className="lg:hidden p-2 hover:bg-accent rounded-md"
+            className="lg:hidden ml-auto p-2 hover:bg-accent rounded-md"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 py-4 px-3 overflow-y-auto">
-          <ul className="space-y-1">
+        <nav className="flex-1 py-6 overflow-y-auto">
+          {user?.role === 'teacher' && (
+            <div className="px-6 mb-6">
+              <h3 className="font-bold text-[#0f4c5c] text-sm tracking-wider uppercase mb-1">
+                INTELLECTUAL
+                <br />
+                ATELIER
+              </h3>
+              <p className="text-xs text-muted-foreground">Quản lý giảng dạy</p>
+            </div>
+          )}
+          
+          <ul className="space-y-2 px-3">
             {sidebarItems.map((item) => {
               const isActive = location.pathname === item.path;
               return (
@@ -80,12 +90,15 @@ export const DashboardLayout = () => {
                     to={item.path}
                     onClick={() => setSidebarOpen(false)}
                     className={cn(
-                      'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors',
+                      'flex items-center gap-3 px-4 py-3 text-sm font-medium transition-colors relative',
                       isActive
-                        ? 'bg-primary text-primary-foreground'
-                        : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
+                        ? 'bg-[#eefcf6] text-[#0f4c5c] rounded-r-full'
+                        : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground rounded-lg'
                     )}
                   >
+                    {isActive && (
+                      <div className="absolute left-0 top-0 bottom-0 w-1 bg-[#0f4c5c] rounded-r-md"></div>
+                    )}
                     <Icon name={item.icon} className="w-5 h-5" />
                     {item.label}
                   </Link>
@@ -95,29 +108,14 @@ export const DashboardLayout = () => {
           </ul>
         </nav>
 
-        {/* User section */}
-        <div className="p-4 border-t border-border">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
-              {user?.avatar ? (
-                <img
-                  src={user.avatar}
-                  alt={user.fullName}
-                  className="w-full h-full rounded-full object-cover"
-                />
-              ) : (
-                <User className="w-5 h-5 text-primary" />
-              )}
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium truncate">{user?.fullName}</p>
-              <p className="text-xs text-muted-foreground truncate">
-                {roleLabels[user?.role || 'student']}
-              </p>
-            </div>
-          </div>
+        {/* Bottom Action */}
+        <div className="p-6">
+          <button className="w-full bg-[#0f4c5c] hover:bg-[#0a3540] text-white rounded-full py-3 px-4 flex items-center justify-center gap-2 text-sm font-medium transition-colors shadow-md">
+            <Plus className="w-5 h-5" />
+            Start Experiment
+          </button>
         </div>
-      </motion.aside>
+      </aside>
 
       {/* Main content */}
       <div className="lg:pl-[280px]">
@@ -130,8 +128,17 @@ export const DashboardLayout = () => {
             <Menu className="w-5 h-5" />
           </button>
 
-          <div className="flex items-center gap-4 ml-auto">
-            <ThemeToggle />
+          <div className="flex items-center gap-4 md:gap-6 ml-auto">
+            <div className="flex items-center gap-3 text-muted-foreground">
+              <ThemeToggle className="hover:text-foreground transition-colors p-1" />
+              <button className="hover:text-foreground transition-colors p-1 relative">
+                <Bell className="w-5 h-5" />
+                <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-orange-500 rounded-full border border-background"></span>
+              </button>
+              <button className="hover:text-foreground transition-colors p-1">
+                <Settings className="w-5 h-5" />
+              </button>
+            </div>
 
             {/* User dropdown */}
             <div className="relative">

@@ -2,6 +2,10 @@ import { Navigate } from 'react-router-dom';
 import { useAuthStore } from '@/stores/authStore';
 import { DashboardLayout } from '@/components/Dashboard/DashboardLayout';
 import { DashboardPage } from '@/pages/dashboard/DashboardPage';
+import { VirtualLabPage } from '@/pages/dashboard/VirtualLabPage';
+import { MyClassesPage } from '@/pages/dashboard/MyClassesPage';
+import { ProfilePage } from '@/pages/dashboard/ProfilePage';
+import { AssignmentsPage } from '@/pages/dashboard/AssignmentsPage';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -32,6 +36,8 @@ export const dashboardRoutes = [
     ),
     children: [
       { index: true, element: <DashboardPage /> },
+      // Virtual Lab
+      { path: 'virtual-lab', element: <VirtualLabPage /> },
       // Schools
       { path: 'schools', element: <div>Schools Page</div> },
       // Requests
@@ -42,15 +48,15 @@ export const dashboardRoutes = [
       { path: 'courses', element: <div>Courses Page</div> },
       // Classes
       { path: 'classes', element: <div>Classes Page</div> },
-      { path: 'my-classes', element: <div>My Classes Page</div> },
+      { path: 'my-classes', element: <MyClassesPage /> },
       // Assignments
-      { path: 'assignments', element: <div>Assignments Page</div> },
+      { path: 'assignments', element: <AssignmentsPage /> },
       // Simulations
       { path: 'simulations', element: <div>Simulations Page</div> },
       // Notifications
       { path: 'notifications', element: <div>Notifications Page</div> },
       // Profile
-      { path: 'profile', element: <div>Profile Page</div> },
+      { path: 'profile', element: <ProfilePage /> },
     ],
   },
 ];

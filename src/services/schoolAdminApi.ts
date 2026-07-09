@@ -91,6 +91,17 @@ export const studentsApi = {
     return response.data.data.id;
   },
 
+  createBulk: async (students: Array<{
+    email: string;
+    fullName: string;
+    phone?: string;
+    gender?: string;
+    dateOfBirth?: string;
+    address?: string;
+  }>) => {
+    return api.post('/students/bulk', { students });
+  },
+
   update: async (id: number, data: {
     fullName?: string;
     phone?: string;
@@ -142,6 +153,7 @@ export interface TeacherProfile {
   schoolName?: string;
   isActive: boolean;
   isEmailVerified?: boolean;
+  assignedClassesCount?: number;
   createdAt: string;
   updatedAt?: string;
 }
@@ -356,6 +368,7 @@ export interface ClassEntity {
   createdAt: string;
   studentCount: number;
   students?: { id: number; fullName: string; email: string; enrolledAt: string }[];
+  availableStudents?: { id: number; fullName: string; email: string; phone?: string; gender?: string }[];
   schedules?: any[];
   announcements?: any[];
 }
@@ -417,6 +430,14 @@ export const classesApi = {
 
   delete: async (id: number): Promise<void> => {
     await api.delete(`/classes/${id}`);
+  },
+
+  assignStudents: async (classId: number, studentIds: number[]): Promise<void> => {
+    await api.post(`/classes/${classId}/assign-students`, { studentIds });
+  },
+
+  removeStudent: async (classId: number, studentId: number): Promise<void> => {
+    await api.delete(`/classes/${classId}/students/${studentId}`);
   },
 };
 

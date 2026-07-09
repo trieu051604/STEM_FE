@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Icon } from '@/components/ui/Icon';
-import { Plus, RefreshCw, Edit, Trash2, Eye, User, Mail, Phone, MapPin, GraduationCap, BookOpen, History } from 'lucide-react';
+import { Plus, RefreshCw, Edit, Trash2, Eye, User, Mail, Phone, MapPin, GraduationCap, BookOpen, History, Ban } from 'lucide-react';
 import {
   DataTable,
   ColumnDef,
@@ -149,6 +149,15 @@ export const TeachersPage = () => {
       ),
     },
     {
+      key: 'assignedClassesCount',
+      header: 'Số lớp',
+      render: (teacher) => (
+        <span className="text-sm">
+          {teacher.assignedClassesCount || 0}
+        </span>
+      ),
+    },
+    {
       key: 'isActive',
       header: 'Trạng thái',
       render: (teacher) => (
@@ -195,6 +204,20 @@ export const TeachersPage = () => {
             }}
           >
             <Edit className="w-4 h-4" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="size-8"
+            disabled={!!teacher.assignedClassesCount}
+            onClick={(e) => {
+              e.stopPropagation();
+              setSelectedTeacher(teacher);
+              toggleTeacherStatusMutation.mutate({ id: teacher.id, isActive: !teacher.isActive });
+            }}
+            title={teacher.assignedClassesCount ? `Giáo viên đang có ${teacher.assignedClassesCount} lớp, không thể thay đổi trạng thái` : teacher.isActive ? 'Vô hiệu hóa' : 'Kích hoạt'}
+          >
+            <Ban className="w-4 h-4" />
           </Button>
           <Button
             variant="ghost"

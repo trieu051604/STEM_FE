@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Icon } from '@/components/ui/Icon';
-import { Plus, RefreshCw, Edit, Trash2, Eye, GraduationCap, Users, BookOpen, User } from 'lucide-react';
+import { Plus, RefreshCw, Edit, Trash2, Eye, GraduationCap, Users, BookOpen, User, Check, X } from 'lucide-react';
 import {
   DataTable,
   ColumnDef,
@@ -13,7 +13,7 @@ import {
   ConfirmDialog,
 } from './components/DataTable';
 import { ClassForm, ClassFormData } from './components/Forms';
-import { classesApi, coursesApi, teachersApi, ClassEntity, Course, TeacherProfile } from '@/services/schoolAdminApi';
+import { classesApi, coursesApi, teachersApi, ClassEntity } from '@/services/schoolAdminApi';
 import { format } from 'date-fns';
 import { vi } from 'date-fns/locale';
 
@@ -32,6 +32,7 @@ export const ClassesPage = () => {
   const [detailModalOpen, setDetailModalOpen] = useState(false);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [selectedClass, setSelectedClass] = useState<ClassEntity | null>(null);
+  const [classes, setClasses] = useState<ClassEntity[]>([]);
 
   // Fetch classes
   const { data: classesData, isLoading, refetch } = useQuery({
@@ -86,7 +87,6 @@ export const ClassesPage = () => {
   });
 
   const totalPages = Math.ceil((classesData?.total || 0) / pageSize);
-
   const courses = coursesData?.items || [];
   const teachers = teachersData?.items || [];
 
@@ -190,7 +190,7 @@ export const ClassesPage = () => {
           </Button>
         </div>
       ),
-      className: 'w-28',
+      className: 'w-24',
     },
   ];
 
@@ -346,7 +346,7 @@ export const ClassesPage = () => {
         title="Chỉnh sửa lớp học"
         size="lg"
       >
-          {selectedClass && (
+        {selectedClass && (
           <ClassForm
             onSubmit={handleUpdateClass}
             onCancel={() => {
@@ -378,46 +378,10 @@ export const ClassesPage = () => {
         size="lg"
       >
         {selectedClass && (
-          <div className="space-y-4">
-            <div className="flex items-center gap-4 pb-4 border-b border-border">
-              <div className="w-16 h-16 rounded-xl bg-primary/10 flex items-center justify-center">
-                <GraduationCap className="w-8 h-8 text-primary" />
-              </div>
-              <div>
-                <h3 className="text-lg font-semibold">{selectedClass.classCode}</h3>
-                <p className="text-muted-foreground">ID: #{selectedClass.id}</p>
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <p className="text-sm text-muted-foreground">Khóa học</p>
-                <p className="font-medium flex items-center gap-2">
-                  <BookOpen className="w-4 h-4" />
-                  {selectedClass.courseName || '—'}
-                </p>
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Giáo viên</p>
-                <p className="font-medium flex items-center gap-2">
-                  <User className="w-4 h-4" />
-                  {selectedClass.teacherName || 'Chưa phân công'}
-                </p>
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Số học sinh</p>
-                <p className="font-medium flex items-center gap-2">
-                  <Users className="w-4 h-4" />
-                  {selectedClass.studentCount}
-                </p>
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Ngày tạo</p>
-                <p className="font-medium">
-                  {format(new Date(selectedClass.createdAt), 'dd/MM/yyyy HH:mm', { locale: vi })}
-                </p>
-              </div>
-            </div>
-          </div>
+          <ClassDetailContent
+            classId={selectedClass.id}
+            classCode={selectedClass.classCode}
+          />
         )}
       </Modal>
 
@@ -437,5 +401,215 @@ export const ClassesPage = () => {
     </div>
   );
 };
+
+interface ClassDetailContentProps {
+  classId: number;
+  classCode: string;
+}
+
+function ClassDetailContent({ classId, classCode }: ClassDetailContentProps) {
+  const queryClient = useQueryClient();
+  const [query, setQuery] = useState('');
+  const [confirmRemove, setConfirmRemove] = useState<{ studentId: number; studentName: string } | null>(null);
+
+  const { data, isLoading, refetch } = useQuery({
+    queryKey: ['class-detail', classId],
+    queryFn: async () => {
+      const res = await classesApi.getById(classId);
+      return res;
+    },
+  });
+
+  const handleConfirmRemove = async () => {
+    if (!confirmRemove) return;
+    try {
+      await classesApi.removeStudent(classId, confirmRemove.studentId);
+      queryClient.invalidateQueries({ queryKey: ['students'] });
+      queryClient.invalidateQueries({ queryKey: ['classes'] });
+      await refetch();
+    } catch (err: any) {
+      console.error('Remove student error:', err);
+    } finally {
+      setConfirmRemove(null);
+    }
+  };
+
+  const handleAssign = async (studentId: number) => {
+    try {
+      await classesApi.assignStudents(classId, [studentId]);
+      queryClient.invalidateQueries({ queryKey: ['students'] });
+      queryClient.invalidateQueries({ queryKey: ['classes'] });
+      await refetch();
+    } catch (err: any) {
+      console.error('Assign student error:', err);
+    }
+  };
+
+  const students = data?.students || [];
+  const availableStudents = data?.availableStudents || [];
+
+  const filteredStudents = students.filter((s) =>
+    (s.fullName || '').toLowerCase().includes(query.toLowerCase()) ||
+    (s.email || '').toLowerCase().includes(query.toLowerCase())
+  );
+
+  const filteredAvailable = availableStudents.filter((s) =>
+    (s.fullName || '').toLowerCase().includes(query.toLowerCase()) ||
+    (s.email || '').toLowerCase().includes(query.toLowerCase())
+  );
+
+  const courseName = data?.courseName;
+  const teacherName = data?.teacherName;
+  const startDate = data?.startDate;
+  const endDate = data?.endDate;
+  const totalStudents = students.length;
+
+  const formatDate = (d?: string) => {
+    if (!d) return '—';
+    try {
+      return format(new Date(d), 'dd/MM/yyyy', { locale: vi });
+    } catch {
+      return d;
+    }
+  };
+
+  return (
+    <div className="space-y-5">
+      {/* Class Info Header */}
+      <div className="bg-muted/30 rounded-xl p-4 space-y-3">
+        <div className="flex items-center gap-3">
+          <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+            <GraduationCap className="w-6 h-6 text-primary" />
+          </div>
+          <div>
+            <h3 className="text-base font-semibold">{classCode}</h3>
+            <p className="text-xs text-muted-foreground">ID: #{classId}</p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-x-6 gap-y-2 text-sm">
+          {courseName && (
+            <div className="flex items-center gap-2">
+              <BookOpen className="w-4 h-4 text-muted-foreground shrink-0" />
+              <span className="text-muted-foreground">Khóa học:</span>
+              <span className="font-medium truncate">{courseName}</span>
+            </div>
+          )}
+          {teacherName && (
+            <div className="flex items-center gap-2">
+              <User className="w-4 h-4 text-muted-foreground shrink-0" />
+              <span className="text-muted-foreground">Giáo viên:</span>
+              <span className="font-medium truncate">{teacherName}</span>
+            </div>
+          )}
+          {startDate && (
+            <div className="flex items-center gap-2">
+              <span className="text-muted-foreground pl-4">Từ:</span>
+              <span className="font-medium">{formatDate(startDate)}</span>
+            </div>
+          )}
+          {endDate && (
+            <div className="flex items-center gap-2">
+              <span className="text-muted-foreground pl-4">Đến:</span>
+              <span className="font-medium">{formatDate(endDate)}</span>
+            </div>
+          )}
+          <div className="flex items-center gap-2">
+            <Users className="w-4 h-4 text-muted-foreground shrink-0" />
+            <span className="text-muted-foreground">Học sinh:</span>
+            <span className="font-medium">{totalStudents}</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Search */}
+      <div className="space-y-1">
+        <label className="text-sm font-medium">Tìm kiếm học sinh</label>
+        <input
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="Tìm theo tên hoặc email..."
+          className="w-full h-10 rounded-lg border border-border bg-background px-3 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+        />
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {/* Đã thêm */}
+        <div className="space-y-2">
+          <div className="flex items-center gap-2">
+            <Check className="w-4 h-4 text-green-600" />
+            <p className="text-sm font-semibold">Đã thêm ({students.length})</p>
+          </div>
+          <div className="max-h-80 overflow-y-auto rounded-lg border border-green-200 dark:border-green-900 divide-y divide-border">
+            {isLoading ? (
+              <div className="p-4 text-sm text-muted-foreground text-center">Đang tải...</div>
+            ) : filteredStudents.length === 0 ? (
+              <div className="p-4 text-sm text-muted-foreground text-center">Chưa có học sinh nào.</div>
+            ) : (
+              filteredStudents.map((student) => (
+                <div key={student.id} className="flex items-center gap-3 p-3">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium truncate">{student.fullName}</p>
+                    <p className="text-xs text-muted-foreground truncate">{student.email}</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setConfirmRemove({ studentId: student.id, studentName: student.fullName })}
+                    className="shrink-0 inline-flex items-center gap-1 text-xs font-semibold text-destructive border border-destructive/20 rounded-md px-2 py-1 hover:bg-destructive hover:text-white"
+                  >
+                    Xóa
+                  </button>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+
+        {/* Chưa thêm */}
+        <div className="space-y-2">
+          <div className="flex items-center gap-2">
+            <X className="w-4 h-4 text-muted-foreground" />
+            <p className="text-sm font-semibold">Chưa thêm ({availableStudents.length})</p>
+          </div>
+          <div className="max-h-80 overflow-y-auto rounded-lg border border-border divide-y divide-border">
+            {isLoading ? (
+              <div className="p-4 text-sm text-muted-foreground text-center">Đang tải...</div>
+            ) : filteredAvailable.length === 0 ? (
+              <div className="p-4 text-sm text-muted-foreground text-center">Không còn học sinh nào.</div>
+            ) : (
+              filteredAvailable.map((student) => (
+                <div key={student.id} className="flex items-center gap-3 p-3">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium truncate">{student.fullName}</p>
+                    <p className="text-xs text-muted-foreground truncate">{student.email}</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => handleAssign(student.id)}
+                    className="shrink-0 inline-flex items-center gap-1 text-xs font-semibold text-green-600 border border-green-200 dark:border-green-800 rounded-md px-2 py-1 hover:bg-green-50 dark:hover:bg-green-900/30"
+                  >
+                    <Check className="w-3 h-3" />
+                    Thêm
+                  </button>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+      </div>
+
+      <ConfirmDialog
+        isOpen={!!confirmRemove}
+        onClose={() => setConfirmRemove(null)}
+        onConfirm={handleConfirmRemove}
+        title="Xóa học sinh khỏi lớp?"
+        message={`Bạn có chắc muốn xóa học sinh "${confirmRemove?.studentName}" khỏi lớp này?`}
+        confirmText="Xóa"
+        cancelText="Hủy"
+        variant="danger"
+      />
+    </div>
+  );
+}
 
 export default ClassesPage;

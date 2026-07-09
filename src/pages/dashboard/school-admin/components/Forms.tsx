@@ -1,9 +1,12 @@
+import { useState } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Button } from '@/components/ui/button';
 import { Icon } from '@/components/ui/Icon';
 import { Switch } from '@/components/ui/Switch';
+import { useQuery } from '@tanstack/react-query';
+import { studentsApi } from '@/services/schoolAdminApi';
 
 // Form Schema for User
 export const userFormSchema = z.object({
@@ -614,6 +617,87 @@ export function TeacherForm({ onSubmit, onCancel, loading, defaultValues, hidePa
 
       <FormActions onCancel={onCancel} loading={loading} />
       {error && <p className="text-xs text-destructive mt-2">{error}</p>}
+    </form>
+  );
+}
+
+interface AssignStudentsFormProps {
+  classId: number;
+  classCode: string;
+  onSubmit: (studentIds: number[]) => Promise<void>;
+  onCancel: () => void;
+}
+
+export function AssignStudentsForm({ classId, classCode, onSubmit, onCancel }: AssignStudentsFormProps) {
+  const [selectedIds, setSelectedIds] = useState<number[]>([]);
+  const [query, setQuery] = useState('');
+  const { data: studentsData, isLoading } = useQuery({
+    queryKey: ['students-for-assign', classId, query],
+    queryFn: async () => {
+      const res = await studentsApi.getAll({ pageNumber: 1, pageSize: 50, search: query });
+      return res;
+    },
+  });
+
+  const students = studentsData?.items || [];
+  const availableStudents = students.filter((s) => !selectedIds.includes(s.id));
+
+  const toggleStudent = (id: number) => {
+    setSelectedIds((prev) => (prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]));
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedIds.length) return;
+    await onSubmit(selectedIds);
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <div className="space-y-1">
+        <label className="text-sm font-medium">Tìm kiếm học sinh</label>
+        <input
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="Tìm theo tên hoặc email..."
+          className="w-full h-10 rounded-lg border border-border bg-background px-3 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+        />
+      </div>
+
+      <div className="space-y-1">
+        <label className="text-sm font-medium">Chọn học sinh cho lớp <span className="text-muted-foreground">{classCode}</span></label>
+        <div className="max-h-72 overflow-y-auto rounded-lg border border-border divide-y divide-border">
+          {isLoading ? (
+            <div className="p-4 text-sm text-muted-foreground">Đang tải danh sách học sinh...</div>
+          ) : availableStudents.length === 0 ? (
+            <div className="p-4 text-sm text-muted-foreground">Không có học sinh phù hợp.</div>
+          ) : (
+            availableStudents.map((student) => (
+              <label key={student.id} className="flex items-center gap-3 p-3 hover:bg-accent cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={selectedIds.includes(student.id)}
+                  onChange={() => toggleStudent(student.id)}
+                  className="h-4 w-4 rounded border-border accent-primary"
+                />
+                <div className="flex-1">
+                  <p className="text-sm font-medium">{student.fullName}</p>
+                  <p className="text-xs text-muted-foreground">{student.email}</p>
+                </div>
+              </label>
+            ))
+          )}
+        </div>
+      </div>
+
+      <div className="flex justify-end gap-3 pt-2">
+        <Button type="button" variant="outline" onClick={onCancel}>
+          Hủy
+        </Button>
+        <Button type="submit" disabled={!selectedIds.length}>
+          Thêm {selectedIds.length ? `(${selectedIds.length})` : ''}
+        </Button>
+      </div>
     </form>
   );
 }

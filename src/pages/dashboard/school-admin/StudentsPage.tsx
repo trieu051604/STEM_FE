@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Icon } from '@/components/ui/Icon';
-import { UserPlus, RefreshCw, Eye, Trash2, User, Mail, Phone, MapPin, BookOpen, GraduationCap, TrendingUp, Award, Clock, CheckCircle, Pencil, Calendar } from 'lucide-react';
+import { UserPlus, RefreshCw, Eye, Trash2, User, Mail, Phone, MapPin, BookOpen, GraduationCap, TrendingUp, Award, Clock, CheckCircle, Pencil, Calendar, Upload } from 'lucide-react';
 import {
   DataTable,
   ColumnDef,
@@ -13,6 +13,7 @@ import {
   ConfirmDialog,
 } from './components/DataTable';
 import { StudentForm, StudentFormData } from './components/Forms';
+import { BulkImportModal } from './components/BulkImportModal';
 import { studentsApi, schoolAuthApi, StudentProfile, LearningProgress } from '@/services/schoolAdminApi';
 import { format } from 'date-fns';
 import { vi } from 'date-fns/locale';
@@ -27,6 +28,7 @@ export const StudentsPage = () => {
 
   // Modal states
   const [createModalOpen, setCreateModalOpen] = useState(false);
+  const [bulkImportModalOpen, setBulkImportModalOpen] = useState(false);
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [detailModalOpen, setDetailModalOpen] = useState(false);
   const [progressModalOpen, setProgressModalOpen] = useState(false);
@@ -271,10 +273,16 @@ export const StudentsPage = () => {
             Quản lý tài khoản và thông tin học sinh trong trường
           </p>
         </div>
-        <Button onClick={() => setCreateModalOpen(true)}>
-          <UserPlus className="w-4 h-4" />
-          Thêm học sinh
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={() => setBulkImportModalOpen(true)}>
+            <Upload className="w-4 h-4" />
+            Nhập Excel
+          </Button>
+          <Button onClick={() => setCreateModalOpen(true)}>
+            <UserPlus className="w-4 h-4" />
+            Thêm học sinh
+          </Button>
+        </div>
       </div>
 
       {/* Filters */}
@@ -658,6 +666,13 @@ export const StudentsPage = () => {
         message={`Bạn có chắc chắn muốn xóa học sinh "${selectedStudent?.fullName}"? Hành động này không thể hoàn tác.`}
         confirmText="Xóa"
         loading={deleteStudentMutation.isPending}
+      />
+
+      {/* Bulk Import Modal */}
+      <BulkImportModal
+        isOpen={bulkImportModalOpen}
+        onClose={() => setBulkImportModalOpen(false)}
+        onSuccess={() => refetch()}
       />
     </div>
   );

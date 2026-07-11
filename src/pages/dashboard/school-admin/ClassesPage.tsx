@@ -296,7 +296,11 @@ export const ClassesPage = () => {
   const formatDateTime = (value?: string) => {
     if (!value) return '—';
     try {
-      return format(new Date(value), 'HH:mm dd/MM/yyyy', { locale: vi });
+      // Parse directly from ISO string to avoid timezone issues
+      const datePart = value.split('T')[0];
+      const timePart = value.split('T')[1]?.substring(0, 5) || '';
+      const [year, month, day] = datePart.split('-');
+      return `${timePart} ${day}/${month}/${year}`;
     } catch {
       return value;
     }
@@ -326,7 +330,7 @@ export const ClassesPage = () => {
         startTimeMs: new Date(item.startTime).getTime(),
         endTimeMs: new Date(item.endTime).getTime(),
       }))
-      .filter((item) => item.endTimeMs > now)
+      .filter((item) => item.startTimeMs > now)
       .sort((a, b) => a.startTimeMs - b.startTimeMs);
 
     return future[0] || null;

@@ -1,8 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Icon } from '@/components/ui/Icon';
-import { Plus, RefreshCw, Edit, Trash2, Eye, GraduationCap, Users, BookOpen, User, Check, X } from 'lucide-react';
+import { Plus, RefreshCw, Edit, Trash2, Eye, GraduationCap, Users, BookOpen, User, Check, X, Calendar, Clock, CalendarDays, LayoutGrid } from 'lucide-react';
 import {
   DataTable,
   ColumnDef,
@@ -13,7 +13,9 @@ import {
   ConfirmDialog,
 } from './components/DataTable';
 import { ClassForm, ClassFormData } from './components/Forms';
-import { classesApi, coursesApi, teachersApi, ClassEntity } from '@/services/schoolAdminApi';
+import { classesApi, coursesApi, teachersApi, ClassEntity, scheduleApi, type ScheduleResponse } from '@/services/schoolAdminApi';
+import { ScheduleCalendar } from '@/components/ScheduleCalendar';
+import { WeeklyScheduleGrid } from '@/components/WeeklyScheduleGrid';
 import { format } from 'date-fns';
 import { vi } from 'date-fns/locale';
 
@@ -33,6 +35,8 @@ export const ClassesPage = () => {
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [selectedClass, setSelectedClass] = useState<ClassEntity | null>(null);
   const [classes, setClasses] = useState<ClassEntity[]>([]);
+  const [schedulesMap, setSchedulesMap] = useState<Record<number, ScheduleResponse[]>>({});
+  const [schedulesLoading, setSchedulesLoading] = useState(false);
 
   // Fetch classes
   const { data: classesData, isLoading, refetch } = useQuery({
@@ -85,6 +89,36 @@ export const ClassesPage = () => {
       setSelectedClass(null);
     },
   });
+
+  const fetchSchedulesForClasses = async () => {
+    const items = classesData?.items || [];
+    if (!items.length) {
+      setSchedulesMap({});
+      return;
+    }
+
+    try {
+      setSchedulesLoading(true);
+      const results = await Promise.all(
+        items.map(async (cls) => {
+          try {
+            const data = await scheduleApi.getByClassId(cls.id);
+            return [cls.id, data] as const;
+          } catch {
+            return [cls.id, []] as const;
+          }
+        })
+      );
+
+      setSchedulesMap(Object.fromEntries(results));
+    } finally {
+      setSchedulesLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchSchedulesForClasses();
+  }, [classesData?.items?.map((item) => item.id).join(',')]);
 
   const totalPages = Math.ceil((classesData?.total || 0) / pageSize);
   const courses = coursesData?.items || [];
@@ -148,6 +182,71 @@ export const ClassesPage = () => {
       ),
     },
     {
+      key: 'nextSession',
+      header: 'Buổi tiếp theo',
+      render: (cls) => {
+        const next = getNextSchedule(cls);
+        return (
+          <div className="flex items-center gap-2">
+            <Calendar className="w-4 h-4 text-muted-foreground" />
+            <div className="min-w-0">
+              <p className="text-sm truncate">{getNextSessionLabel(cls)}</p>
+              {next && (
+                <p className="text-xs text-muted-foreground truncate">
+                  {format(new Date(next.startTime), 'EEEE', { locale: vi })}
+                </p>
+              )}
+            </div>
+          </div>
+        );
+      },
+      className: 'min-w-[160px]',
+    },
+    {
+      key: 'schedule',
+      header: 'Lịch học',
+      render: (cls) => {
+        const schedules = schedulesMap[cls.id] || [];
+        if (schedulesLoading) {
+          return (
+            <div className="flex items-center gap-2 text-muted-foreground">
+              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary" />
+              <span className="text-xs">Đang tải...</span>
+            </div>
+          );
+        }
+
+        if (!schedules.length) {
+          return (
+            <span className="text-sm text-muted-foreground">Chưa có lịch</span>
+          );
+        }
+
+        const visible = schedules.slice(0, 2);
+        return (
+          <div className="space-y-1">
+            {visible.map((item) => (
+              <div key={item.id} className="flex items-start gap-2 text-xs">
+                <Clock className="w-3.5 h-3.5 text-muted-foreground mt-0.5 shrink-0" />
+                <div className="min-w-0">
+                  <p className="font-medium truncate">
+                    {format(new Date(item.startTime), 'dd/MM', { locale: vi })}
+                  </p>
+                  <p className="text-muted-foreground">
+                    {formatTimeRange(item.startTime, item.endTime)}
+                  </p>
+                </div>
+              </div>
+            ))}
+            {schedules.length > 2 && (
+              <p className="text-xs text-muted-foreground">+{schedules.length - 2} buổi</p>
+            )}
+          </div>
+        );
+      },
+      className: 'min-w-[180px]',
+    },
+    {
       key: 'actions',
       header: '',
       render: (cls) => (
@@ -193,6 +292,51 @@ export const ClassesPage = () => {
       className: 'w-24',
     },
   ];
+
+  const formatDateTime = (value?: string) => {
+    if (!value) return '—';
+    try {
+      return format(new Date(value), 'HH:mm dd/MM/yyyy', { locale: vi });
+    } catch {
+      return value;
+    }
+  };
+
+  const formatTimeRange = (start?: string, end?: string) => {
+    if (!start && !end) return '—';
+    // Parse time directly from string (already local, not UTC)
+    const startTime = start ? start.split('T')[1]?.substring(0, 5) : '';
+    const endTime = end ? end.split('T')[1]?.substring(0, 5) : '';
+    if (startTime && endTime) {
+      return `${startTime} - ${endTime}`;
+    }
+    if (startTime) return startTime;
+    if (endTime) return endTime;
+    return '—';
+  };
+
+  const getNextSchedule = (cls: ClassEntity) => {
+    const schedules = schedulesMap[cls.id] || [];
+    if (!schedules.length) return null;
+
+    const now = Date.now();
+    const future = schedules
+      .map((item) => ({
+        ...item,
+        startTimeMs: new Date(item.startTime).getTime(),
+        endTimeMs: new Date(item.endTime).getTime(),
+      }))
+      .filter((item) => item.endTimeMs > now)
+      .sort((a, b) => a.startTimeMs - b.startTimeMs);
+
+    return future[0] || null;
+  };
+
+  const getNextSessionLabel = (cls: ClassEntity) => {
+    const next = getNextSchedule(cls);
+    if (!next) return 'Chưa có lịch';
+    return formatDateTime(next.startTime);
+  };
 
   const handleCreateClass = async (data: ClassFormData) => {
     await createClassMutation.mutateAsync(data);
@@ -375,7 +519,7 @@ export const ClassesPage = () => {
           setSelectedClass(null);
         }}
         title="Chi tiết lớp học"
-        size="lg"
+        size="5xl"
       >
         {selectedClass && (
           <ClassDetailContent
@@ -410,6 +554,8 @@ interface ClassDetailContentProps {
 function ClassDetailContent({ classId, classCode }: ClassDetailContentProps) {
   const queryClient = useQueryClient();
   const [query, setQuery] = useState('');
+  const [activeTab, setActiveTab] = useState<'students' | 'schedule'>('students');
+  const [scheduleView, setScheduleView] = useState<'calendar' | 'weekly'>('weekly');
   const [confirmRemove, setConfirmRemove] = useState<{ studentId: number; studentName: string } | null>(null);
 
   const { data, isLoading, refetch } = useQuery({
@@ -522,81 +668,161 @@ function ClassDetailContent({ classId, classCode }: ClassDetailContentProps) {
         </div>
       </div>
 
-      {/* Search */}
-      <div className="space-y-1">
-        <label className="text-sm font-medium">Tìm kiếm học sinh</label>
-        <input
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder="Tìm theo tên hoặc email..."
-          className="w-full h-10 rounded-lg border border-border bg-background px-3 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-        />
+      {/* Tab Navigation */}
+      <div className="flex border-b border-border">
+        <button
+          onClick={() => setActiveTab('students')}
+          className={`flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
+            activeTab === 'students'
+              ? 'border-primary text-primary'
+              : 'border-transparent text-muted-foreground hover:text-foreground'
+          }`}
+        >
+          <Users className="w-4 h-4" />
+          Học sinh
+        </button>
+        <button
+          onClick={() => setActiveTab('schedule')}
+          className={`flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
+            activeTab === 'schedule'
+              ? 'border-primary text-primary'
+              : 'border-transparent text-muted-foreground hover:text-foreground'
+          }`}
+        >
+          <Calendar className="w-4 h-4" />
+          Lịch học
+        </button>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {/* Đã thêm */}
-        <div className="space-y-2">
-          <div className="flex items-center gap-2">
-            <Check className="w-4 h-4 text-green-600" />
-            <p className="text-sm font-semibold">Đã thêm ({students.length})</p>
+  {/* Tab Content */}
+      {activeTab === 'students' ? (
+        <>
+          {/* Search */}
+          <div className="space-y-1">
+            <label className="text-sm font-medium">Tìm kiếm học sinh</label>
+            <input
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Tìm theo tên hoặc email..."
+              className="w-full h-10 rounded-lg border border-border bg-background px-3 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+            />
           </div>
-          <div className="max-h-80 overflow-y-auto rounded-lg border border-green-200 dark:border-green-900 divide-y divide-border">
-            {isLoading ? (
-              <div className="p-4 text-sm text-muted-foreground text-center">Đang tải...</div>
-            ) : filteredStudents.length === 0 ? (
-              <div className="p-4 text-sm text-muted-foreground text-center">Chưa có học sinh nào.</div>
-            ) : (
-              filteredStudents.map((student) => (
-                <div key={student.id} className="flex items-center gap-3 p-3">
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium truncate">{student.fullName}</p>
-                    <p className="text-xs text-muted-foreground truncate">{student.email}</p>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => setConfirmRemove({ studentId: student.id, studentName: student.fullName })}
-                    className="shrink-0 inline-flex items-center gap-1 text-xs font-semibold text-destructive border border-destructive/20 rounded-md px-2 py-1 hover:bg-destructive hover:text-white"
-                  >
-                    Xóa
-                  </button>
-                </div>
-              ))
-            )}
-          </div>
-        </div>
 
-        {/* Chưa thêm */}
-        <div className="space-y-2">
-          <div className="flex items-center gap-2">
-            <X className="w-4 h-4 text-muted-foreground" />
-            <p className="text-sm font-semibold">Chưa thêm ({availableStudents.length})</p>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Đã thêm */}
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <Check className="w-4 h-4 text-green-600" />
+                <p className="text-sm font-semibold">Đã thêm ({students.length})</p>
+              </div>
+              <div className="max-h-80 overflow-y-auto rounded-lg border border-green-200 dark:border-green-900 divide-y divide-border">
+                {isLoading ? (
+                  <div className="p-4 text-sm text-muted-foreground text-center">Đang tải...</div>
+                ) : filteredStudents.length === 0 ? (
+                  <div className="p-4 text-sm text-muted-foreground text-center">Chưa có học sinh nào.</div>
+                ) : (
+                  filteredStudents.map((student) => (
+                    <div key={student.id} className="flex items-center gap-3 p-3">
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium truncate">{student.fullName}</p>
+                        <p className="text-xs text-muted-foreground truncate">{student.email}</p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setConfirmRemove({ studentId: student.id, studentName: student.fullName })}
+                        className="shrink-0 inline-flex items-center gap-1 text-xs font-semibold text-destructive border border-destructive/20 rounded-md px-2 py-1 hover:bg-destructive hover:text-white"
+                      >
+                        Xóa
+                      </button>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+
+            {/* Chưa thêm */}
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <X className="w-4 h-4 text-muted-foreground" />
+                <p className="text-sm font-semibold">Chưa thêm ({availableStudents.length})</p>
+              </div>
+              <div className="max-h-80 overflow-y-auto rounded-lg border border-border divide-y divide-border">
+                {isLoading ? (
+                  <div className="p-4 text-sm text-muted-foreground text-center">Đang tải...</div>
+                ) : filteredAvailable.length === 0 ? (
+                  <div className="p-4 text-sm text-muted-foreground text-center">Không còn học sinh nào.</div>
+                ) : (
+                  filteredAvailable.map((student) => (
+                    <div key={student.id} className="flex items-center gap-3 p-3">
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium truncate">{student.fullName}</p>
+                        <p className="text-xs text-muted-foreground truncate">{student.email}</p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => handleAssign(student.id)}
+                        className="shrink-0 inline-flex items-center gap-1 text-xs font-semibold text-green-600 border border-green-200 dark:border-green-800 rounded-md px-2 py-1 hover:bg-green-50 dark:hover:bg-green-900/30"
+                      >
+                        <Check className="w-3 h-3" />
+                        Thêm
+                      </button>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
           </div>
-          <div className="max-h-80 overflow-y-auto rounded-lg border border-border divide-y divide-border">
-            {isLoading ? (
-              <div className="p-4 text-sm text-muted-foreground text-center">Đang tải...</div>
-            ) : filteredAvailable.length === 0 ? (
-              <div className="p-4 text-sm text-muted-foreground text-center">Không còn học sinh nào.</div>
-            ) : (
-              filteredAvailable.map((student) => (
-                <div key={student.id} className="flex items-center gap-3 p-3">
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium truncate">{student.fullName}</p>
-                    <p className="text-xs text-muted-foreground truncate">{student.email}</p>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => handleAssign(student.id)}
-                    className="shrink-0 inline-flex items-center gap-1 text-xs font-semibold text-green-600 border border-green-200 dark:border-green-800 rounded-md px-2 py-1 hover:bg-green-50 dark:hover:bg-green-900/30"
-                  >
-                    <Check className="w-3 h-3" />
-                    Thêm
-                  </button>
-                </div>
-              ))
-            )}
+        </>
+      ) : (
+        /* Schedule Section */
+        <div className="space-y-4">
+          {/* View Toggle */}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2 bg-muted/50 rounded-lg p-1">
+              <button
+                onClick={() => setScheduleView('weekly')}
+                className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                  scheduleView === 'weekly'
+                    ? 'bg-background text-primary shadow-sm'
+                    : 'text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                <LayoutGrid className="w-4 h-4" />
+                Bảng tuần
+              </button>
+              <button
+                onClick={() => setScheduleView('calendar')}
+                className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                  scheduleView === 'calendar'
+                    ? 'bg-background text-primary shadow-sm'
+                    : 'text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                <CalendarDays className="w-4 h-4" />
+                Lịch tháng
+              </button>
+            </div>
           </div>
+
+          {scheduleView === 'weekly' ? (
+            <WeeklyScheduleGrid
+              classId={classId}
+              schedules={data?.schedules}
+              classInfo={{ id: classId, classCode, className: data?.courseName || '' }}
+              isAdmin={true}
+              onScheduleChange={async () => { await refetch(); }}
+            />
+          ) : (
+            <ScheduleCalendar
+              classId={classId}
+              schedules={data?.schedules}
+              classInfo={{ id: classId, classCode, className: data?.courseName || '' }}
+              isAdmin={true}
+              onScheduleChange={async () => { await refetch(); }}
+            />
+          )}
         </div>
-      </div>
+      )}
 
       <ConfirmDialog
         isOpen={!!confirmRemove}

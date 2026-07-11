@@ -499,3 +499,87 @@ export const usersApi = {
     return response.data.data;
   },
 };
+
+// ==========================================
+// Schedule API
+// ==========================================
+export interface ScheduleCalendarItem {
+  id: number | string;
+  title: string;
+  start: string;
+  end: string;
+  classCode: string;
+  className: string;
+  color: string;
+}
+
+export interface ScheduleResponse {
+  id: number;
+  classId: number;
+  classCode: string;
+  className: string;
+  startTime: string;
+  endTime: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateScheduleRequest {
+  classId: number;
+  startTime: string;
+  endTime: string;
+}
+
+export interface UpdateScheduleRequest {
+  id?: number;
+  startTime?: string;
+  endTime?: string;
+}
+
+export interface Room {
+  id: number;
+  roomCode: string;
+  roomName: string;
+  building?: string;
+  floor?: number;
+  capacity: number;
+  hasProjector: boolean;
+  hasAirConditioner: boolean;
+  status: string;
+}
+
+export const scheduleApi = {
+  getMySchedule: async (params?: {
+    classId?: number;
+    fromDate?: string;
+    toDate?: string;
+  }): Promise<ScheduleCalendarItem[]> => {
+    const response = await api.get('/schedules/my-schedule', { params });
+    return response.data.data || [];
+  },
+
+  getByClassId: async (classId: number): Promise<ScheduleResponse[]> => {
+    const response = await api.get(`/classes/${classId}`);
+    const data = response.data.data;
+    return data?.schedules || [];
+  },
+
+  create: async (data: CreateScheduleRequest): Promise<ScheduleResponse> => {
+    const response = await api.post('/schedules', data);
+    return response.data.data;
+  },
+
+  update: async (id: number, data: UpdateScheduleRequest): Promise<ScheduleResponse> => {
+    const response = await api.put(`/schedules/${id}`, data);
+    return response.data.data;
+  },
+
+  delete: async (id: number): Promise<void> => {
+    await api.delete(`/schedules/${id}`);
+  },
+
+  getRooms: async (): Promise<Room[]> => {
+    const response = await api.get('/rooms');
+    return response.data.data || [];
+  },
+};

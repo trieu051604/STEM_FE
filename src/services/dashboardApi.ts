@@ -957,10 +957,18 @@ export interface StartVirtualLabProjectSimulationRequest {
   diagram: unknown;
 }
 
+export interface SimulationEventEntity {
+  type: string;
+  time: number;
+  payload: Record<string, unknown>;
+}
+
 export interface VirtualLabProjectSimulationResponse {
-  simulationId?: string;
+  sessionId: string;
   status: string;
-  logs: string[];
+  validation: DiagramValidationResult;
+  netlist: DiagramNetlist;
+  events: SimulationEventEntity[];
 }
 
 export interface SimulationComponentMeta {
@@ -1426,17 +1434,27 @@ function normalizeVirtualLabProject(value: unknown): VirtualLabProjectEntity {
   };
 }
 
+function normalizeSimulationEvent(value: unknown): SimulationEventEntity {
+  const source = toRecord(value) ?? {};
+  return {
+    type: toStringValue(pick(source, 'type', 'Type')),
+    time: toNumberValue(pick(source, 'time', 'Time')),
+    payload: toRecord(pick(source, 'payload', 'Payload')) ?? {},
+  };
+}
+
 function normalizeVirtualLabProjectSimulation(
   payload: unknown
 ): VirtualLabProjectSimulationResponse {
   const data = unwrapApiData<unknown>(payload);
   const source = toRecord(data) ?? {};
-  const logs = pick<unknown[]>(source, 'logs', 'Logs') ?? [];
 
   return {
-    simulationId: toStringValue(pick(source, 'simulationId', 'SimulationId')) || undefined,
+    sessionId: toStringValue(pick(source, 'sessionId', 'SessionId')),
     status: toStringValue(pick(source, 'status', 'Status'), 'stopped'),
-    logs: logs.filter((item): item is string => typeof item === 'string'),
+    validation: normalizeDiagramValidation(pick(source, 'validation', 'Validation')),
+    netlist: normalizeDiagramNetlist(pick(source, 'netlist', 'Netlist')),
+    events: toUnknownArray(pick(source, 'events', 'Events')).map(normalizeSimulationEvent),
   };
 }
 

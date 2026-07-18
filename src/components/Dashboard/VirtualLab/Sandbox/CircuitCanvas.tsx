@@ -11,11 +11,20 @@ import { HelpCircle } from 'lucide-react';
 export type Waypoint = { x: number; y: number };
 export type Connection = [string, string, string, Waypoint[]?];
 
+export interface PartVisualState {
+  value?: '0' | '1';
+  buzzing?: boolean;
+}
+
 interface CircuitCanvasProps {
   engine: SimulationEngine | null;
   boardType?: string;
   components?: LabCircuitComponent[];
   connections?: Connection[];
+  // Trạng thái LED/Buzzer từ event mock-runner (thay cho glue avr8js —
+  // engine ở trên chỉ còn dùng khi boardType === 'arduino_uno', ESP32 luôn
+  // truyền engine={null} và dùng partStates thay thế).
+  partStates?: Record<string, PartVisualState>;
   onComponentMove?: (id: string, x: number, y: number) => void;
   onWireConnect?: (sourceId: string, sourcePin: string, targetId: string, targetPin: string, color: string) => void;
   onWireDelete?: (index: number) => void;
@@ -133,6 +142,7 @@ export const CircuitCanvas = ({
   boardType = 'arduino_uno',
   components = [],
   connections = [],
+  partStates,
   onComponentMove,
   onWireConnect,
   onWireDelete,
@@ -663,7 +673,7 @@ export const CircuitCanvas = ({
           const type = normalizeComponentType(component.type);
           const isSelected = selectedPartId === component.id;
           const compPins = getPinCoords(type);
-          const hasPinMapping = Object.keys(component.pinMapping).length > 0;
+          const partState = partStates?.[component.id];
 
           const style: CSSProperties = {
             position: 'absolute',
@@ -681,8 +691,7 @@ export const CircuitCanvas = ({
             renderElement = createWokwiElement('wokwi-led', {
               ref: setComponentRef(component.id),
               color: getLedColor(component.attrs?.color),
-              value: engine && hasPinMapping ? undefined : '0',
-              brightness: engine && hasPinMapping ? undefined : '0',
+              value: partState?.value ?? '0',
               style: { pointerEvents: 'none' },
             });
           } else if (type === 'push_button') {
@@ -694,7 +703,7 @@ export const CircuitCanvas = ({
           } else if (type === 'buzzer') {
             renderElement = createWokwiElement('wokwi-buzzer', {
               ref: setComponentRef(component.id),
-              hassignal: 'false',
+              hassignal: partState?.buzzing ? 'true' : 'false',
               style: { pointerEvents: 'none' },
             });
           } else if (type === 'potentiometer') {

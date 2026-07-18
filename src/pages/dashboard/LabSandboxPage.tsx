@@ -4,11 +4,10 @@ import { AlertCircle, ArrowLeft, RefreshCw, Send } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuthStore } from '@/stores/authStore';
 import { labsApi, simulationCompileApi, virtualLabProjectsApi, diagramsApi } from '@/services/dashboardApi';
-import type { LabCircuitComponent, LabEntity, DiagramValidationResult } from '@/services/dashboardApi';
+import type { LabCircuitComponent, LabEntity, DiagramValidationResult, SimulationEventEntity } from '@/services/dashboardApi';
 import { CodeEditorPanel } from '@/components/Dashboard/VirtualLab/Sandbox/CodeEditorPanel';
-import { CircuitCanvas } from '@/components/Dashboard/VirtualLab/Sandbox/CircuitCanvas';
+import { CircuitCanvas, type PartVisualState } from '@/components/Dashboard/VirtualLab/Sandbox/CircuitCanvas';
 import { SerialMonitorPanel } from '@/components/Dashboard/VirtualLab/Sandbox/SerialMonitorPanel';
-import { SimulationEngine } from '@/components/Dashboard/VirtualLab/Sandbox/SimulationEngine';
 import { getSandboxProjectId } from '@/components/Dashboard/VirtualLab/Sandbox/projectId';
 
 const DIAGRAM_SAVE_DEBOUNCE_MS = 1500;
@@ -37,14 +36,6 @@ function getBoardDisplayName(boardType?: string) {
   return 'Arduino Uno';
 }
 
-function decodeBase64Ascii(value: string) {
-  try {
-    return globalThis.atob(value);
-  } catch {
-    return '';
-  }
-}
-
 function formatCompileErrors(errors: Array<{ line?: number | null; message: string }>, output?: string | null) {
   if (errors.length) {
     return errors
@@ -65,7 +56,6 @@ export const LabSandboxPage = () => {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [isCompiling, setIsCompiling] = useState(false);
   const [compileError, setCompileError] = useState<string | null>(null);
-  const [engine, setEngine] = useState<SimulationEngine | null>(null);
   const [isRunning, setIsRunning] = useState(false);
   const [serialOutput, setSerialOutput] = useState('');
   const [submitMessage, setSubmitMessage] = useState<string | null>(null);
@@ -76,9 +66,10 @@ export const LabSandboxPage = () => {
   const [projectLanguage, setProjectLanguage] = useState('arduino');
   const [diagramValidation, setDiagramValidation] = useState<DiagramValidationResult | null>(null);
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
-  const engineRef = useRef<SimulationEngine | null>(null);
+  const [partStates, setPartStates] = useState<Record<string, PartVisualState>>({});
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const hasHydratedRef = useRef(false);
+  const replayTimersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
 
   const loadLab = useCallback(async () => {
     if (!id) {
@@ -162,15 +153,12 @@ export const LabSandboxPage = () => {
     }
   }, [id, user?.id, user?.role]);
 
+  // Dọn timer replay khi rời trang — tránh setState trên component đã unmount
+  // nếu học sinh bấm Run rồi điều hướng đi trước khi replay chạy xong.
   useEffect(() => {
-    engineRef.current = new SimulationEngine();
-    engineRef.current.onSerialWrite((char) => {
-      setSerialOutput((prev) => prev + char);
-    });
-    setEngine(engineRef.current);
-
     return () => {
-      engineRef.current?.stop();
+      replayTimersRef.current.forEach(clearTimeout);
+      replayTimersRef.current = [];
     };
   }, []);
 
@@ -206,14 +194,66 @@ export const LabSandboxPage = () => {
     };
   }, [projectId, sandboxComponents, sandboxConnections, code]);
 
+  const clearReplayTimers = () => {
+    replayTimersRef.current.forEach(clearTimeout);
+    replayTimersRef.current = [];
+  };
+
+  const applySimulationEvent = (event: SimulationEventEntity) => {
+    if (event.type === 'serial') {
+      const message = typeof event.payload.message === 'string' ? event.payload.message : '';
+      setSerialOutput((prev) => prev + message + (event.payload.newline ? '\n' : ''));
+      return;
+    }
+
+    if (event.type === 'part-state') {
+      const partId = typeof event.payload.partId === 'string' ? event.payload.partId : '';
+      const component = typeof event.payload.component === 'string' ? event.payload.component : '';
+      if (!partId) return;
+
+      if (component === 'led') {
+        const value = event.payload.state === 'on' ? '1' : '0';
+        setPartStates((prev) => ({ ...prev, [partId]: { ...prev[partId], value } }));
+      } else if (component === 'buzzer') {
+        const buzzing = event.payload.state === 'buzzing';
+        setPartStates((prev) => ({ ...prev, [partId]: { ...prev[partId], buzzing } }));
+      }
+      // Button/Servo/DHT/Ultrasonic: VirtualLabMockRunner không phát
+      // part-state cho các loại này — không có gì để ánh xạ (giới hạn đã
+      // biết của mock runner, không phải thiếu sót ở adapter này).
+    }
+  };
+
+  // Mock runner trả toàn bộ danh sách event tính sẵn cùng lúc (không phải
+  // stream trực tiếp) — phát lại bằng timer theo đúng Time (ms tích lũy qua
+  // delay() trong code) để giữ cảm giác chạy thời gian thực.
+  const replaySimulationEvents = (events: SimulationEventEntity[]) => {
+    clearReplayTimers();
+    setPartStates({});
+
+    if (events.length === 0) {
+      setIsRunning(false);
+      return;
+    }
+
+    setIsRunning(true);
+    events.forEach((event) => {
+      replayTimersRef.current.push(setTimeout(() => applySimulationEvent(event), event.time));
+    });
+
+    const maxTime = Math.max(...events.map((event) => event.time));
+    replayTimersRef.current.push(setTimeout(() => setIsRunning(false), maxTime + 50));
+  };
+
   const handleRun = async () => {
-    if (!id || !lab) return;
+    if (!id || !lab || !projectId) return;
 
     setIsCompiling(true);
     setCompileError(null);
     setSubmitMessage(null);
     setSerialOutput('');
-    engineRef.current?.stop();
+    clearReplayTimers();
+    setPartStates({});
     setIsRunning(false);
 
     try {
@@ -229,34 +269,30 @@ export const LabSandboxPage = () => {
         return;
       }
 
-      if (!result.hexBase64) {
-        // ESP32 compile trả firmware ở dạng binary (firmwareBase64), không
-        // phải Intel HEX — avr8js chỉ mô phỏng được CPU AVR, không đọc được
-        // định dạng này (xem SimulationEngine.ts). Compile ESP32 vẫn thành
-        // công thật (result.success đã true) — không phải lỗi, chỉ là chưa
-        // có nơi để chạy nó cho tới khi Run chuyển sang RunEsp32Async (Bước 3).
-        setCompileError('Biên dịch ESP32 thành công. Chạy mô phỏng cho ESP32 sẽ có ở bước tiếp theo.');
+      const runResult = await virtualLabProjectsApi.start(projectId, {
+        code,
+        diagram: { parts: sandboxComponents, connections: sandboxConnections },
+      });
+
+      if (runResult.status === 'error') {
+        setCompileError(
+          runResult.validation.errors.length
+            ? runResult.validation.errors.join('\n')
+            : 'Mạch không hợp lệ, không thể chạy mô phỏng.'
+        );
         return;
       }
 
-      const hex = decodeBase64Ascii(result.hexBase64);
-      if (!hex) {
-        setCompileError('Không đọc được file .hex trả về từ API compile.');
-        return;
-      }
-
-      engineRef.current?.loadHex(hex);
-      engineRef.current?.start();
-      setIsRunning(true);
+      replaySimulationEvents(runResult.events);
     } catch (error) {
-      setCompileError(getErrorMessage(error, 'Không gọi được API biên dịch mô phỏng.'));
+      setCompileError(getErrorMessage(error, 'Không gọi được API biên dịch/chạy mô phỏng.'));
     } finally {
       setIsCompiling(false);
     }
   };
 
   const handleStop = () => {
-    engineRef.current?.stop();
+    clearReplayTimers();
     setIsRunning(false);
   };
 
@@ -426,10 +462,11 @@ export const LabSandboxPage = () => {
         <div className="col-span-1 lg:col-span-7 flex flex-col gap-4 h-full min-h-0">
           <div className="flex-[2] min-h-0 rounded-2xl overflow-hidden border border-border shadow-sm bg-[#222] relative">
             <CircuitCanvas
-              engine={engine}
+              engine={null}
               boardType={lab?.boardType}
               components={sandboxComponents}
               connections={sandboxConnections}
+              partStates={partStates}
               onComponentMove={handleComponentMove}
               onWireConnect={handleWireConnect}
               onWireDelete={handleWireDelete}

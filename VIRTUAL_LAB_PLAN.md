@@ -154,7 +154,7 @@ Quyết định đầy đủ: [`VIRTUAL_LAB_ADR.md`](VIRTUAL_LAB_ADR.md).
 - Chỉ 2 loại linh kiện có phản ứng mô phỏng: `wokwi-led` (on/off), `wokwi-buzzer` (buzzing/silent), qua `digitalWrite`. **Button/Servo/DHT/Ultrasonic dù được validate ở diagram nhưng không có phản ứng mô phỏng nào ở tầng run.**
 
 - [ ] 2.1 (FE) Audit `CodeEditorPanel.tsx`.
-- [x] **2.2 (BE) — ✅ CHỐT (2026-07-19): chấp nhận giới hạn mock runner hiện tại cho MVP.** Không đầu tư thêm effort nâng cấp parser (không lặp `loop()`, không control flow, chỉ LED/Buzzer phản ứng qua `digitalWrite`) — coi Giai đoạn 2 đạt ở mức hiện tại.
+- [x] **2.2 (BE) — ✅ CHỐT DỨT ĐIỂM (2026-07-19): giữ nguyên giới hạn mock runner hiện tại cho MVP.** Không lặp `loop()`, không control flow, chỉ LED/Buzzer phản ứng qua `digitalWrite` — coi Giai đoạn 2 đạt ở mức hiện tại. **Nâng cấp parser (nếu cần) đẩy sang Giai đoạn 8**, không chặn Giai đoạn 6/7.
 - [x] **2.3 (FE) — ✅ XONG (2026-07-18), verify thật qua UI (= Bước 3 rewrite LabSandboxPage.tsx).** `LabSandboxPage.tsx` gọi `virtualLabProjectsApi.start(projectId, {code, diagram})` (thay hẳn `SimulationEngine`/avr8js đã tắt hoàn toàn — `CircuitCanvas` luôn nhận `engine={null}`), nhận `Events[]` thật, adapter `applySimulationEvent` map `type:'part-state'` (`component:'led'|'buzzer'`) sang state `partStates` mới, `CircuitCanvas` đọc `partStates` để set `value`/`hassignal` cho `<wokwi-led>`/`<wokwi-buzzer>` (thay hoàn toàn cơ chế cũ dựa vào `engine`).
 - [x] **2.4 (FE) — ✅ XONG, verify thật.** Event `type:'serial'` (`payload.message`) được `applySimulationEvent` nối vào `serialOutput`, hiển thị đúng trong `SerialMonitorPanel` — verify thật thấy dòng `"StemFlow mock runner started."` xuất hiện đúng lúc replay bắt đầu.
 - [x] 2.5 (FE) — Đã đúng từ trước, giữ nguyên: `handleRun` gọi compile trước (`simulationCompileApi.compile`), chỉ gọi `virtualLabProjectsApi.start` sau khi compile `success:true` — 2 lời gọi tách biệt, đúng thứ tự.
@@ -206,7 +206,7 @@ Quyết định đầy đủ: [`VIRTUAL_LAB_ADR.md`](VIRTUAL_LAB_ADR.md).
 - [x] **5.3b (BE) — Bước 4a: vá lỗ hổng auth `VirtualLabSubmissionsController` — ✅ XONG (2026-07-19), verify thật (4 case, cả 4 PASS).** Phát hiện khi đọc lại contract cho Bước 4: controller **không có `[Authorize]`** (khác `DiagramsController`/`VirtualLabProjectController` đã vá ở 0.3) + tin `request.StudentId` client tự khai khi ẩn danh (`currentUserId ?? request.StudentId`) — cùng mức nghiêm trọng như gap đã vá ở 0.3, không phải quyết định chấp nhận trước đó. **Đã sửa:** thêm `[Authorize]` cho controller; `GetCurrentUserId()` đổi từ `TryGetCurrentUserId()` (nullable, không throw) sang non-nullable throw `UnauthorizedAccessException` giống hệt pattern `VirtualLabProjectController`; `IVirtualLabRuntimeService.SubmitVirtualLabAsync` đổi `int? currentUserId` → `int currentUserId` (khớp `GetDiagramAsync`/`SaveDiagramAsync`, không còn nhánh ẩn danh); `SubmitVirtualLabAsync` giờ luôn dùng `studentId = currentUserId` — nếu `request.StudentId` có giá trị và khác `currentUserId` thì throw `UnauthorizedAccessException` ("You cannot submit on behalf of another student.") → map `Forbid()` (403), không còn khái niệm "nộp hộ" (không có tiền lệ nào trong toàn bộ codebase cho use case giáo viên nộp hộ học sinh). `catch (UnauthorizedAccessException)` đổi từ `Unauthorized()` sang `Forbid()` — khớp ý nghĩa mới: đã xác thực nhưng không được phép, không phải chưa xác thực. Field `request.StudentId` giữ nguyên trong DTO (không xoá, chỉ đổi cách dùng) — cho phép FE gửi tường minh nếu muốn nhưng server luôn tự xác định qua token, không tin giá trị client gửi khi khác token.
   - `dotnet build STEM.Infrastructure`/`STEM.Api` — 0 Error.
   - **Verify thật qua endpoint** (instance riêng port 58080, 2 token thật user 11/12): không token → **401**; token user 11 + `studentId:12` trong body (nộp hộ) → **403**; token user 11 + `studentId` bỏ trống + `assignmentId` giả → qua đúng lớp auth, chạm business logic thật (**404 "Assignment not found."**, không phải 401/403); token user 11 + `studentId:11` (khớp chính mình) → cùng kết quả 404 như trên — xác nhận không chặn nhầm submit hợp lệ.
-- [x] **5.4 (BE) — ✅ CHỐT (2026-07-19): chấp nhận mức check hiện tại cho MVP.** Không làm so khớp `expectedBehavior` chi tiết — nhất quán với quyết định 2.2 (mock runner không mô phỏng control flow nên không có đủ dữ liệu hành vi thật để so khớp có ý nghĩa).
+- [x] **5.4 (BE) — ✅ CHỐT DỨT ĐIỂM (2026-07-19): giữ mức behavior-check hiện tại cho MVP** ("không có event lỗi nào" = pass). **So khớp `expectedBehavior` chi tiết đẩy sang backlog** — nhất quán với quyết định 2.2 (mock runner không mô phỏng control flow nên hiện chưa có đủ dữ liệu hành vi thật để so khớp có ý nghĩa).
 - [ ] 5.5 (BE) Grading (`/api/Grading/submissions/{id}/grade`) — không đổi, không liên quan overlap.
 - [ ] 5.6 (FE) Sửa nút Submit trong `LabSandboxPage.tsx`: gọi thật `POST api/submissions/virtual-lab` thay vì hiển thị placeholder "chưa có endpoint".
 - [ ] 5.7 (FE) Hiển thị checklist ✅/❌ theo `AutoGradeResultResponse.Checks` (đã có field `Name`/`Passed`/`Message`).
@@ -242,14 +242,16 @@ Quyết định đầy đủ: [`VIRTUAL_LAB_ADR.md`](VIRTUAL_LAB_ADR.md).
 
 ```
 GĐ0: Dọn dẹp & chốt kiến trúc     → ✅✅ ĐÓNG HOÀN TOÀN — 0.B1/0.2/0.3/0.4/0.5/0.6 đều xong, verify thật
-GĐ1: Diagram + Netlist (BE)      → ✅ Đã có, vượt kỳ vọng | Canvas (FE) → chưa audit
-GĐ2: Code editor + Mock sim      → ⏳ Mock runner xác nhận: chỉ LED/Buzzer, không loop — cần quyết định có nâng cấp không
+GĐ1: Diagram + Netlist (BE)      → ✅ Đã có, vượt kỳ vọng + type-mismatch đã vá | Canvas (FE) → đã audit, gap component HOÃN (xem dưới)
+GĐ2: Code editor + Mock sim      → ✅ 2.2 CHỐT: giữ nguyên giới hạn hiện tại cho MVP, nâng cấp đẩy GĐ8
 GĐ3: Compile thật                → ✅ Sandbox hóa xong, verify thật (noexec/BOM/output-mount/memory/timeout đều đã vá và test) | ✅ 3.1 (GetCompileJob) xong
-GĐ4: Session + Realtime          → ⏳ 0% hạ tầng — chốt dùng SignalR, cần setup từ đầu; stop() còn stub
-GĐ5: Submit + Auto-grading       → ✅ Khung đã có | ✅ 5.3 (compile giả mạo) đã vá + verify thật | ⏳ quyết định 5.4 (behavior sâu tới đâu)
-GĐ6: Template & nội dung bài học → chưa bắt đầu
-GĐ7: Kiểm thử end-to-end         → chưa bắt đầu
-GĐ8: Nâng cao (QEMU, replay, AI) → sau MVP
+GĐ4: Session + Realtime          → ⏸️ HOÃN xuống cuối cùng (sau GĐ6/GĐ7 xong + xác nhận MVP core chạy trọn vẹn) — 0% hạ tầng, chốt dùng SignalR; stop() còn stub
+GĐ5: Submit + Auto-grading       → ✅ Khung đã có | ✅ 5.3 (compile giả mạo) + 5.3b (auth) + resubmit (unique index/AllowResubmit/ResubmitLimit) đều đã vá + verify thật | ✅ 5.4 CHỐT: giữ mức hiện tại, so khớp expectedBehavior đẩy backlog | ⏳ 5.6/5.7 (FE wire Submit + checklist UI) đang làm (Bước 4c)
+GĐ6: Template & nội dung bài học → tiếp theo — soạn 3-5 bài mẫu thật (Blink LED, Button+LED, Buzzer báo động, đọc DHT22), dùng đúng type wokwi-* đã chuẩn hoá
+GĐ7: Kiểm thử end-to-end         → sau GĐ6 — luồng đầy đủ + case lỗi (mạch sai, code sai, compile-giả-mạo, resubmit quá giới hạn)
+GĐ8: Nâng cao (QEMU, replay, AI) → sau MVP — bao gồm cả nâng cấp mock runner (2.2) nếu cần
+
+**⏸️ HOÃN, chỉ ghi nhận (không chặn GĐ6/GĐ7):** Bước 5 rewrite `LabSandboxPage.tsx` (gap thêm linh kiện ở sandbox học sinh — hiện KHÔNG có palette thêm linh kiện, chỉ giáo viên có qua `CircuitBuilderTeacherMode.tsx`; 7/12 loại linh kiện Analyze() chưa modeled đầy đủ, xem 1.3) — đây là giới hạn đã biết của MVP, không phải bug mới.
 ```
 
 ## Danh sách quyết định còn mở (chưa chốt)

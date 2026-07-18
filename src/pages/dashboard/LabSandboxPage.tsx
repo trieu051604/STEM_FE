@@ -72,6 +72,8 @@ export const LabSandboxPage = () => {
   const [sandboxComponents, setSandboxComponents] = useState<LabCircuitComponent[]>(defaultComponents);
   const [sandboxConnections, setSandboxConnections] = useState<any[]>([]);
   const [projectId, setProjectId] = useState<string | null>(null);
+  const [projectBoard, setProjectBoard] = useState('esp32');
+  const [projectLanguage, setProjectLanguage] = useState('arduino');
   const [diagramValidation, setDiagramValidation] = useState<DiagramValidationResult | null>(null);
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
   const engineRef = useRef<SimulationEngine | null>(null);
@@ -115,6 +117,10 @@ export const LabSandboxPage = () => {
             resolvedComponents = project.circuitConfig.parts;
           }
           resolvedConnections = (project.circuitConfig.connections as any[]) ?? resolvedConnections;
+          // Board/Language của compile phải theo đúng VirtualLabProject (nguồn
+          // sự thật duy nhất từ giờ), không còn hardcode Uno như luồng cũ.
+          setProjectBoard(project.board || 'esp32');
+          setProjectLanguage(project.language || 'arduino');
         } catch (projectError) {
           const status = (projectError as { response?: { status?: number } })?.response?.status;
           if (status === 404) {
@@ -214,11 +220,22 @@ export const LabSandboxPage = () => {
       const result = await simulationCompileApi.compile({
         labId: lab.id,
         code,
-        board: 'arduino:avr:uno',
+        board: projectBoard,
+        framework: projectLanguage,
       });
 
-      if (!result.success || !result.hexBase64) {
+      if (!result.success) {
         setCompileError(formatCompileErrors(result.errors, result.compilerOutput));
+        return;
+      }
+
+      if (!result.hexBase64) {
+        // ESP32 compile trả firmware ở dạng binary (firmwareBase64), không
+        // phải Intel HEX — avr8js chỉ mô phỏng được CPU AVR, không đọc được
+        // định dạng này (xem SimulationEngine.ts). Compile ESP32 vẫn thành
+        // công thật (result.success đã true) — không phải lỗi, chỉ là chưa
+        // có nơi để chạy nó cho tới khi Run chuyển sang RunEsp32Async (Bước 3).
+        setCompileError('Biên dịch ESP32 thành công. Chạy mô phỏng cho ESP32 sẽ có ở bước tiếp theo.');
         return;
       }
 

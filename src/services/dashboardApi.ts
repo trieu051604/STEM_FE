@@ -1020,6 +1020,7 @@ export interface CompileSimulationRequest {
   labId?: string | null;
   code: string;
   board?: SimulationCompileBoard | string;
+  framework?: string;
 }
 
 export interface CompileSimulationError {
@@ -1830,6 +1831,7 @@ export const simulationCompileApi = {
       labId: data.labId ?? null,
       code: data.code,
       board: data.board ?? 'arduino:avr:uno',
+      framework: data.framework,
     });
     return normalizeCompileResponse(response.data);
   },

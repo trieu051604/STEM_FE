@@ -459,14 +459,27 @@ export const CircuitCanvas = ({
     setWireStart(null);
   };
 
-  const handleWheel = useCallback(
-    (e: React.WheelEvent) => {
+  // React đăng ký listener wheel/touch ở gốc DOM với { passive: true } mặc
+  // định (theo khuyến nghị trình duyệt cho hiệu năng scroll) — gọi
+  // preventDefault() qua JSX onWheel bị trình duyệt âm thầm bỏ qua trong
+  // 1 listener passive (kèm cảnh báo "Unable to preventDefault inside
+  // passive event listener"), khiến hành vi cuộn mặc định vẫn "chuyền" lên
+  // container cha (scroll chaining) dù zoom state vẫn đổi. Phải tự gắn
+  // listener qua addEventListener với { passive: false } mới tôn trọng
+  // đúng preventDefault().
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    const handleWheelNative = (e: WheelEvent) => {
       e.preventDefault();
       const delta = e.deltaY > 0 ? -0.1 : 0.1;
       setZoom((prev) => Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, prev + delta)));
-    },
-    []
-  );
+    };
+
+    container.addEventListener('wheel', handleWheelNative, { passive: false });
+    return () => container.removeEventListener('wheel', handleWheelNative);
+  }, []);
 
   const renderPinDots = (
     pins: Record<string, { x: number; y: number; label: string }>,
@@ -509,7 +522,6 @@ export const CircuitCanvas = ({
       onPointerUp={handlePointerUp}
       onPointerLeave={handlePointerUp}
       onPointerDown={handlePointerDownBackground}
-      onWheel={handleWheel}
     >
       <div
         className="absolute inset-0 pointer-events-none"

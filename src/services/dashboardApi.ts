@@ -946,6 +946,7 @@ export interface VirtualLabProjectEntity {
   language: string;
   codeContent: string;
   diagramJson: string;
+  circuitConfig: LabCircuitConfig;
   librariesJson: string;
   createdAt: string;
   updatedAt: string;
@@ -1399,6 +1400,10 @@ function normalizeComponentGlueRegistry(value: unknown): ComponentGlueRegistryEn
 
 function normalizeVirtualLabProject(value: unknown): VirtualLabProjectEntity {
   const source = toRecord(unwrapApiData<unknown>(value)) ?? {};
+  const diagramJson = toStringValue(
+    pick(source, 'diagramJson', 'DiagramJson', 'diagram', 'Diagram'),
+    '{}'
+  );
 
   return {
     id: toStringValue(pick(source, 'id', 'Id')),
@@ -1409,10 +1414,8 @@ function normalizeVirtualLabProject(value: unknown): VirtualLabProjectEntity {
     codeContent: toStringValue(
       pick(source, 'codeContent', 'CodeContent', 'code', 'Code')
     ),
-    diagramJson: toStringValue(
-      pick(source, 'diagramJson', 'DiagramJson', 'diagram', 'Diagram'),
-      '{}'
-    ),
+    diagramJson,
+    circuitConfig: normalizeCircuitConfig(diagramJson),
     librariesJson: toStringValue(
       pick(source, 'librariesJson', 'LibrariesJson'),
       '{}'
@@ -1679,6 +1682,100 @@ export const virtualLabProjectsApi = {
   stop: async (id: string): Promise<VirtualLabProjectSimulationResponse> => {
     const response = await api.post(`/virtual-lab/projects/${id}/stop`);
     return normalizeVirtualLabProjectSimulation(response.data);
+  },
+};
+
+export interface DiagramValidationResult {
+  isValid: boolean;
+  errors: string[];
+  warnings: string[];
+}
+
+export interface DiagramNetResponse {
+  id: string;
+  pins: string[];
+}
+
+export interface DiagramNetlist {
+  nets: DiagramNetResponse[];
+  pinToNet: Record<string, string>;
+}
+
+export interface DiagramSessionEntity {
+  sessionId: string;
+  circuitConfig: LabCircuitConfig;
+  validation: DiagramValidationResult;
+  netlist: DiagramNetlist;
+  updatedAt: string;
+}
+
+export interface SaveDiagramPayload {
+  circuitConfig: LabCircuitConfig;
+  sourceCode?: string;
+}
+
+function normalizeDiagramValidation(value: unknown): DiagramValidationResult {
+  const source = toRecord(value) ?? {};
+  return {
+    isValid: toBooleanValue(pick(source, 'isValid', 'IsValid')),
+    errors: toStringArray(pick(source, 'errors', 'Errors')),
+    warnings: toStringArray(pick(source, 'warnings', 'Warnings')),
+  };
+}
+
+function normalizeDiagramNetlist(value: unknown): DiagramNetlist {
+  const source = toRecord(value) ?? {};
+  const nets = toUnknownArray(pick(source, 'nets', 'Nets')).map((item) => {
+    const netSource = toRecord(item) ?? {};
+    return {
+      id: toStringValue(pick(netSource, 'id', 'Id')),
+      pins: toStringArray(pick(netSource, 'pins', 'Pins')),
+    };
+  });
+
+  const pinToNetSource = toRecord(pick(source, 'pinToNet', 'PinToNet')) ?? {};
+  const pinToNet: Record<string, string> = {};
+  for (const [pin, netId] of Object.entries(pinToNetSource)) {
+    pinToNet[pin] = toStringValue(netId);
+  }
+
+  return { nets, pinToNet };
+}
+
+function normalizeDiagramSession(value: unknown): DiagramSessionEntity {
+  const source = toRecord(unwrapApiData<unknown>(value)) ?? {};
+
+  return {
+    sessionId: toStringValue(pick(source, 'sessionId', 'SessionId')),
+    circuitConfig: normalizeCircuitConfig(pick(source, 'diagramJson', 'DiagramJson')),
+    validation: normalizeDiagramValidation(pick(source, 'validation', 'Validation')),
+    netlist: normalizeDiagramNetlist(pick(source, 'netlist', 'Netlist')),
+    updatedAt: toStringValue(pick(source, 'updatedAt', 'UpdatedAt')),
+  };
+}
+
+// PUT/POST api/diagrams/{projectId} — projectId là VirtualLabProject.Id (Guid).
+// BE chỉ đọc parts[].id/parts[].type và connections[][0..1] (xem
+// VirtualLabDiagramService.ParseParts/ParseConnections), mọi field khác
+// (x/y/rotate/attrs/pinMapping, màu dây, waypoint...) được giữ nguyên qua
+// GetRawText() round-trip — không cần strip/convert gì thêm trước khi gửi.
+export const diagramsApi = {
+  get: async (projectId: string): Promise<DiagramSessionEntity> => {
+    const response = await api.get(`/diagrams/${projectId}`);
+    return normalizeDiagramSession(response.data);
+  },
+  save: async (
+    projectId: string,
+    data: SaveDiagramPayload
+  ): Promise<DiagramSessionEntity> => {
+    const response = await api.put(`/diagrams/${projectId}`, {
+      diagramJson: JSON.stringify({
+        parts: data.circuitConfig.parts ?? [],
+        connections: data.circuitConfig.connections ?? [],
+      }),
+      sourceCode: data.sourceCode,
+    });
+    return normalizeDiagramSession(response.data);
   },
 };
 

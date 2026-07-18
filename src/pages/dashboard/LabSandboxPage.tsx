@@ -3,12 +3,15 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { AlertCircle, ArrowLeft, RefreshCw, Send } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuthStore } from '@/stores/authStore';
-import { labsApi, simulationCompileApi } from '@/services/dashboardApi';
-import type { LabCircuitComponent, LabEntity } from '@/services/dashboardApi';
+import { labsApi, simulationCompileApi, virtualLabProjectsApi, diagramsApi } from '@/services/dashboardApi';
+import type { LabCircuitComponent, LabEntity, DiagramValidationResult } from '@/services/dashboardApi';
 import { CodeEditorPanel } from '@/components/Dashboard/VirtualLab/Sandbox/CodeEditorPanel';
 import { CircuitCanvas } from '@/components/Dashboard/VirtualLab/Sandbox/CircuitCanvas';
 import { SerialMonitorPanel } from '@/components/Dashboard/VirtualLab/Sandbox/SerialMonitorPanel';
 import { SimulationEngine } from '@/components/Dashboard/VirtualLab/Sandbox/SimulationEngine';
+import { getSandboxProjectId } from '@/components/Dashboard/VirtualLab/Sandbox/projectId';
+
+const DIAGRAM_SAVE_DEBOUNCE_MS = 1500;
 
 const defaultStarterCode =
   'void setup() {\n  pinMode(13, OUTPUT);\n}\n\nvoid loop() {\n  digitalWrite(13, HIGH);\n  delay(1000);\n  digitalWrite(13, LOW);\n  delay(1000);\n}';
@@ -68,7 +71,12 @@ export const LabSandboxPage = () => {
   const [submitMessage, setSubmitMessage] = useState<string | null>(null);
   const [sandboxComponents, setSandboxComponents] = useState<LabCircuitComponent[]>(defaultComponents);
   const [sandboxConnections, setSandboxConnections] = useState<any[]>([]);
+  const [projectId, setProjectId] = useState<string | null>(null);
+  const [diagramValidation, setDiagramValidation] = useState<DiagramValidationResult | null>(null);
+  const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
   const engineRef = useRef<SimulationEngine | null>(null);
+  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const hasHydratedRef = useRef(false);
 
   const loadLab = useCallback(async () => {
     if (!id) {
@@ -78,21 +86,60 @@ export const LabSandboxPage = () => {
 
     setIsLoading(true);
     setLoadError(null);
+    hasHydratedRef.current = false;
 
     try {
       const labResponse = await labsApi.getById(id);
       setLab(labResponse);
-      setCode(labResponse.starterCode || defaultStarterCode);
-      if (labResponse.circuitConfig?.parts?.length) {
-        // Xóa pinMapping để học sinh tự cắm dây (các linh kiện sinh ra không tự động nối dây vào chip)
-        const partsWithoutWires = labResponse.circuitConfig.parts.map((p: any) => ({
-          ...p,
-          pinMapping: {}
-        }));
-        setSandboxComponents(partsWithoutWires);
+
+      // Xóa pinMapping để học sinh tự cắm dây (các linh kiện sinh ra không tự động nối dây vào chip)
+      const starterComponents = labResponse.circuitConfig?.parts?.length
+        ? labResponse.circuitConfig.parts.map((p: any) => ({ ...p, pinMapping: {} }))
+        : defaultComponents;
+      const starterConnections = labResponse.circuitConfig?.connections || [];
+      let resolvedCode = labResponse.starterCode || defaultStarterCode;
+      let resolvedComponents = starterComponents;
+      let resolvedConnections = starterConnections;
+
+      // Lab (catalog) và VirtualLabProject (Guid, nơi lưu diagram/code thật)
+      // không có liên kết nào ở BE — suy ra Guid tất định từ (labId, studentId)
+      // thay vì lưu ánh xạ riêng (xem projectId.ts).
+      if (user?.id) {
+        const pid = await getSandboxProjectId(labResponse.id, user.id);
+        setProjectId(pid);
+
+        try {
+          const project = await virtualLabProjectsApi.getById(pid);
+          resolvedCode = project.codeContent || resolvedCode;
+          if (project.circuitConfig.parts?.length) {
+            resolvedComponents = project.circuitConfig.parts;
+          }
+          resolvedConnections = (project.circuitConfig.connections as any[]) ?? resolvedConnections;
+        } catch (projectError) {
+          const status = (projectError as { response?: { status?: number } })?.response?.status;
+          if (status === 404) {
+            // Chưa có VirtualLabProject cho cặp (lab, student) này — tạo ngay
+            // bằng nội dung starter của Lab, đúng hành vi auto-create của
+            // PUT api/diagrams/{id} đã xác nhận ở BE (không chờ tới lần sửa
+            // đầu tiên của học sinh).
+            try {
+              const created = await diagramsApi.save(pid, {
+                circuitConfig: { parts: starterComponents, connections: starterConnections },
+                sourceCode: resolvedCode,
+              });
+              setDiagramValidation(created.validation);
+            } catch (createError) {
+              console.error('[LabSandboxPage] Failed to create initial VirtualLabProject', createError);
+            }
+          } else {
+            throw projectError;
+          }
+        }
       }
-      
-      setSandboxConnections(labResponse.circuitConfig?.connections || []);
+
+      setCode(resolvedCode);
+      setSandboxComponents(resolvedComponents);
+      setSandboxConnections(resolvedConnections);
 
       if (user?.role === 'student') {
         try {
@@ -105,8 +152,9 @@ export const LabSandboxPage = () => {
       setLoadError(getErrorMessage(error, 'Không tải được phòng lab sandbox.'));
     } finally {
       setIsLoading(false);
+      hasHydratedRef.current = true;
     }
-  }, [id, user?.role]);
+  }, [id, user?.id, user?.role]);
 
   useEffect(() => {
     engineRef.current = new SimulationEngine();
@@ -123,6 +171,34 @@ export const LabSandboxPage = () => {
   useEffect(() => {
     void loadLab();
   }, [loadLab]);
+
+  // Lưu diagram/code debounce ~1.5s sau khi ngừng thao tác — tránh gọi PUT
+  // theo từng pixel khi kéo linh kiện (onComponentMove bắn liên tục lúc kéo).
+  useEffect(() => {
+    if (!projectId || !hasHydratedRef.current) return;
+
+    setSaveStatus('saving');
+    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    saveTimerRef.current = setTimeout(() => {
+      void diagramsApi
+        .save(projectId, {
+          circuitConfig: { parts: sandboxComponents, connections: sandboxConnections },
+          sourceCode: code,
+        })
+        .then((session) => {
+          setDiagramValidation(session.validation);
+          setSaveStatus('saved');
+        })
+        .catch((error) => {
+          console.error('[LabSandboxPage] Failed to save diagram', error);
+          setSaveStatus('error');
+        });
+    }, DIAGRAM_SAVE_DEBOUNCE_MS);
+
+    return () => {
+      if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    };
+  }, [projectId, sandboxComponents, sandboxConnections, code]);
 
   const handleRun = async () => {
     if (!id || !lab) return;
@@ -292,6 +368,11 @@ export const LabSandboxPage = () => {
             <h1 className="text-xl font-bold text-[#0f4c5c] truncate">{lab.title}</h1>
             <p className="text-xs text-muted-foreground">
               Sandbox nội bộ - {getBoardDisplayName(lab.boardType)} - {sandboxComponents.length} linh kiện
+              {saveStatus === 'saving' && ' - Đang lưu...'}
+              {saveStatus === 'saved' && ' - Đã lưu'}
+              {saveStatus === 'error' && ' - Lỗi khi lưu, thử lại sau'}
+              {diagramValidation && !diagramValidation.isValid &&
+                ` - ${diagramValidation.errors.length} lỗi mạch`}
             </p>
           </div>
         </div>

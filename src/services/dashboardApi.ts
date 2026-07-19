@@ -1798,6 +1798,84 @@ export const diagramsApi = {
   },
 };
 
+export interface VirtualLabSubmissionPayload {
+  assignmentId: number;
+  sessionId: string;
+  circuitConfig: LabCircuitConfig;
+  sourceCode: string;
+  simulationEvents: SimulationEventEntity[];
+}
+
+export interface AutoGradeCheckEntity {
+  name: string;
+  passed: boolean;
+  message: string;
+}
+
+export interface AutoGradeResultEntity {
+  passed: boolean;
+  passedChecks: number;
+  totalChecks: number;
+  checks: AutoGradeCheckEntity[];
+}
+
+export interface VirtualLabSubmissionResult {
+  submissionId: number;
+  status: string;
+  autoScore: number | null;
+  autoCheck: AutoGradeResultEntity;
+}
+
+function normalizeAutoGradeCheck(value: unknown): AutoGradeCheckEntity {
+  const source = toRecord(value) ?? {};
+  return {
+    name: toStringValue(pick(source, 'name', 'Name')),
+    passed: toBooleanValue(pick(source, 'passed', 'Passed')),
+    message: toStringValue(pick(source, 'message', 'Message')),
+  };
+}
+
+function normalizeAutoGradeResult(value: unknown): AutoGradeResultEntity {
+  const source = toRecord(value) ?? {};
+  return {
+    passed: toBooleanValue(pick(source, 'passed', 'Passed')),
+    passedChecks: toNumberValue(pick(source, 'passedChecks', 'PassedChecks')),
+    totalChecks: toNumberValue(pick(source, 'totalChecks', 'TotalChecks')),
+    checks: toUnknownArray(pick(source, 'checks', 'Checks')).map(normalizeAutoGradeCheck),
+  };
+}
+
+function normalizeVirtualLabSubmission(value: unknown): VirtualLabSubmissionResult {
+  const source = toRecord(unwrapApiData<unknown>(value)) ?? {};
+  return {
+    submissionId: toNumberValue(pick(source, 'submissionId', 'SubmissionId')),
+    status: toStringValue(pick(source, 'status', 'Status')),
+    autoScore: toNullableNumber(pick(source, 'autoScore', 'AutoScore')),
+    autoCheck: normalizeAutoGradeResult(pick(source, 'autoCheck', 'AutoCheck')),
+  };
+}
+
+// POST api/submissions/virtual-lab — BE tự resolve studentId từ JWT (không còn
+// tin StudentId client gửi, xem 5.3b), tự re-compile server-side (không đọc
+// CompileResult client gửi, xem 5.3) — không cần gửi CompileResult/StudentId.
+export const submissionsApi = {
+  submitVirtualLab: async (
+    payload: VirtualLabSubmissionPayload
+  ): Promise<VirtualLabSubmissionResult> => {
+    const response = await api.post('/submissions/virtual-lab', {
+      assignmentId: payload.assignmentId,
+      sessionId: payload.sessionId,
+      diagramJson: JSON.stringify({
+        parts: payload.circuitConfig.parts ?? [],
+        connections: payload.circuitConfig.connections ?? [],
+      }),
+      sourceCode: payload.sourceCode,
+      simulationEvents: payload.simulationEvents,
+    });
+    return normalizeVirtualLabSubmission(response.data);
+  },
+};
+
 export const simulationsApi = {
   getComponents: async (): Promise<SimulationComponentMeta[]> => {
     const response = await api.get('/simulations/components');

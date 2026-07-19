@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { AlertCircle, ArrowLeft, RefreshCw, Send } from 'lucide-react';
+import { AlertCircle, ArrowLeft, CheckCircle2, Loader2, RefreshCw, Send, XCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuthStore } from '@/stores/authStore';
-import { labsApi, simulationCompileApi, virtualLabProjectsApi, diagramsApi } from '@/services/dashboardApi';
-import type { LabCircuitComponent, LabEntity, DiagramValidationResult, SimulationEventEntity } from '@/services/dashboardApi';
+import { labsApi, simulationCompileApi, virtualLabProjectsApi, diagramsApi, submissionsApi } from '@/services/dashboardApi';
+import type { LabCircuitComponent, LabEntity, DiagramValidationResult, SimulationEventEntity, AutoGradeResultEntity } from '@/services/dashboardApi';
 import { CodeEditorPanel } from '@/components/Dashboard/VirtualLab/Sandbox/CodeEditorPanel';
 import { CircuitCanvas, type PartVisualState } from '@/components/Dashboard/VirtualLab/Sandbox/CircuitCanvas';
 import { SerialMonitorPanel } from '@/components/Dashboard/VirtualLab/Sandbox/SerialMonitorPanel';
@@ -67,6 +67,11 @@ export const LabSandboxPage = () => {
   const [diagramValidation, setDiagramValidation] = useState<DiagramValidationResult | null>(null);
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
   const [partStates, setPartStates] = useState<Record<string, PartVisualState>>({});
+  const [linkedAssignmentId, setLinkedAssignmentId] = useState<number | null>(null);
+  const [lastSimulationEvents, setLastSimulationEvents] = useState<SimulationEventEntity[]>([]);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [autoCheck, setAutoCheck] = useState<AutoGradeResultEntity | null>(null);
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const hasHydratedRef = useRef(false);
   const replayTimersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
@@ -84,6 +89,7 @@ export const LabSandboxPage = () => {
     try {
       const labResponse = await labsApi.getById(id);
       setLab(labResponse);
+      setLinkedAssignmentId(labResponse.linkedAssignmentId ?? null);
 
       // Xóa pinMapping để học sinh tự cắm dây (các linh kiện sinh ra không tự động nối dây vào chip)
       const starterComponents = labResponse.circuitConfig?.parts?.length
@@ -230,6 +236,7 @@ export const LabSandboxPage = () => {
   const replaySimulationEvents = (events: SimulationEventEntity[]) => {
     clearReplayTimers();
     setPartStates({});
+    setLastSimulationEvents(events);
 
     if (events.length === 0) {
       setIsRunning(false);
@@ -251,6 +258,8 @@ export const LabSandboxPage = () => {
     setIsCompiling(true);
     setCompileError(null);
     setSubmitMessage(null);
+    setSubmitError(null);
+    setAutoCheck(null);
     setSerialOutput('');
     clearReplayTimers();
     setPartStates({});
@@ -297,10 +306,33 @@ export const LabSandboxPage = () => {
   };
 
   const handleSubmit = async () => {
+    if (!projectId || !linkedAssignmentId) return;
+
     handleStop();
-    setSubmitMessage(
-      'Chưa có endpoint nộp/chấm bài sandbox trong Swagger hiện tại. Code đã sẵn sàng để gửi khi BE mở API nộp bài.'
-    );
+    setSubmitMessage(null);
+    setSubmitError(null);
+    setAutoCheck(null);
+    setIsSubmitting(true);
+
+    try {
+      const result = await submissionsApi.submitVirtualLab({
+        assignmentId: linkedAssignmentId,
+        sessionId: projectId,
+        circuitConfig: { parts: sandboxComponents, connections: sandboxConnections },
+        sourceCode: code,
+        simulationEvents: lastSimulationEvents,
+      });
+
+      setAutoCheck(result.autoCheck);
+      setSubmitMessage(
+        `Đã nộp bài — đạt ${result.autoCheck.passedChecks}/${result.autoCheck.totalChecks} tiêu chí` +
+          (result.autoScore != null ? `, điểm tự động: ${result.autoScore}.` : '.')
+      );
+    } catch (error) {
+      setSubmitError(getErrorMessage(error, 'Không nộp được bài — vui lòng thử lại.'));
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleComponentMove = (id: string, x: number, y: number) => {
@@ -430,19 +462,57 @@ export const LabSandboxPage = () => {
           </div>
         </div>
 
-        <Button
-          type="button"
-          onClick={() => void handleSubmit()}
-          className="bg-[#b45309] hover:bg-[#92400e] text-white rounded-full font-bold shadow-sm px-6"
-        >
-          <Send className="w-4 h-4 mr-2" />
-          Nộp bài
-        </Button>
+        {linkedAssignmentId ? (
+          <Button
+            type="button"
+            disabled={isSubmitting}
+            onClick={() => void handleSubmit()}
+            className="bg-[#b45309] hover:bg-[#92400e] text-white rounded-full font-bold shadow-sm px-6 disabled:opacity-60"
+          >
+            {isSubmitting ? (
+              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+            ) : (
+              <Send className="w-4 h-4 mr-2" />
+            )}
+            {isSubmitting ? 'Đang nộp...' : 'Nộp bài'}
+          </Button>
+        ) : (
+          <p className="text-xs text-muted-foreground max-w-[220px] text-right">
+            Lab này chưa gắn bài đánh giá — không thể nộp bài.
+          </p>
+        )}
       </div>
 
       {submitMessage && (
         <div className="rounded-2xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm font-medium text-blue-800">
           {submitMessage}
+        </div>
+      )}
+
+      {submitError && (
+        <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-700">
+          {submitError}
+        </div>
+      )}
+
+      {autoCheck && (
+        <div className="rounded-2xl border border-border bg-white p-4 shrink-0 space-y-2">
+          <p className="text-sm font-bold text-[#0f4c5c]">
+            Kết quả chấm tự động — {autoCheck.passedChecks}/{autoCheck.totalChecks} tiêu chí
+          </p>
+          {autoCheck.checks.map((check) => (
+            <div key={check.name} className="flex items-start gap-2 text-sm">
+              {check.passed ? (
+                <CheckCircle2 className="w-4 h-4 mt-0.5 shrink-0 text-emerald-600" />
+              ) : (
+                <XCircle className="w-4 h-4 mt-0.5 shrink-0 text-red-600" />
+              )}
+              <div>
+                <span className="font-semibold capitalize">{check.name}</span>
+                <span className="text-muted-foreground"> — {check.message}</span>
+              </div>
+            </div>
+          ))}
         </div>
       )}
 

@@ -1702,6 +1702,12 @@ export const virtualLabProjectsApi = {
     const response = await api.post(`/virtual-lab/projects/${id}/stop`);
     return normalizeVirtualLabProjectSimulation(response.data);
   },
+  // Kích hoạt compile nền để làm ấm firmware cache TRƯỚC khi bấm Run — gọi
+  // sau debounce 2-3s lúc học sinh ngừng gõ code (LabSandboxPage.tsx). BE trả
+  // về ngay (202), không đợi compile ~40-90s thật xong.
+  precompile: async (id: string, code: string): Promise<void> => {
+    await api.post(`/virtual-lab/projects/${id}/precompile`, { code });
+  },
 };
 
 export interface DiagramValidationResult {
@@ -1731,6 +1737,7 @@ export interface DiagramSessionEntity {
 export interface SaveDiagramPayload {
   circuitConfig: LabCircuitConfig;
   sourceCode?: string;
+  labId?: string;
 }
 
 function normalizeDiagramValidation(value: unknown): DiagramValidationResult {
@@ -1793,6 +1800,7 @@ export const diagramsApi = {
         connections: data.circuitConfig.connections ?? [],
       }),
       sourceCode: data.sourceCode,
+      labId: data.labId,
     });
     return normalizeDiagramSession(response.data);
   },

@@ -45,46 +45,57 @@ export const ARDUINO_UNO_PINS: Record<string, PinCoord> = {
   'A5':     { x: 255.5, y: 191.5, label: 'uno:A5' },
 };
 
-// Lấy từ: node_modules/@wokwi/elements/dist/esm/esp32-devkit-v1-element.js -> pinInfo
-// Lưu ý: đây là part cộng đồng `wokwi-esp32-devkit-v1`. Part chính thức
-// `board-esp32-devkit-c-v4` là closed-source, không có trong package này ->
-// pinout dưới đây CHƯA được xác minh khớp với board v4 (cần tự kiểm tra
-// trong wokwi.com bằng cách hover từng chân trước khi coi là nguồn tin cậy
-// cho board v4).
+// Tọa độ lấy từ: node_modules/@wokwi/elements/dist/esm/esp32-devkit-v1-element.js
+// -> pinInfo. Lưu ý: đây là part cộng đồng `wokwi-esp32-devkit-v1`. Part
+// chính thức `board-esp32-devkit-c-v4` là closed-source, không có trong
+// package này -> tọa độ x/y dưới đây CHƯA được xác minh khớp với board v4
+// (cần tự kiểm tra trong wokwi.com bằng cách hover từng chân trước khi coi
+// là nguồn tin cậy cho board v4).
+//
+// Key KHÔNG dùng nguyên tên silkscreen "D13"/"D2"/... của thư viện —
+// VirtualLabDiagramService.SupportedPins (BE) tự đặt ra quy ước "GPIOxx"
+// riêng, không khớp tên silkscreen. Vì renderPinDots() dùng thẳng key này
+// làm chuỗi pin gửi lên BE (connections: "arduino:<key>"), key ở đây phải
+// đổi sang đúng "GPIOxx" để khớp SupportedPins — nếu không mọi dây nối tới
+// các chân này sẽ bị BE báo "pin '<key>' does not exist on
+// board-esp32-devkit-c-v4." RX2/TX2 không đổi theo quy tắc số (không có
+// "GPIOTX2") mà map sang GPIO16/GPIO17 — đúng UART2 vật lý của ESP32 DevKit.
+// Các chân không có "D"/"RX2"/"TX2" (EN/VP/VN/VIN/3V3/GND.*/RX0/TX0) đã khớp
+// sẵn với SupportedPins, giữ nguyên.
 export const ESP32_DEVKIT_PINS: Record<string, PinCoord> = {
   // --- Cột trái (từ trên xuống) ---
-  'EN':    { x: 5, y: 24,   label: 'esp32:EN' },
-  'VP':    { x: 5, y: 34,   label: 'esp32:VP' },
-  'VN':    { x: 5, y: 44,   label: 'esp32:VN' },
-  'D34':   { x: 5, y: 53.1, label: 'esp32:D34' },
-  'D35':   { x: 5, y: 62.9, label: 'esp32:D35' },
-  'D32':   { x: 5, y: 72.2, label: 'esp32:D32' },
-  'D33':   { x: 5, y: 81.7, label: 'esp32:D33' },
-  'D25':   { x: 5, y: 91.3, label: 'esp32:D25' },
-  'D26':   { x: 5, y: 101,  label: 'esp32:D26' },
-  'D27':   { x: 5, y: 110.8, label: 'esp32:D27' },
-  'D14':   { x: 5, y: 120,  label: 'esp32:D14' },
-  'D12':   { x: 5, y: 130.4, label: 'esp32:D12' },
-  'D13':   { x: 5, y: 139.5, label: 'esp32:D13' },
-  'GND.2': { x: 5, y: 149,  label: 'esp32:GND' },
-  'VIN':   { x: 5, y: 158.5, label: 'esp32:VIN' },
+  'EN':     { x: 5, y: 24,   label: 'esp32:EN' },
+  'VP':     { x: 5, y: 34,   label: 'esp32:VP' },
+  'VN':     { x: 5, y: 44,   label: 'esp32:VN' },
+  'GPIO34': { x: 5, y: 53.1, label: 'esp32:GPIO34' },
+  'GPIO35': { x: 5, y: 62.9, label: 'esp32:GPIO35' },
+  'GPIO32': { x: 5, y: 72.2, label: 'esp32:GPIO32' },
+  'GPIO33': { x: 5, y: 81.7, label: 'esp32:GPIO33' },
+  'GPIO25': { x: 5, y: 91.3, label: 'esp32:GPIO25' },
+  'GPIO26': { x: 5, y: 101,  label: 'esp32:GPIO26' },
+  'GPIO27': { x: 5, y: 110.8, label: 'esp32:GPIO27' },
+  'GPIO14': { x: 5, y: 120,  label: 'esp32:GPIO14' },
+  'GPIO12': { x: 5, y: 130.4, label: 'esp32:GPIO12' },
+  'GPIO13': { x: 5, y: 139.5, label: 'esp32:GPIO13' },
+  'GND.2':  { x: 5, y: 149,  label: 'esp32:GND' },
+  'VIN':    { x: 5, y: 158.5, label: 'esp32:VIN' },
 
   // --- Cột phải (từ trên xuống) ---
-  'D23':   { x: 101.3, y: 24,   label: 'esp32:D23' },
-  'D22':   { x: 101.3, y: 34,   label: 'esp32:D22' },
-  'TX0':   { x: 101.3, y: 44,   label: 'esp32:TX0' },
-  'RX0':   { x: 101.3, y: 53.1, label: 'esp32:RX0' },
-  'D21':   { x: 101.3, y: 62.9, label: 'esp32:D21' },
-  'D19':   { x: 101.3, y: 72.2, label: 'esp32:D19' },
-  'D18':   { x: 101.3, y: 81.7, label: 'esp32:D18' },
-  'D5':    { x: 101.3, y: 91.3, label: 'esp32:D5' },
-  'TX2':   { x: 101.3, y: 101,  label: 'esp32:TX2' },
-  'RX2':   { x: 101.3, y: 110.8, label: 'esp32:RX2' },
-  'D4':    { x: 101.3, y: 120,  label: 'esp32:D4' },
-  'D2':    { x: 101.3, y: 130.4, label: 'esp32:D2' },
-  'D15':   { x: 101.3, y: 139.5, label: 'esp32:D15' },
-  'GND.1': { x: 101.3, y: 149,  label: 'esp32:GND' },
-  '3V3':   { x: 101.3, y: 158.5, label: 'esp32:3V3' },
+  'GPIO23': { x: 101.3, y: 24,   label: 'esp32:GPIO23' },
+  'GPIO22': { x: 101.3, y: 34,   label: 'esp32:GPIO22' },
+  'TX0':    { x: 101.3, y: 44,   label: 'esp32:TX0' },
+  'RX0':    { x: 101.3, y: 53.1, label: 'esp32:RX0' },
+  'GPIO21': { x: 101.3, y: 62.9, label: 'esp32:GPIO21' },
+  'GPIO19': { x: 101.3, y: 72.2, label: 'esp32:GPIO19' },
+  'GPIO18': { x: 101.3, y: 81.7, label: 'esp32:GPIO18' },
+  'GPIO5':  { x: 101.3, y: 91.3, label: 'esp32:GPIO5' },
+  'GPIO17': { x: 101.3, y: 101,  label: 'esp32:GPIO17 (TX2)' },
+  'GPIO16': { x: 101.3, y: 110.8, label: 'esp32:GPIO16 (RX2)' },
+  'GPIO4':  { x: 101.3, y: 120,  label: 'esp32:GPIO4' },
+  'GPIO2':  { x: 101.3, y: 130.4, label: 'esp32:GPIO2' },
+  'GPIO15': { x: 101.3, y: 139.5, label: 'esp32:GPIO15' },
+  'GND.1':  { x: 101.3, y: 149,  label: 'esp32:GND' },
+  '3V3':    { x: 101.3, y: 158.5, label: 'esp32:3V3' },
 };
 
 // GPIO an toàn để gợi ý mặc định cho giáo viên khi soạn bài (tránh strapping
@@ -133,6 +144,14 @@ export const POTENTIOMETER_PINS: Record<string, PinCoord> = {
   'VCC': { x: 49, y: 68.5, label: 'VCC' },
 };
 
+// Lấy từ: node_modules/@wokwi/elements/dist/esm/dht22-element.js -> pinInfo
+export const DHT22_PINS: Record<string, PinCoord> = {
+  'VCC': { x: 15,   y: 114.9, label: 'VCC' },
+  'SDA': { x: 24.5, y: 114.9, label: 'SDA' },
+  'NC':  { x: 34.1, y: 114.9, label: 'NC' },
+  'GND': { x: 43.8, y: 114.9, label: 'GND' },
+};
+
 export function getPinCoords(componentType: string): Record<string, PinCoord> {
   const normalized = componentType.toLowerCase().replace('wokwi-', '');
   if (normalized === 'arduino_uno' || normalized === 'arduino-uno') return ARDUINO_UNO_PINS;
@@ -148,5 +167,6 @@ export function getPinCoords(componentType: string): Record<string, PinCoord> {
   if (normalized === 'buzzer') return BUZZER_PINS;
   if (normalized === 'servo') return SERVO_PINS;
   if (normalized === 'potentiometer') return POTENTIOMETER_PINS;
+  if (normalized === 'dht22') return DHT22_PINS;
   return {};
 }

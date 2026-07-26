@@ -16,6 +16,33 @@ export interface PartVisualState {
   buzzing?: boolean;
 }
 
+// wokwi-led/wokwi-buzzer (Lit) khai báo `value`/`hasSignal` là boolean nội
+// bộ (`this.value && ...`, `this.hasSignal`), nhưng property decorator
+// không có `{ type: Boolean }`. Nếu truyền chuỗi ('0'/'false') qua React
+// props, Lit lưu thẳng chuỗi đó vào property — và MỌI chuỗi non-empty đều
+// truthy trong JS, kể cả '0'/'false', nên LED/Buzzer luôn hiển thị như đang
+// bật dù giá trị logic là tắt. Đã verify thật qua trình duyệt (React +
+// @wokwi/elements thật, không phải suy luận): value='0' (string) ->
+// lightOn=true (SAI); value={false} (boolean) -> lightOn=false (ĐÚNG).
+// Bắt buộc truyền boolean thật, không phải chuỗi '0'/'1'.
+function isLedOn(state: PartVisualState | undefined): boolean {
+  return state?.value === '1';
+}
+
+// wokwi-buzzer dùng property `hasSignal` (camelCase) — Lit tự suy ra tên
+// attribute quan sát là `hassignal` (lowercase) khi không khai báo
+// `attribute:` tường minh. React chỉ gán trực tiếp DOM property (bỏ qua
+// serialize chuỗi qua attribute) khi TÊN PROP truyền vào khớp đúng case với
+// property thật tồn tại sẵn trên instance — verify thật: prop `hassignal`
+// (chữ thường, khớp tên attribute chứ không khớp property) luôn bị React đi
+// qua đường attribute (kể cả khi truyền boolean, `true` cũng chỉ ra
+// attribute="" rỗng, Lit đọc lại thành chuỗi rỗng falsy — vẫn sai theo
+// hướng khác); còn prop `hasSignal` (đúng case) với giá trị boolean thật
+// luôn được gán thẳng qua property, hoạt động đúng cả 2 chiều bật/tắt.
+function isBuzzerOn(state: PartVisualState | undefined): boolean {
+  return !!state?.buzzing;
+}
+
 interface CircuitCanvasProps {
   engine: SimulationEngine | null;
   boardType?: string;
@@ -50,6 +77,7 @@ function normalizeComponentType(type: string) {
   if (normalized === 'wokwi-servo') return 'servo';
   if (normalized === 'wokwi-potentiometer') return 'potentiometer';
   if (normalized === 'wokwi-resistor') return 'resistor';
+  if (normalized === 'wokwi-dht22') return 'dht22';
   return normalized;
 }
 
@@ -363,6 +391,22 @@ export const CircuitCanvas = ({
     [boardPins, arduinoPos, arduinoRotate, components, getRotatedOwnerCoord]
   );
 
+  // Vị trí gốc (không xoay/không theo pin cụ thể) của 1 owner — dùng làm
+  // fallback khi 1 dây đã lưu tham chiếu tới pin không còn tồn tại trong
+  // pinMaps hiện tại (vd sau khi đổi tên chân board). Không có fallback này,
+  // dây đó bị bỏ render hoàn toàn (xem getPinAbsCoord ở trên), tức là không
+  // thể click để chọn+xóa qua UI — dữ liệu cũ kẹt vĩnh viễn trong DiagramJson
+  // mà người dùng không có cách nào tự dọn (đã xảy ra thật với Lab[132213]
+  // sau lần đổi D13->GPIO13, phải xóa tay qua SQL).
+  const getOwnerFallbackCoord = useCallback(
+    (id: string): Waypoint | null => {
+      if (id === 'arduino') return { x: arduinoPos.x, y: arduinoPos.y };
+      const comp = components.find((c) => c.id === id);
+      return comp ? { x: comp.x, y: comp.y } : null;
+    },
+    [arduinoPos, components]
+  );
+
   const handlePointerMove = (e: React.PointerEvent) => {
     if (!containerRef.current) return;
     const rect = containerRef.current.getBoundingClientRect();
@@ -600,11 +644,17 @@ export const CircuitCanvas = ({
             const [srcId, srcPin] = src.split(':');
             const [tgtId, tgtPin] = tgt.split(':');
 
-            const srcCoord = getPinAbsCoord(srcId, srcPin);
-            const tgtCoord = getPinAbsCoord(tgtId, tgtPin);
+            const srcResolvedCoord = getPinAbsCoord(srcId, srcPin);
+            const tgtResolvedCoord = getPinAbsCoord(tgtId, tgtPin);
+            // Pin không resolve được (vd tên chân đã đổi/không còn tồn tại)
+            // vẫn fallback về vị trí owner để dây tiếp tục render+chọn được,
+            // thay vì biến mất hoàn toàn (xem comment ở getOwnerFallbackCoord).
+            const srcCoord = srcResolvedCoord ?? getOwnerFallbackCoord(srcId);
+            const tgtCoord = tgtResolvedCoord ?? getOwnerFallbackCoord(tgtId);
 
             if (!srcCoord || !tgtCoord) return null;
 
+            const isBroken = !srcResolvedCoord || !tgtResolvedCoord;
             const isSelected = selectedWireIndex === index;
             const waypoints = getValidStoredWaypoints(storedWaypoints) ?? getDefaultWaypoints(srcCoord, tgtCoord);
             const pathD = getWaypointPath(srcCoord, waypoints[0], waypoints[1], tgtCoord);
@@ -619,6 +669,9 @@ export const CircuitCanvas = ({
                   setSelectedPartId(null);
                 }}
               >
+                {isBroken && (
+                  <title>{`Dây lỗi: pin "${srcPin}" hoặc "${tgtPin}" không còn tồn tại — bấm để chọn rồi xóa`}</title>
+                )}
                 <path
                   d={pathD}
                   stroke="transparent"
@@ -627,8 +680,9 @@ export const CircuitCanvas = ({
                 />
                 <path
                   d={pathD}
-                  stroke={isSelected ? '#22c55e' : (color || 'green')}
+                  stroke={isBroken ? '#ef4444' : (isSelected ? '#22c55e' : (color || 'green'))}
                   strokeWidth={isSelected ? 4 / zoom : 3 / zoom}
+                  strokeDasharray={isBroken ? `${6 / zoom} ${3 / zoom}` : undefined}
                   fill="none"
                   className={isSelected ? 'drop-shadow-md' : ''}
                 />
@@ -667,7 +721,15 @@ export const CircuitCanvas = ({
             top: arduinoPos.y,
             cursor: draggingId === 'arduino' ? 'grabbing' : 'grab',
             userSelect: 'none',
-            zIndex: draggingId === 'arduino' ? 30 : 5,
+            // 11, không phải 5: phải cao hơn z-index 10 của lớp <svg> vẽ dây
+            // nối bên trên — nếu không, hit-path vô hình (rộng 15px, dùng để
+            // bấm-chọn dây) của 1 dây đã vẽ có thể "che" mất pin-dot (z-20
+            // nhưng chỉ có hiệu lực TRONG stacking context của chính wrapper
+            // này) khi dây đó đi ngang toạ độ chân cắm, khiến pointerdown rơi
+            // vào dây thay vì chân — không vẽ được dây tiếp theo, không báo
+            // lỗi gì. Board không có tình huống "được chọn cao hơn 30" nên
+            // không đụng nhánh draggingId === 'arduino' ? 30.
+            zIndex: draggingId === 'arduino' ? 30 : 11,
             transform: arduinoRotate ? `rotate(${arduinoRotate}deg)` : undefined,
             transformOrigin: 'center center',
           }}
@@ -693,7 +755,8 @@ export const CircuitCanvas = ({
             top: component.y,
             cursor: draggingId === component.id ? 'grabbing' : 'grab',
             userSelect: 'none',
-            zIndex: isSelected ? 30 : 5,
+            // 11: xem giải thích ở wrapper board phía trên (cùng lý do).
+            zIndex: isSelected ? 30 : 11,
             transform: component.rotate ? `rotate(${component.rotate}deg)` : undefined,
             transformOrigin: 'center center',
           };
@@ -703,7 +766,7 @@ export const CircuitCanvas = ({
             renderElement = createWokwiElement('wokwi-led', {
               ref: setComponentRef(component.id),
               color: getLedColor(component.attrs?.color),
-              value: partState?.value ?? '0',
+              value: isLedOn(partState),
               style: { pointerEvents: 'none' },
             });
           } else if (type === 'push_button') {
@@ -715,7 +778,7 @@ export const CircuitCanvas = ({
           } else if (type === 'buzzer') {
             renderElement = createWokwiElement('wokwi-buzzer', {
               ref: setComponentRef(component.id),
-              hassignal: partState?.buzzing ? 'true' : 'false',
+              hasSignal: isBuzzerOn(partState),
               style: { pointerEvents: 'none' },
             });
           } else if (type === 'potentiometer') {
@@ -732,6 +795,11 @@ export const CircuitCanvas = ({
             renderElement = createWokwiElement('wokwi-resistor', {
               ref: setComponentRef(component.id),
               value: component.attrs?.value || '1000',
+              style: { pointerEvents: 'none' },
+            });
+          } else if (type === 'dht22') {
+            renderElement = createWokwiElement('wokwi-dht22', {
+              ref: setComponentRef(component.id),
               style: { pointerEvents: 'none' },
             });
           } else {

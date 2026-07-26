@@ -6,8 +6,9 @@ import { Icon } from '@/components/ui/Icon';
 import { Button } from '@/components/ui/button';
 import { format } from 'date-fns';
 import { vi } from 'date-fns/locale';
-import { RefreshCw, Plus } from 'lucide-react';
+import { RefreshCw, Plus, Monitor } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useNavigate } from 'react-router-dom';
 
 // Mock Data
 const mockStats = {
@@ -49,6 +50,7 @@ const mockActiveLabs = [
     id: 1,
     title: 'Lab Điện xoay chiều',
     classCode: 'Lớp 12A1',
+    classId: 1, // Added for routing
     progress: 'Đang thực hiện Bước 4/6',
     activeUsers: 18,
     isDark: true,
@@ -57,6 +59,7 @@ const mockActiveLabs = [
     id: 2,
     title: 'Lab Tế bào thực vật',
     classCode: 'Lớp 10B5',
+    classId: 2,
     progress: 'Đang quan sát tiêu bản...',
     activeUsers: 12,
     isDark: false,
@@ -154,6 +157,7 @@ function parseJwtPayload(token?: string | null) {
 }
 
 export const TeacherDashboard = () => {
+  const navigate = useNavigate();
   const { user, token, updateUser } = useAuthStore();
   const currentDate = format(new Date(), 'dd MMMM, yyyy', { locale: vi });
   const [stats, setStats] = useState(mockStats);
@@ -440,6 +444,21 @@ export const TeacherDashboard = () => {
                     )}>
                       {lab.progress}
                     </span>
+                  </div>
+                  
+                  <div className="mt-4 pt-4 border-t border-slate-500/20 relative z-10 flex justify-end">
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      onClick={() => navigate(`/dashboard/virtual-lab/monitor/${lab.classId}`)}
+                      className={cn(
+                        "h-8 text-xs font-semibold",
+                        lab.isDark ? "text-cyan-400 hover:text-cyan-300 hover:bg-white/10" : "text-[#0f4c5c] hover:bg-slate-200"
+                      )}
+                    >
+                      <Monitor className="w-3.5 h-3.5 mr-1.5" />
+                      Giám sát lớp học
+                    </Button>
                   </div>
                 </div>
               ))}

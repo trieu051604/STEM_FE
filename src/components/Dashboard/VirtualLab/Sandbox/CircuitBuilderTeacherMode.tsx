@@ -9,6 +9,7 @@ import {
   RefreshCw,
   RotateCw,
   SlidersHorizontal,
+  Thermometer,
   ToggleLeft,
   Trash2,
   Volume2,
@@ -122,6 +123,15 @@ const COMPONENT_REFERENCES: Record<string, ComponentReference> = {
     sample: '5V -> V+, PWM -> D9',
     icon: RotateCw,
     iconClassName: 'bg-orange-50 text-orange-700',
+  },
+  dht22: {
+    label: 'Cảm biến DHT22',
+    summary: '4 chân: VCC, SDA, NC, GND',
+    role: 'Đo nhiệt độ/độ ẩm, trả dữ liệu qua chân SDA.',
+    pins: ['VCC', 'SDA', 'NC', 'GND'],
+    sample: '3V3 -> VCC, SDA -> D4, GND -> GND',
+    icon: Thermometer,
+    iconClassName: 'bg-cyan-50 text-cyan-700',
   },
 };
 

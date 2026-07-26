@@ -8,6 +8,7 @@ import { ProfilePage } from '@/pages/dashboard/ProfilePage';
 import { AssignmentsPage } from '@/pages/dashboard/AssignmentsPage';
 import { LabDetailPage } from '@/pages/dashboard/LabDetailPage';
 import { LabSandboxPage } from '@/pages/dashboard/LabSandboxPage';
+import { ClassMonitorPage } from '@/pages/dashboard/ClassMonitorPage';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -42,6 +43,7 @@ export const dashboardRoutes = [
       { path: 'virtual-lab', element: <VirtualLabPage /> },
       { path: 'virtual-lab/:id', element: <LabDetailPage /> },
       { path: 'virtual-lab/:id/sandbox', element: <LabSandboxPage /> },
+      { path: 'virtual-lab/monitor/:classId', element: <ClassMonitorPage /> },
       // Schools
       { path: 'schools', element: <div>Schools Page</div> },
       // Requests

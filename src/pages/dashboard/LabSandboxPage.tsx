@@ -3,7 +3,8 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { AlertCircle, ArrowLeft, CheckCircle2, Loader2, RefreshCw, Send, XCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuthStore } from '@/stores/authStore';
-import { labsApi, simulationCompileApi, virtualLabProjectsApi, diagramsApi, submissionsApi } from '@/services/dashboardApi';
+import { labsApi, virtualLabProjectsApi, diagramsApi, submissionsApi } from '@/services/dashboardApi';
+import { virtualLabHub } from '@/services/virtualLabHub';
 import type { LabCircuitComponent, LabEntity, DiagramValidationResult, SimulationEventEntity, AutoGradeResultEntity } from '@/services/dashboardApi';
 import { CodeEditorPanel } from '@/components/Dashboard/VirtualLab/Sandbox/CodeEditorPanel';
 import { CircuitCanvas, type PartVisualState } from '@/components/Dashboard/VirtualLab/Sandbox/CircuitCanvas';
@@ -11,6 +12,9 @@ import { SerialMonitorPanel } from '@/components/Dashboard/VirtualLab/Sandbox/Se
 import { getSandboxProjectId } from '@/components/Dashboard/VirtualLab/Sandbox/projectId';
 
 const DIAGRAM_SAVE_DEBOUNCE_MS = 1500;
+// Riêng biệt với debounce lưu diagram (1.5s) — dài hơn 1 chút vì đây chỉ là
+// "làm ấm" firmware cache chạy nền, không cần phản hồi ngay như lưu diagram.
+const PRECOMPILE_DEBOUNCE_MS = 2500;
 
 const defaultStarterCode =
   'void setup() {\n  pinMode(13, OUTPUT);\n}\n\nvoid loop() {\n  digitalWrite(13, HIGH);\n  delay(1000);\n  digitalWrite(13, LOW);\n  delay(1000);\n}';
@@ -18,6 +22,20 @@ const defaultStarterCode =
 const defaultComponents: LabCircuitComponent[] = [
   { id: 'led1', type: 'led', x: 100, y: 100, pinMapping: {}, attrs: { color: 'red' } },
 ];
+
+// Giai đoạn chạy mô phỏng thật (mode="qemu"): "analyzing" (Analyze() ở BE, rất
+// nhanh — set ngay lúc bấm nút, không chờ tín hiệu BE) → "compiling" (compile
+// thật ~40-90s, tín hiệu StudentCompileStarted/Finished) → "booting" (QEMU
+// boot ~4s, tín hiệu StudentRunBooting) → "running" (event mô phỏng đầu tiên
+// tới). Mode "educational" (interpreter) không có bước compile/boot — nhảy
+// thẳng "analyzing" → "running" khi event đầu tiên tới, không hề gì.
+type RunStage = 'idle' | 'analyzing' | 'compiling' | 'booting' | 'running';
+
+const RUN_STAGE_LABELS: Record<Exclude<RunStage, 'idle' | 'running'>, string> = {
+  analyzing: 'Đang kiểm tra sơ đồ mạch...',
+  compiling: 'Đang biên dịch code... (có thể mất tới 90 giây)',
+  booting: 'Đang khởi động mô phỏng...',
+};
 
 function getErrorMessage(error: unknown, fallback: string) {
   if (error && typeof error === 'object' && 'response' in error) {
@@ -36,16 +54,6 @@ function getBoardDisplayName(boardType?: string) {
   return 'Arduino Uno';
 }
 
-function formatCompileErrors(errors: Array<{ line?: number | null; message: string }>, output?: string | null) {
-  if (errors.length) {
-    return errors
-      .map((error) => (error.line ? `Dòng ${error.line}: ${error.message}` : error.message))
-      .join('\n');
-  }
-
-  return output || 'Biên dịch thất bại.';
-}
-
 export const LabSandboxPage = () => {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -57,6 +65,7 @@ export const LabSandboxPage = () => {
   const [isCompiling, setIsCompiling] = useState(false);
   const [compileError, setCompileError] = useState<string | null>(null);
   const [isRunning, setIsRunning] = useState(false);
+  const [runStage, setRunStage] = useState<RunStage>('idle');
   const [serialOutput, setSerialOutput] = useState('');
   const [submitMessage, setSubmitMessage] = useState<string | null>(null);
   const [sandboxComponents, setSandboxComponents] = useState<LabCircuitComponent[]>(defaultComponents);
@@ -72,9 +81,20 @@ export const LabSandboxPage = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [autoCheck, setAutoCheck] = useState<AutoGradeResultEntity | null>(null);
+  const [guidance, setGuidance] = useState<{ message: string, teacherName?: string, timestamp: number } | null>(null);
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const precompileTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const hasHydratedRef = useRef(false);
   const replayTimersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
+  // BUG THẬT vừa vá: sau khi bấm Dừng, LED/Buzzer vẫn "đóng băng" ở trạng
+  // thái cuối — nguyên nhân KÉP: (1) không có gì reset partStates lúc dừng
+  // (đã vá bằng setPartStates({}) ở handleStop/onRunCompleted), NHƯNG (2)
+  // StudentSimulationEvent đã được BE gửi đi TRƯỚC khi Stop có hiệu lực vẫn
+  // có thể tới SAU khi FE đã reset (độ trễ mạng/round-trip Stop API) — event
+  // trễ đó áp lại state cũ ("on") đè lên state vừa reset. Cờ này chặn MỌI
+  // onSimulationEvent tới sau khi đã dừng, không phụ thuộc thứ tự tới của
+  // gói tin.
+  const isStoppedRef = useRef(true);
 
   const loadLab = useCallback(async () => {
     if (!id) {
@@ -129,6 +149,7 @@ export const LabSandboxPage = () => {
               const created = await diagramsApi.save(pid, {
                 circuitConfig: { parts: starterComponents, connections: starterConnections },
                 sourceCode: resolvedCode,
+                labId: labResponse.id,
               });
               setDiagramValidation(created.validation);
             } catch (createError) {
@@ -138,6 +159,20 @@ export const LabSandboxPage = () => {
             throw projectError;
           }
         }
+        
+        // JoinSession(projectId) — BE tự resolve classId server-side (qua
+        // VirtualLabProject.LabId + LabClassAssignments/Enrollments của
+        // currentUserId, xem VirtualLabHub.cs), không cần FE tính/gửi classId
+        // nữa. BUG THẬT vừa vá: bản cũ gọi joinSession(pid, classIdToUse) —
+        // (1) Hub method đã đổi chữ ký từ lâu (2026-07-21) sang chỉ nhận
+        // projectId, gọi kèm classId thừa khiến SignalR invocation LUÔN lỗi
+        // (nuốt âm thầm qua .catch); (2) lời gọi còn bị chặn đứng sau
+        // `if (classIdToUse && pid)` — lab không gắn assignment/class (như
+        // lab sandbox nội bộ) thì KHÔNG BAO GIỜ join được group, nên
+        // KHÔNG BAO GIỜ nhận được bất kỳ SignalR broadcast nào
+        // (StudentCompileStarted/StudentSimulationEvent/...) dù BE chạy đúng
+        // 100% — verify thật: DB có event GPIO thật nhưng canvas đứng im.
+        virtualLabHub.joinSession(pid).catch(e => console.error('[LabSandboxPage] SignalR join failed', e));
       }
 
       setCode(resolvedCode);
@@ -165,7 +200,82 @@ export const LabSandboxPage = () => {
     return () => {
       replayTimersRef.current.forEach(clearTimeout);
       replayTimersRef.current = [];
+      if (projectId) {
+        virtualLabHub.stopped(projectId).catch(() => {});
+      }
     };
+  }, [projectId]);
+
+  useEffect(() => {
+    const onReceiveGuidance = (message: string, teacherName?: string) => {
+      setGuidance({ message, teacherName, timestamp: Date.now() });
+      setTimeout(() => setGuidance(null), 8000);
+    };
+    virtualLabHub.on('ReceiveGuidance', onReceiveGuidance);
+    return () => {
+      virtualLabHub.off('ReceiveGuidance', onReceiveGuidance);
+    };
+  }, []);
+
+  // BE giờ tự chạy nền + đẩy từng SimulationEvent qua Hub ngay khi tính ra
+  // (xem VirtualLabRuntimeService/EducationalSimulationRunner) — không còn
+  // FE tự relay lại (virtualLabHub.simulationEvent) như trước, và không còn
+  // nhận nguyên mảng event đầy đủ từ response /start để phát lại bằng
+  // setTimeout. Đăng ký 1 lần khi mount (giống pattern ReceiveGuidance ở
+  // trên) — lọc đúng project đã dựa vào SignalR group "project-{id}" phía
+  // server (JoinSession), không cần lọc lại projectId ở đây.
+  useEffect(() => {
+    const onSimulationEvent = (_projectId: string, evt: SimulationEventEntity) => {
+      // Bỏ qua event đến TRỄ sau khi đã dừng (đã gửi từ BE trước khi Stop có
+      // hiệu lực, tới sau do độ trễ mạng) — không thì đè lại state vừa reset
+      // của handleStop/onRunCompleted, làm LED/Buzzer "tự sáng lại" dù đã tắt.
+      if (isStoppedRef.current) return;
+
+      // Event mô phỏng đầu tiên tới = tín hiệu chuyển sang canvas thật, bất
+      // kể mode (educational nhảy thẳng từ "analyzing", qemu đi qua đủ
+      // "compiling"→"booting" trước khi tới đây).
+      setRunStage('running');
+      applySimulationEvent(evt);
+    };
+    const onRunCompleted = (_projectId: string, _status: string, _reason?: string) => {
+      setIsRunning(false);
+      setRunStage('idle');
+      // BUG THẬT vừa vá: mô phỏng dừng (tự nhiên hết MaxDurationMs, hay lỗi)
+      // nhưng LED/Buzzer vẫn "đóng băng" ở trạng thái sáng/kêu cuối cùng —
+      // vì không có gì reset partStates khi run kết thúc (chỉ handleRun() lúc
+      // BẮT ĐẦU chạy mới mới clear). Mạch đã ngừng chạy thì output phải về
+      // trạng thái tắt, giống hành vi thật (ngắt điện thì LED tắt).
+      isStoppedRef.current = true;
+      setPartStates({});
+    };
+    const onCompileStarted = (_projectId: string) => {
+      setRunStage('compiling');
+    };
+    const onCompileFinished = (_projectId: string, success: boolean, errorSummary?: string) => {
+      // Nếu compile thất bại, StudentRunCompleted (status=error) cũng sẽ tới
+      // ngay sau đó và tự set isRunning/runStage về idle — ở đây chỉ cần hiện
+      // lỗi sớm hơn 1 nhịp cho học sinh thấy ngay, không phải chờ vòng dọn
+      // dẹp cuối của background task.
+      if (!success) {
+        setCompileError(errorSummary || 'Biên dịch thất bại.');
+      }
+    };
+    const onRunBooting = (_projectId: string) => {
+      setRunStage('booting');
+    };
+    virtualLabHub.on('StudentSimulationEvent', onSimulationEvent);
+    virtualLabHub.on('StudentRunCompleted', onRunCompleted);
+    virtualLabHub.on('StudentCompileStarted', onCompileStarted);
+    virtualLabHub.on('StudentCompileFinished', onCompileFinished);
+    virtualLabHub.on('StudentRunBooting', onRunBooting);
+    return () => {
+      virtualLabHub.off('StudentSimulationEvent', onSimulationEvent);
+      virtualLabHub.off('StudentRunCompleted', onRunCompleted);
+      virtualLabHub.off('StudentCompileStarted', onCompileStarted);
+      virtualLabHub.off('StudentCompileFinished', onCompileFinished);
+      virtualLabHub.off('StudentRunBooting', onRunBooting);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -188,6 +298,10 @@ export const LabSandboxPage = () => {
         .then((session) => {
           setDiagramValidation(session.validation);
           setSaveStatus('saved');
+          if (projectId) {
+            virtualLabHub.diagramUpdated(projectId, JSON.stringify({ parts: sandboxComponents, connections: sandboxConnections })).catch(() => {});
+            virtualLabHub.codeUpdated(projectId, code).catch(() => {});
+          }
         })
         .catch((error) => {
           console.error('[LabSandboxPage] Failed to save diagram', error);
@@ -200,12 +314,44 @@ export const LabSandboxPage = () => {
     };
   }, [projectId, sandboxComponents, sandboxConnections, code]);
 
+  // Precompile nền (Wokwi-like): 2.5s sau khi ngừng gõ code, "làm ấm" firmware
+  // cache trước khi học sinh bấm Run — để lúc Run thật, QemuEsp32Runner rơi
+  // đúng cache hit thay vì phải compile ~40-90s ngay trong lúc chờ. Chỉ theo
+  // dõi `code` (không phải diagram — đổi dây/di chuyển linh kiện không ảnh
+  // hưởng firmware). Không bắn khi đang chạy mô phỏng (không cần thiết, học
+  // sinh chưa chắc sửa code khác trong lúc đang xem Run). BE tự kiểm tra cache
+  // trước khi compile thật (FirmwareCacheService) và dedupe qua
+  // ICompileCoordinator nếu 2 lần debounce trùng đúng nội dung — gọi thừa ở
+  // đây không lãng phí compile thật.
+  useEffect(() => {
+    if (!projectId || !hasHydratedRef.current || isRunning) return;
+
+    if (precompileTimerRef.current) clearTimeout(precompileTimerRef.current);
+    precompileTimerRef.current = setTimeout(() => {
+      virtualLabProjectsApi.precompile(projectId, code).catch((error) => {
+        // Chỉ là tối ưu tốc độ — lỗi ở đây không cần hiện cho học sinh, Run
+        // vẫn hoạt động đúng (sẽ tự compile khi cache miss).
+        console.error('[LabSandboxPage] Precompile trigger failed', error);
+      });
+    }, PRECOMPILE_DEBOUNCE_MS);
+
+    return () => {
+      if (precompileTimerRef.current) clearTimeout(precompileTimerRef.current);
+    };
+  }, [projectId, code, isRunning]);
+
   const clearReplayTimers = () => {
     replayTimersRef.current.forEach(clearTimeout);
     replayTimersRef.current = [];
   };
 
   const applySimulationEvent = (event: SimulationEventEntity) => {
+    // BE (EducationalSimulationRunner chạy nền) đã tự ghi DB + broadcast
+    // event này rồi — KHÔNG relay lại qua virtualLabHub.simulationEvent()
+    // nữa. Làm vậy sẽ tạo vòng lặp: nhận event từ Hub -> gọi lại Hub method
+    // SimulationEvent -> Hub method broadcast lại -> nhận lại lần nữa...
+    setLastSimulationEvents((prev) => [...prev, event]);
+
     if (event.type === 'serial') {
       const message = typeof event.payload.message === 'string' ? event.payload.message : '';
       setSerialOutput((prev) => prev + message + (event.payload.newline ? '\n' : ''));
@@ -264,19 +410,30 @@ export const LabSandboxPage = () => {
     clearReplayTimers();
     setPartStates({});
     setIsRunning(false);
+    // Mở lại cổng nhận event — phải đặt SAU setPartStates({}) ở trên, TRƯỚC
+    // khi có event nào của lần chạy MỚI này có thể tới (xem isStoppedRef).
+    isStoppedRef.current = false;
+    // Set ngay lúc bấm, không chờ tín hiệu BE — Analyze() rất nhanh (đo thật
+    // ~ms), không cần round-trip riêng cho giai đoạn này.
+    setRunStage('analyzing');
 
     try {
-      const result = await simulationCompileApi.compile({
-        labId: lab.id,
-        code,
-        board: projectBoard,
-        framework: projectLanguage,
-      });
-
-      if (!result.success) {
-        setCompileError(formatCompileErrors(result.errors, result.compilerOutput));
-        return;
+      if (projectId) {
+        // PHẢI await — RunStarted() phía Hub reset SimulationEventsJson="[]"
+        // (MarkRunStartedAsync). Nếu để fire-and-forget như trước, nó có
+        // thể resolve SAU khi /start đã kick off background task và
+        // background task đã kịp ghi vài event đầu tiên — reset chạy sau sẽ
+        // xoá mất chúng. await ở đây đảm bảo reset này (nếu có tác dụng gì)
+        // luôn hoàn tất TRƯỚC khi /start được gọi. Compile thật giờ chỉ còn
+        // 1 lần, xảy ra bên trong QemuEsp32Runner (BE) khi background task
+        // chạy — không còn gọi simulationCompileApi.compile() thừa ở đây
+        // (kết quả của nó trước kia không được dùng vào đâu cả).
+        await virtualLabHub.runStarted(projectId).catch(() => {});
       }
+
+      setLastSimulationEvents([]);
+      setPartStates({});
+      setSerialOutput('');
 
       const runResult = await virtualLabProjectsApi.start(projectId, {
         code,
@@ -284,25 +441,52 @@ export const LabSandboxPage = () => {
       });
 
       if (runResult.status === 'error') {
+        isStoppedRef.current = true;
         setCompileError(
           runResult.validation.errors.length
             ? runResult.validation.errors.join('\n')
             : 'Mạch không hợp lệ, không thể chạy mô phỏng.'
         );
+        setRunStage('idle');
         return;
       }
 
-      replaySimulationEvents(runResult.events);
+      // BE đã kick off chạy nền và sẽ đẩy từng event qua Hub
+      // (StudentSimulationEvent) — không còn events[] đầy đủ để phát lại
+      // ngay ở đây nữa (xem useEffect đăng ký onSimulationEvent/onRunCompleted
+      // ở trên). setIsRunning(true) ngay, tắt lại khi nhận StudentRunCompleted.
+      // runStage giữ nguyên "analyzing" — StudentCompileStarted/StudentRunBooting
+      // (mode qemu) hoặc thẳng StudentSimulationEvent (mode educational) sẽ tự
+      // đẩy tiếp từ đây qua useEffect ở trên.
+      setIsRunning(true);
     } catch (error) {
-      setCompileError(getErrorMessage(error, 'Không gọi được API biên dịch/chạy mô phỏng.'));
+      isStoppedRef.current = true;
+      setCompileError(getErrorMessage(error, 'Không gọi được API chạy mô phỏng.'));
+      setRunStage('idle');
     } finally {
       setIsCompiling(false);
     }
   };
 
-  const handleStop = () => {
+  const handleStop = async () => {
+    isStoppedRef.current = true;
     clearReplayTimers();
     setIsRunning(false);
+    setRunStage('idle');
+    // Reset ngay khi bấm Dừng — không đợi StudentRunCompleted từ server mới
+    // tắt LED/Buzzer (round-trip qua BE/SignalR có độ trễ, học sinh bấm Dừng
+    // phải thấy mạch tắt ngay lập tức, giống ngắt điện thật).
+    setPartStates({});
+
+    if (!projectId) return;
+    try {
+      await virtualLabProjectsApi.stop(projectId);
+      if (projectId) {
+        virtualLabHub.stopped(projectId).catch(() => {});
+      }
+    } catch (error) {
+      console.error('[LabSandboxPage] Failed to stop simulation', error);
+    }
   };
 
   const handleSubmit = async () => {
@@ -328,6 +512,9 @@ export const LabSandboxPage = () => {
         `Đã nộp bài — đạt ${result.autoCheck.passedChecks}/${result.autoCheck.totalChecks} tiêu chí` +
           (result.autoScore != null ? `, điểm tự động: ${result.autoScore}.` : '.')
       );
+      if (projectId) {
+        virtualLabHub.submitted(projectId, result.submissionId || 0).catch(() => {});
+      }
     } catch (error) {
       setSubmitError(getErrorMessage(error, 'Không nộp được bài — vui lòng thử lại.'));
     } finally {
@@ -438,7 +625,24 @@ export const LabSandboxPage = () => {
   }
 
   return (
-    <div className="flex flex-col h-[calc(100vh-2rem)] space-y-4">
+    <div className="flex flex-col h-[calc(100vh-2rem)] space-y-4 relative">
+      {guidance && (
+        <div className="absolute top-4 right-4 z-50 animate-in slide-in-from-top-2 fade-in duration-300">
+          <div className="bg-[#0f4c5c] text-white p-4 rounded-xl shadow-lg border border-[#0a3540] max-w-sm flex gap-3 items-start">
+            <AlertCircle className="w-5 h-5 shrink-0 text-cyan-400 mt-0.5" />
+            <div>
+              <p className="text-xs text-cyan-400 font-bold uppercase mb-1">
+                Giáo viên {guidance.teacherName || ''} nhắc nhở
+              </p>
+              <p className="text-sm font-medium">{guidance.message}</p>
+            </div>
+            <button onClick={() => setGuidance(null)} className="text-slate-400 hover:text-white shrink-0">
+              <XCircle className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      )}
+
       <div className="flex items-center justify-between bg-white p-4 rounded-2xl border border-border shadow-sm shrink-0">
         <div className="flex items-center gap-4 min-w-0">
           <button
@@ -558,6 +762,18 @@ export const LabSandboxPage = () => {
                 }));
               }}
             />
+
+            {(runStage === 'analyzing' || runStage === 'compiling' || runStage === 'booting') && (
+              <div className="absolute inset-0 z-20 flex flex-col items-center justify-center gap-3 bg-[#222]/90 text-white">
+                <Loader2 className="w-8 h-8 animate-spin" />
+                <p className="text-sm font-medium">{RUN_STAGE_LABELS[runStage]}</p>
+                {runStage === 'compiling' && (
+                  <div className="w-48 h-1.5 rounded-full bg-white/20 overflow-hidden">
+                    <div className="h-full w-1/3 rounded-full bg-white/80 animate-[compile-progress_1.6s_ease-in-out_infinite]" />
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           <div className="flex-[1] min-h-[150px] rounded-2xl overflow-hidden">

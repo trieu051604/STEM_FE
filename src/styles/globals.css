@@ -256,6 +256,18 @@ h6,
   }
 }
 
+/* Thanh tiến trình vô định (không có ETA chính xác) cho giai đoạn compile
+   thật (~40-90s) khi chạy mô phỏng mode="qemu" — xem LabSandboxPage.tsx. */
+@keyframes compile-progress {
+  0% {
+    transform: translateX(-100%);
+  }
+
+  100% {
+    transform: translateX(300%);
+  }
+}
+
 .page-enter {
   animation: slideUp 0.3s ease-out;
 }

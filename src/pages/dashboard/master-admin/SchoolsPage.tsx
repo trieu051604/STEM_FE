@@ -35,6 +35,10 @@ import {
   School,
   SchoolRequest
 } from '@/services/dashboardApi';
+import { Pagination } from '@/components/ui/pagination';
+import { useAuthStore } from '@/stores';
+
+const ITEMS_PER_PAGE = 10;
 
 // Custom Toast Notification Type
 interface Toast {
@@ -70,12 +74,24 @@ const isStatusRejected = (status: any) => {
 };
 
 export function SchoolsPage({ defaultTab = 'list' }: SchoolsPageProps) {
-  const [activeTab, setActiveTab] = useState<'list' | 'requests'>(defaultTab);
+  // Get current user role
+  const userRole = useAuthStore((state) => state.user?.role);
+  const isMasterAdmin = userRole === 'master_admin';
+  
+  // Determine default view based on role:
+  // - master_admin: sees all schools + requests
+  // - school_admin: sees only their school's details
+  const defaultView = defaultTab === 'requests' ? 'requests' : 'schools';
+  const [activeView, setActiveView] = useState<'schools' | 'requests'>(
+    isMasterAdmin ? defaultView : 'schools'
+  );
 
   useEffect(() => {
-    setActiveTab(defaultTab);
-  }, [defaultTab]);
+    setActiveView(isMasterAdmin ? defaultView : 'schools');
+  }, [defaultTab, isMasterAdmin]);
+  
   const [schools, setSchools] = useState<School[]>([]);
+  const [totalSchools, setTotalSchools] = useState(0);
   const [pendingRequests, setPendingRequests] = useState<SchoolRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -83,6 +99,10 @@ export function SchoolsPage({ defaultTab = 'list' }: SchoolsPageProps) {
   // Search & Filter state
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
+
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(ITEMS_PER_PAGE);
 
   // Modal states
   const [selectedSchool, setSelectedSchool] = useState<School | null>(null);
@@ -119,10 +139,15 @@ export function SchoolsPage({ defaultTab = 'list' }: SchoolsPageProps) {
     setError(null);
     try {
       const [schoolsData, pendingData] = await Promise.all([
-        schoolsApi.getAll(),
+        schoolsApi.getAll({ pageNumber: currentPage, pageSize: pageSize, search: searchQuery }),
         schoolRequestsApi.getPending(),
       ]);
-      setSchools(schoolsData || []);
+      // Handle both array and object response formats
+      const schoolsArray = Array.isArray(schoolsData) 
+        ? schoolsData 
+        : schoolsData?.items || [];
+      setSchools(schoolsArray);
+      setTotalSchools(schoolsData?.total || schoolsArray.length || 0);
       setPendingRequests(pendingData || []);
     } catch (err: any) {
       console.error('Error fetching school data:', err);
@@ -133,9 +158,19 @@ export function SchoolsPage({ defaultTab = 'list' }: SchoolsPageProps) {
     }
   };
 
+  // Reload data when pagination or search changes
   useEffect(() => {
     loadData();
-  }, []);
+  }, [currentPage, pageSize]);
+
+  // Debounced search
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setCurrentPage(1);
+      loadData();
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
 
   // --- Handlers ---
 
@@ -148,7 +183,7 @@ export function SchoolsPage({ defaultTab = 'list' }: SchoolsPageProps) {
       setIsDetailOpen(false);
       
       const schoolsData = await schoolsApi.getAll();
-      setSchools(schoolsData || []);
+      setSchools(schoolsData?.items || []);
     } catch (err: any) {
       console.error('Error approving school:', err);
       showToast('Lỗi phê duyệt trường học. Vui lòng thử lại.', 'error');
@@ -166,7 +201,7 @@ export function SchoolsPage({ defaultTab = 'list' }: SchoolsPageProps) {
       setIsDetailOpen(false);
       
       const schoolsData = await schoolsApi.getAll();
-      setSchools(schoolsData || []);
+      setSchools(schoolsData?.items || []);
     } catch (err: any) {
       console.error('Error rejecting school:', err);
       showToast('Lỗi từ chối yêu cầu. Vui lòng thử lại.', 'error');
@@ -215,15 +250,14 @@ export function SchoolsPage({ defaultTab = 'list' }: SchoolsPageProps) {
     if (!selectedSchool) return;
     setActionLoading(true);
     const isCurrentlyLocked = isStatusRejected(selectedSchool.status);
-    const nextStatus = typeof selectedSchool.status === 'number'
-      ? (isCurrentlyLocked ? 1 : 2)
-      : (isCurrentlyLocked ? 'Approved' : 'Rejected');
 
     try {
-      await schoolsApi.update(selectedSchool.id, { status: nextStatus });
+      const result = await schoolsApi.toggleLock(selectedSchool.id);
+      const newStatus = result.status as 1 | 2;
+
       setSchools((prev) =>
         prev.map((s) =>
-          s.id === selectedSchool.id ? { ...s, status: nextStatus } : s
+          s.id === selectedSchool.id ? { ...s, status: newStatus } : s
         )
       );
       showToast(
@@ -288,7 +322,7 @@ export function SchoolsPage({ defaultTab = 'list' }: SchoolsPageProps) {
   );
 
   // Statistics
-  const totalSchoolsCount = schools.length;
+  const totalSchoolsCount = totalSchools || schools.length;
   const activeSchoolsCount = schools.filter((s) => isStatusApproved(s.status)).length;
   const lockedSchoolsCount = schools.filter((s) => isStatusRejected(s.status)).length;
   const pendingRequestsCount = pendingRequests.length + schools.filter((s) => isStatusPending(s.status)).length;
@@ -429,34 +463,46 @@ export function SchoolsPage({ defaultTab = 'list' }: SchoolsPageProps) {
 
       {/* Tabs & Search Bar */}
       <div className="rounded-xl border bg-card p-6 space-y-6 shadow-sm">
+        {/* Tab Navigation - Role-based */}
         <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-4 border-b border-border pb-5">
-          {/* Custom Tab System */}
+          {/* Tab System - Only show tabs for Master Admin */}
           <div className="flex p-1 rounded-xl w-fit border bg-muted/50 border-border">
-            <button
-              onClick={() => setActiveTab('list')}
-              className={`px-5 py-2.5 rounded-lg text-sm font-semibold transition-all ${
-                activeTab === 'list'
-                  ? 'bg-primary text-primary-foreground shadow-sm'
-                  : 'text-muted-foreground hover:text-foreground'
-              }`}
-            >
-              Trường học ({schools.length})
-            </button>
-            <button
-              onClick={() => setActiveTab('requests')}
-              className={`px-5 py-2.5 rounded-lg text-sm font-semibold transition-all relative ${
-                activeTab === 'requests'
-                  ? 'bg-primary text-primary-foreground shadow-sm'
-                  : 'text-muted-foreground hover:text-foreground'
-              }`}
-            >
-              Yêu cầu phê duyệt
-              {pendingRequests.length > 0 && (
-                <span className="absolute -top-1.5 -right-1.5 px-2 py-0.5 text-[10px] font-extrabold rounded-full border bg-yellow-500 text-white border-yellow-600">
-                  {pendingRequests.length}
-                </span>
-              )}
-            </button>
+            {isMasterAdmin && (
+              <>
+                <button
+                  onClick={() => setActiveView('schools')}
+                  className={`px-5 py-2.5 rounded-lg text-sm font-semibold transition-all ${
+                    activeView === 'schools'
+                      ? 'bg-primary text-primary-foreground shadow-sm'
+                      : 'text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  Trường học ({schools.length})
+                </button>
+                <button
+                  onClick={() => setActiveView('requests')}
+                  className={`px-5 py-2.5 rounded-lg text-sm font-semibold transition-all relative ${
+                    activeView === 'requests'
+                      ? 'bg-primary text-primary-foreground shadow-sm'
+                      : 'text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  Yêu cầu phê duyệt
+                  {pendingRequests.length > 0 && (
+                    <span className="absolute -top-1.5 -right-1.5 px-2 py-0.5 text-[10px] font-extrabold rounded-full border bg-yellow-500 text-white border-yellow-600">
+                      {pendingRequests.length}
+                    </span>
+                  )}
+                </button>
+              </>
+            )}
+            {/* School Admin: Show school info badge */}
+            {!isMasterAdmin && (
+              <div className="px-5 py-2.5 bg-primary/10 text-primary rounded-lg text-sm font-semibold flex items-center gap-2">
+                <Building2 className="w-4 h-4" />
+                Quản lý Trường học của bạn
+              </div>
+            )}
           </div>
 
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 flex-1 max-w-2xl justify-end">
@@ -466,7 +512,7 @@ export function SchoolsPage({ defaultTab = 'list' }: SchoolsPageProps) {
               <input
                 type="text"
                 placeholder={
-                  activeTab === 'list'
+                  activeView === 'schools'
                     ? 'Tìm trường học, người đại diện, email...'
                     : 'Tìm kiếm yêu cầu đăng ký...'
                 }
@@ -477,7 +523,7 @@ export function SchoolsPage({ defaultTab = 'list' }: SchoolsPageProps) {
             </div>
 
             {/* Filter (Only in schools list tab) */}
-            {activeTab === 'list' && (
+            {activeView === 'schools' && (
               <div className="flex items-center gap-2">
                 <Filter className="w-4 h-4 text-muted-foreground" />
                 <select
@@ -502,10 +548,11 @@ export function SchoolsPage({ defaultTab = 'list' }: SchoolsPageProps) {
             <Loader2 className="w-10 h-10 text-brand animate-spin" />
             <p className="text-sm text-muted-foreground">Đang tải dữ liệu từ backend...</p>
           </div>
-        ) : activeTab === 'list' ? (
-          // School List Tab
+        ) : activeView === 'schools' ? (
+          <>
+          {/* School List Tab */}
           <div className="overflow-x-auto rounded-xl border border-border">
-            {filteredSchools.length === 0 ? (
+          {filteredSchools.length === 0 ? (
               <div className="py-20 text-center text-muted-foreground border border-dashed border-border rounded-2xl">
                 <Building2 className="w-12 h-12 mx-auto mb-3 opacity-20 text-brand" />
                 <p className="text-sm">Không tìm thấy trường học nào phù hợp.</p>
@@ -624,7 +671,23 @@ export function SchoolsPage({ defaultTab = 'list' }: SchoolsPageProps) {
                 </tbody>
               </table>
             )}
-          </div>
+            </div>
+
+            {/* Pagination */}
+            {filteredSchools.length > 0 && (
+              <Pagination
+                currentPage={currentPage}
+                totalPages={Math.ceil(totalSchools / pageSize) || 1}
+                totalItems={totalSchools}
+                pageSize={pageSize}
+                onPageChange={setCurrentPage}
+                onPageSizeChange={(size: number) => {
+                  setPageSize(size);
+                  setCurrentPage(1);
+                }}
+              />
+            )}
+          </>
         ) : (
           // School Requests Tab
           <div className="overflow-x-auto rounded-xl border border-border">
@@ -766,7 +829,7 @@ export function SchoolsPage({ defaultTab = 'list' }: SchoolsPageProps) {
                 </button>
               </div>
               <div className="px-6 py-4 max-h-[80vh] overflow-y-auto">
-                {activeTab === 'list' && selectedSchool && (
+                {activeView === 'schools' && selectedSchool && (
                   <div className="space-y-5">
                     <div className="flex items-center gap-3 p-4 bg-muted/50 border border-border rounded-xl">
                       <div className="w-12 h-12 rounded-xl bg-card flex items-center justify-center text-primary font-extrabold text-xl border border-border">
@@ -878,7 +941,7 @@ export function SchoolsPage({ defaultTab = 'list' }: SchoolsPageProps) {
                   </div>
                 )}
 
-                {activeTab === 'requests' && selectedRequest && (
+                {activeView === 'requests' && selectedRequest && (
                   <div className="space-y-5">
                     <div className="flex items-center gap-3 p-4 bg-muted/50 border border-border rounded-xl">
                       <div className="w-12 h-12 rounded-xl bg-accent/10 flex items-center justify-center text-accent font-extrabold text-xl border border-border">
@@ -995,7 +1058,7 @@ export function SchoolsPage({ defaultTab = 'list' }: SchoolsPageProps) {
                 )}
               </div>
               <div className="px-6 py-4 border-t border-border bg-muted/30 flex justify-end gap-3">
-                {activeTab === 'list' && selectedSchool && (
+                {activeView === 'schools' && selectedSchool && (
                   <>
                     <Button
                       variant="default"
@@ -1014,7 +1077,7 @@ export function SchoolsPage({ defaultTab = 'list' }: SchoolsPageProps) {
                     </Button>
                   </>
                 )}
-                {activeTab === 'requests' && selectedRequest && (
+                {activeView === 'requests' && selectedRequest && (
                   <>
                     <Button
                       variant="default"

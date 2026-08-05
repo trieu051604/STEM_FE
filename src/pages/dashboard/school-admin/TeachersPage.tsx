@@ -326,7 +326,9 @@ export const TeachersPage = () => {
                 <BookOpen className="w-6 h-6 text-brand-600 dark:text-brand-400" />
               </div>
               <div>
-                <p className="text-2xl font-bold">—</p>
+                <p className="text-2xl font-bold">
+                  {teachersData.items?.reduce((sum, t) => sum + (t.assignedClassesCount || 0), 0) || 0}
+                </p>
                 <p className="text-sm text-muted-foreground">Lớp đang dạy</p>
               </div>
             </div>

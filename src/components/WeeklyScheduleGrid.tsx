@@ -5,7 +5,7 @@ import { vi } from 'date-fns/locale';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { scheduleApi, type ScheduleResponse } from '@/services/schoolAdminApi';
+import { scheduleApi, type ScheduleResponse, type ScheduleConflictInfo, type TeacherConflictInfo } from '@/services/schoolAdminApi';
 
 interface ClassInfo {
   id: number;
@@ -56,6 +56,8 @@ export function WeeklyScheduleGrid({ classId, schedules: initialSchedules, class
   });
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [conflicts, setConflicts] = useState<ScheduleConflictInfo[]>([]);
+  const [teacherConflicts, setTeacherConflicts] = useState<TeacherConflictInfo[]>([]);
 
   // Fetch schedules when week changes or classId changes
   useEffect(() => {
@@ -126,6 +128,9 @@ const scheduleGrid = useMemo(() => {
 
   // Fill in schedules (only for current week)
   schedules.forEach(schedule => {
+    // Skip if startTime is undefined
+    if (!schedule.startTime) return;
+    
     // Parse time directly from string to avoid timezone conversion
     const timePart = schedule.startTime.split('T')[1];
     const scheduleTime = timePart?.substring(0, 5) || ''; // "HH:mm"
@@ -175,7 +180,9 @@ const scheduleGrid = useMemo(() => {
     setSelectedSchedule(schedule);
 
     // Parse time directly (already local)
-    const scheduleTime = schedule.startTime.split('T')[1]?.substring(0, 5) || '';
+    const startTimeStr = schedule.startTime || '';
+    const endTimeStr = schedule.endTime || '';
+    const scheduleTime = startTimeStr.split('T')[1]?.substring(0, 5) || '';
 
     // Find matching slot
     const matchingSlot = SLOTS.find(slot => {
@@ -184,8 +191,8 @@ const scheduleGrid = useMemo(() => {
 
     // Use slot display times for form
     setFormData({
-      startTime: matchingSlot?.displayStart || schedule.startTime.split('T')[1].substring(0, 5),
-      endTime: matchingSlot?.displayEnd || schedule.endTime.split('T')[1].substring(0, 5),
+      startTime: matchingSlot?.displayStart || startTimeStr.split('T')[1]?.substring(0, 5) || '',
+      endTime: matchingSlot?.displayEnd || endTimeStr.split('T')[1]?.substring(0, 5) || '',
     });
 
     if (isAdmin) {
@@ -209,15 +216,40 @@ const scheduleGrid = useMemo(() => {
       const startDateTime = `${format(selectedDay.date, 'yyyy-MM-dd')}T${formData.startTime}:00`;
       const endDateTime = `${format(selectedDay.date, 'yyyy-MM-dd')}T${formData.endTime}:00`;
 
-      const newSchedule = await scheduleApi.create({
+      const response = await scheduleApi.create({
         classId,
         startTime: startDateTime,
         endTime: endDateTime,
       });
 
-      setSchedules([...schedules, newSchedule]);
+      setSchedules([...schedules, response.schedule]);
       setShowAddModal(false);
-      await notifyScheduleChange();
+
+      // Show warning if there are conflicts
+      if (response.conflicts && response.conflicts.length > 0) {
+        setConflicts(response.conflicts);
+      } else {
+        setConflicts([]);
+      }
+
+      // Show warning if there are teacher conflicts
+      if (response.teacherConflicts && response.teacherConflicts.length > 0) {
+        setTeacherConflicts(response.teacherConflicts);
+        const classCodes = response.teacherConflicts.map(c => c.conflictingClassCode).join(', ');
+        const teacherWarning = `Cảnh báo: Giáo viên trùng lịch với lớp ${classCodes}!`;
+        setError(teacherWarning);
+        setShowEditModal(true);
+      } else {
+        setTeacherConflicts([]);
+        if (response.conflicts && response.conflicts.length > 0) {
+          const conflictNames = response.conflicts.slice(0, 3).map(c => c.studentName).join(', ');
+          const moreText = response.conflicts.length > 3 ? ` và ${response.conflicts.length - 3} học sinh khác` : '';
+          setError(`Cảnh báo: ${conflictNames}${moreText} bị trùng lịch với lớp khác!`);
+          setShowEditModal(true);
+        } else {
+          await notifyScheduleChange();
+        }
+      }
     } catch (err: any) {
       console.error('Failed to create schedule:', err);
       setError(err.response?.data?.message || 'Đã xảy ra lỗi khi tạo lịch');
@@ -275,6 +307,8 @@ const scheduleGrid = useMemo(() => {
       setSchedules(schedules.filter(s => s.id !== selectedSchedule.id));
       setShowEditModal(false);
       setSelectedSchedule(null);
+      setConflicts([]);
+      setTeacherConflicts([]);
       await notifyScheduleChange();
     } catch (err: any) {
       console.error('Failed to delete schedule:', err);
@@ -282,6 +316,16 @@ const scheduleGrid = useMemo(() => {
     } finally {
       setSubmitting(false);
     }
+  };
+
+  const handleCloseEditModal = (open: boolean) => {
+    if (!open) {
+      setConflicts([]);
+      setTeacherConflicts([]);
+      setError(null);
+      setSelectedSchedule(null);
+    }
+    setShowEditModal(open);
   };
 
   return (
@@ -484,7 +528,7 @@ const scheduleGrid = useMemo(() => {
       </Dialog>
 
       {/* Edit Schedule Modal */}
-      <Dialog open={showEditModal} onOpenChange={setShowEditModal}>
+      <Dialog open={showEditModal} onOpenChange={handleCloseEditModal}>
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
@@ -503,8 +547,46 @@ const scheduleGrid = useMemo(() => {
             )}
 
             {error && (
-              <div className="p-3 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 text-sm">
+              <div className={`p-3 rounded-lg border text-sm ${conflicts.length > 0 ? 'bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-800 text-yellow-700 dark:text-yellow-400' : 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800 text-red-600 dark:text-red-400'}`}>
                 {error}
+              </div>
+            )}
+
+            {/* Show conflicts if any */}
+            {conflicts.length > 0 && (
+              <div className="space-y-2">
+                <p className="text-sm font-medium text-yellow-700 dark:text-yellow-400">
+                  Danh sách học sinh bị trùng lịch:
+                </p>
+                <div className="max-h-40 overflow-y-auto space-y-1">
+                  {conflicts.map((conflict, index) => (
+                    <div key={`student-${index}`} className="p-2 bg-yellow-50 dark:bg-yellow-900/20 rounded text-xs">
+                      <p className="font-medium">{conflict.studentName}</p>
+                      <p className="text-muted-foreground">
+                        Trùng với lớp {conflict.conflictingClassCode}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Show teacher conflicts if any */}
+            {teacherConflicts.length > 0 && (
+              <div className="space-y-2">
+                <p className="text-sm font-medium text-orange-700 dark:text-orange-400">
+                  Cảnh báo trùng lịch giáo viên:
+                </p>
+                <div className="max-h-40 overflow-y-auto space-y-1">
+                  {teacherConflicts.map((conflict, index) => (
+                    <div key={`teacher-${index}`} className="p-2 bg-orange-50 dark:bg-orange-900/20 rounded text-xs">
+                      <p className="font-medium">Lớp {conflict.conflictingClassCode}</p>
+                      <p className="text-muted-foreground">
+                        {conflict.conflictingStartTime.split('T')[1]?.substring(0, 5)} - {conflict.conflictingEndTime.split('T')[1]?.substring(0, 5)}
+                      </p>
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
 
@@ -539,7 +621,7 @@ const scheduleGrid = useMemo(() => {
             </Button>
             <div className="flex gap-2">
               <Button variant="outline" onClick={() => setShowEditModal(false)}>
-                Hủy
+                Đóng
               </Button>
               <Button onClick={handleUpdateSchedule} disabled={submitting}>
                 <Edit className="w-4 h-4 mr-2" />

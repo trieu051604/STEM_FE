@@ -56,17 +56,73 @@ export const BulkImportModal = ({ isOpen, onClose, onSuccess }: BulkImportModalP
           return;
         }
 
-        const validData = jsonData.filter(row => row.fullName && row.email).map(row => ({
-          email: String(row.email || '').trim(),
-          fullName: String(row.fullName || '').trim(),
-          phone: row.phone ? String(row.phone).trim() : undefined,
-          gender: row.gender ? String(row.gender).trim() : undefined,
-          dateOfBirth: row.dateOfBirth ? String(row.dateOfBirth).trim() : undefined,
-          address: row.address ? String(row.address).trim() : undefined,
-        }));
+        const validData = jsonData.filter(row => row.fullName && row.email).map(row => {
+          let dateOfBirth: string | undefined;
+          if (row.dateOfBirth) {
+            const rawDate = row.dateOfBirth;
+            if (rawDate instanceof Date) {
+              dateOfBirth = rawDate.toISOString().split('T')[0];
+            } else if (typeof rawDate === 'number') {
+              // Excel serial date number - convert to ISO date string
+              const date = new Date((rawDate - 25569) * 86400 * 1000);
+              dateOfBirth = date.toISOString().split('T')[0];
+            } else {
+              const dateStr = String(rawDate);
+              // Try to parse various date formats
+              const parsed = new Date(dateStr);
+              if (!isNaN(parsed.getTime())) {
+                dateOfBirth = parsed.toISOString().split('T')[0];
+              } else {
+                dateOfBirth = dateStr;
+              }
+            }
+          }
+
+          return {
+            email: String(row.email || '').trim().toLowerCase(),
+            fullName: String(row.fullName || '').trim(),
+            phone: row.phone ? String(row.phone).trim() : undefined,
+            gender: row.gender ? String(row.gender).trim() : undefined,
+            dateOfBirth,
+            address: row.address ? String(row.address).trim() : undefined,
+          };
+        });
 
         if (validData.length === 0) {
           setError('File phải có cột "email" và "fullName"');
+          return;
+        }
+
+        // Check for duplicate emails within the file
+        const emailCount: Record<string, number> = {};
+        const phoneCount: Record<string, number> = {};
+        const duplicates: string[] = [];
+        const duplicatePhones: string[] = [];
+
+        validData.forEach(student => {
+          emailCount[student.email] = (emailCount[student.email] || 0) + 1;
+          if (student.phone) {
+            phoneCount[student.phone] = (phoneCount[student.phone] || 0) + 1;
+          }
+        });
+
+        // Find duplicate emails
+        Object.entries(emailCount).forEach(([email, count]) => {
+          if (count > 1) {
+            duplicates.push(`Email trùng lặp: ${email} (${count} lần)`);
+          }
+        });
+
+        // Find duplicate phones
+        Object.entries(phoneCount).forEach(([phone, count]) => {
+          if (count > 1) {
+            duplicatePhones.push(`SĐT trùng lặp: ${phone} (${count} lần)`);
+          }
+        });
+
+        if (duplicates.length > 0 || duplicatePhones.length > 0) {
+          const allDuplicates = [...duplicates, ...duplicatePhones];
+          setError(`Phát hiện trùng lặp trong file:\n${allDuplicates.join('\n')}`);
           return;
         }
 

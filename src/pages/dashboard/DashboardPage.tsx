@@ -5,6 +5,12 @@ import {
   TeacherStats,
   StudentStats,
 } from '@/components/Dashboard/StatsCards';
+import {
+  MasterAdminCharts,
+  SchoolAdminCharts,
+  TeacherCharts,
+  StudentCharts,
+} from '@/components/Dashboard/DashboardCharts';
 import { Icon } from '@/components/ui/Icon';
 import { Button } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
@@ -70,6 +76,23 @@ export const DashboardPage = () => {
         return <StudentStats stats={stats} />;
       default:
         return <StudentStats stats={stats} />;
+    }
+  };
+
+  const renderCharts = () => {
+    if (!stats) return null;
+
+    switch (user?.role) {
+      case 'master_admin':
+        return <MasterAdminCharts stats={stats} role="master_admin" />;
+      case 'school_admin':
+        return <SchoolAdminCharts stats={stats} role="school_admin" />;
+      case 'teacher':
+        return <TeacherCharts stats={stats} role="teacher" />;
+      case 'student':
+        return <StudentCharts stats={stats} role="student" />;
+      default:
+        return <StudentCharts stats={stats} role="student" />;
     }
   };
 
@@ -151,6 +174,9 @@ export const DashboardPage = () => {
       {/* Stats */}
       {renderStats()}
 
+      {/* Charts */}
+      {renderCharts()}
+
       {/* Quick Actions */}
       <div className="bg-card rounded-xl border border-border p-6">
         <h2 className="text-lg font-semibold mb-4">Thao tác nhanh</h2>
@@ -224,28 +250,6 @@ export const DashboardPage = () => {
           </div>
         )}
       </div>
-
-      {/* Alerts for pending items */}
-      {user?.role === 'master_admin' && stats?.pendingSchoolRequests ? (
-        <div className="bg-yellow-100 dark:bg-yellow-900/30 border border-yellow-300 dark:border-yellow-700/50 rounded-xl p-4 flex items-center gap-4">
-          <div className="w-10 h-10 rounded-full bg-yellow-200 dark:bg-yellow-800/50 flex items-center justify-center flex-shrink-0">
-            <AlertCircle className="w-5 h-5 text-yellow-700 dark:text-yellow-400" />
-          </div>
-          <div className="flex-1">
-            <p className="font-medium text-yellow-900 dark:text-yellow-200">
-              Có {stats.pendingSchoolRequests} yêu cầu đang chờ duyệt
-            </p>
-            <p className="text-sm text-yellow-800 dark:text-yellow-300">
-              Vui lòng kiểm tra và phê duyệt các đơn đăng ký trường mới
-            </p>
-          </div>
-          <Link to="/dashboard/requests">
-            <Button variant="outline" size="sm" className="border-yellow-400 dark:border-yellow-600 text-yellow-800 dark:text-yellow-200 hover:bg-yellow-100 dark:hover:bg-yellow-900/50">
-              Xem ngay
-            </Button>
-          </Link>
-        </div>
-      ) : null}
     </div>
   );
 };

@@ -37,6 +37,7 @@ export const ClassesPage = () => {
   const [classes, setClasses] = useState<ClassEntity[]>([]);
   const [schedulesMap, setSchedulesMap] = useState<Record<number, ScheduleResponse[]>>({});
   const [schedulesLoading, setSchedulesLoading] = useState(false);
+  const [availableTeachersForEdit, setAvailableTeachersForEdit] = useState<{ id: number; fullName: string }[]>([]);
 
   // Fetch classes
   const { data: classesData, isLoading, refetch } = useQuery({
@@ -63,10 +64,25 @@ export const ClassesPage = () => {
 
   // Create class mutation
   const createClassMutation = useMutation({
-    mutationFn: (data: ClassFormData) => classesApi.create(data as any),
+    mutationFn: async (data: ClassFormData) => {
+      // Check for duplicate class code
+      const existingClasses = classesData?.items || [];
+      const isDuplicate = existingClasses.some(cls => 
+        cls.classCode.toLowerCase() === data.classCode.toLowerCase()
+      );
+      if (isDuplicate) {
+        throw new Error('Mã lớp đã tồn tại. Vui lòng sử dụng mã lớp khác.');
+      }
+      return classesApi.create(data as any);
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['classes'] });
       setCreateModalOpen(false);
+      // TODO: Add toast notification
+    },
+    onError: (error: any) => {
+      // Error is handled by the form
+      console.error('Create class error:', error.message);
     },
   });
 
@@ -267,10 +283,18 @@ export const ClassesPage = () => {
             variant="ghost"
             size="icon"
             className="size-8"
-            onClick={(e) => {
+            onClick={async (e) => {
               e.stopPropagation();
               setSelectedClass(cls);
               setEditModalOpen(true);
+              // Fetch available teachers for this class
+              try {
+                const res = await classesApi.getAvailableTeachers(cls.id);
+                setAvailableTeachersForEdit((res.data || []).map((t: any) => ({ id: t.id, fullName: t.fullName })));
+              } catch (err) {
+                console.error('Failed to fetch available teachers:', err);
+                setAvailableTeachersForEdit(teachers);
+              }
             }}
           >
             <Edit className="w-4 h-4" />
@@ -510,7 +534,7 @@ export const ClassesPage = () => {
               endDate: selectedClass.endDate,
             }}
             courses={courses}
-            teachers={teachers}
+            teachers={availableTeachersForEdit.length > 0 ? availableTeachersForEdit : teachers}
           />
         )}
       </Modal>
@@ -561,11 +585,23 @@ function ClassDetailContent({ classId, classCode }: ClassDetailContentProps) {
   const [activeTab, setActiveTab] = useState<'students' | 'schedule'>('students');
   const [scheduleView, setScheduleView] = useState<'calendar' | 'weekly'>('weekly');
   const [confirmRemove, setConfirmRemove] = useState<{ studentId: number; studentName: string } | null>(null);
+  const [selectedStudentIds, setSelectedStudentIds] = useState<Set<number>>(new Set());
+  const [isAssigning, setIsAssigning] = useState(false);
 
+  // Fetch class details
   const { data, isLoading, refetch } = useQuery({
     queryKey: ['class-detail', classId],
     queryFn: async () => {
       const res = await classesApi.getById(classId);
+      return res;
+    },
+  });
+
+  // Fetch available students (filtered by schedule conflict)
+  const { data: availableData, refetch: refetchAvailable } = useQuery({
+    queryKey: ['available-students', classId],
+    queryFn: async () => {
+      const res = await classesApi.getAvailableStudents(classId);
       return res;
     },
   });
@@ -576,7 +612,10 @@ function ClassDetailContent({ classId, classCode }: ClassDetailContentProps) {
       await classesApi.removeStudent(classId, confirmRemove.studentId);
       queryClient.invalidateQueries({ queryKey: ['students'] });
       queryClient.invalidateQueries({ queryKey: ['classes'] });
+      queryClient.invalidateQueries({ queryKey: ['class-detail', classId] });
+      queryClient.invalidateQueries({ queryKey: ['available-students', classId] });
       await refetch();
+      await refetchAvailable();
     } catch (err: any) {
       console.error('Remove student error:', err);
     } finally {
@@ -584,19 +623,47 @@ function ClassDetailContent({ classId, classCode }: ClassDetailContentProps) {
     }
   };
 
-  const handleAssign = async (studentId: number) => {
+  const handleAssign = async () => {
+    if (selectedStudentIds.size === 0) return;
+    
     try {
-      await classesApi.assignStudents(classId, [studentId]);
+      setIsAssigning(true);
+      await classesApi.assignStudents(classId, Array.from(selectedStudentIds));
       queryClient.invalidateQueries({ queryKey: ['students'] });
       queryClient.invalidateQueries({ queryKey: ['classes'] });
+      queryClient.invalidateQueries({ queryKey: ['class-detail', classId] });
+      queryClient.invalidateQueries({ queryKey: ['available-students', classId] });
       await refetch();
+      await refetchAvailable();
+      setSelectedStudentIds(new Set());
     } catch (err: any) {
-      console.error('Assign student error:', err);
+      console.error('Assign students error:', err);
+    } finally {
+      setIsAssigning(false);
+    }
+  };
+
+  const toggleStudentSelection = (studentId: number) => {
+    const newSet = new Set(selectedStudentIds);
+    if (newSet.has(studentId)) {
+      newSet.delete(studentId);
+    } else {
+      newSet.add(studentId);
+    }
+    setSelectedStudentIds(newSet);
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedStudentIds.size === availableStudents.length) {
+      setSelectedStudentIds(new Set());
+    } else {
+      setSelectedStudentIds(new Set(availableStudents.map(s => s.id)));
     }
   };
 
   const students = data?.students || [];
-  const availableStudents = data?.availableStudents || [];
+  const enrolledStudents = data?.enrolledStudents || [];
+  const availableStudents = availableData?.students || [];
 
   const filteredStudents = students.filter((s) =>
     (s.fullName || '').toLowerCase().includes(query.toLowerCase()) ||
@@ -746,9 +813,21 @@ function ClassDetailContent({ classId, classCode }: ClassDetailContentProps) {
 
             {/* Chưa thêm */}
             <div className="space-y-2">
-              <div className="flex items-center gap-2">
-                <X className="w-4 h-4 text-muted-foreground" />
-                <p className="text-sm font-semibold">Chưa thêm ({availableStudents.length})</p>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <X className="w-4 h-4 text-muted-foreground" />
+                  <p className="text-sm font-semibold">Chưa thêm ({availableStudents.length})</p>
+                </div>
+                {selectedStudentIds.size > 0 && (
+                  <Button
+                    size="sm"
+                    onClick={handleAssign}
+                    disabled={isAssigning}
+                  >
+                    <Check className="w-4 h-4" />
+                    Thêm {selectedStudentIds.size} học sinh
+                  </Button>
+                )}
               </div>
               <div className="max-h-80 overflow-y-auto rounded-lg border border-border divide-y divide-border">
                 {isLoading ? (
@@ -756,22 +835,36 @@ function ClassDetailContent({ classId, classCode }: ClassDetailContentProps) {
                 ) : filteredAvailable.length === 0 ? (
                   <div className="p-4 text-sm text-muted-foreground text-center">Không còn học sinh nào.</div>
                 ) : (
-                  filteredAvailable.map((student) => (
-                    <div key={student.id} className="flex items-center gap-3 p-3">
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium truncate">{student.fullName}</p>
-                        <p className="text-xs text-muted-foreground truncate">{student.email}</p>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => handleAssign(student.id)}
-                        className="shrink-0 inline-flex items-center gap-1 text-xs font-semibold text-green-600 border border-green-200 dark:border-green-800 rounded-md px-2 py-1 hover:bg-green-50 dark:hover:bg-green-900/30"
-                      >
-                        <Check className="w-3 h-3" />
-                        Thêm
-                      </button>
+                  <>
+                    {/* Select All Header */}
+                    <div className="sticky top-0 bg-muted/50 px-3 py-2 z-10">
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={selectedStudentIds.size === availableStudents.length && availableStudents.length > 0}
+                          onChange={toggleSelectAll}
+                          className="w-4 h-4 rounded border-border"
+                        />
+                        <span className="text-xs font-medium text-muted-foreground">
+                          Chọn tất cả
+                        </span>
+                      </label>
                     </div>
-                  ))
+                    {filteredAvailable.map((student) => (
+                      <div key={student.id} className="flex items-center gap-3 p-3">
+                        <input
+                          type="checkbox"
+                          checked={selectedStudentIds.has(student.id)}
+                          onChange={() => toggleStudentSelection(student.id)}
+                          className="w-4 h-4 rounded border-border"
+                        />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium truncate">{student.fullName}</p>
+                          <p className="text-xs text-muted-foreground truncate">{student.email}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </>
                 )}
               </div>
             </div>
@@ -814,7 +907,7 @@ function ClassDetailContent({ classId, classCode }: ClassDetailContentProps) {
               schedules={data?.schedules}
               classInfo={{ id: classId, classCode, className: data?.courseName || '' }}
               isAdmin={true}
-              onScheduleChange={async () => { await refetch(); }}
+              onScheduleChange={async () => { await refetch(); await refetchAvailable(); }}
             />
           ) : (
             <ScheduleCalendar
@@ -822,7 +915,7 @@ function ClassDetailContent({ classId, classCode }: ClassDetailContentProps) {
               schedules={data?.schedules}
               classInfo={{ id: classId, classCode, className: data?.courseName || '' }}
               isAdmin={true}
-              onScheduleChange={async () => { await refetch(); }}
+              onScheduleChange={async () => { await refetch(); await refetchAvailable(); }}
             />
           )}
         </div>

@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { authApi, LoginResponse } from '@/services/authApi';
+import { encodeData, decodeData } from '@/utils/crypto';
 
 export type UserRole = 'master_admin' | 'school_admin' | 'teacher' | 'student';
 
@@ -99,7 +100,6 @@ export const useAuthStore = create<AuthStore>()(
           });
         } catch (err: any) {
           set({ isLoading: false });
-          // Extract error message from response
           const message = err.response?.data?.message ||
             err.message ||
             'Đăng nhập Google thất bại. Vui lòng thử lại.';
@@ -113,7 +113,6 @@ export const useAuthStore = create<AuthStore>()(
 
         set({ isLoading: true });
         try {
-          // Try to refresh the token
           const data = await authApi.refreshToken(refreshToken || token);
           const updatedUser = mapResponseToUser(data);
           set({
@@ -124,12 +123,12 @@ export const useAuthStore = create<AuthStore>()(
             isLoading: false
           });
         } catch {
-          // Token expired, clear auth state
           get().logout();
         }
       },
 
       logout: () => {
+        // Clear all sensitive data
         set({
           user: null,
           token: null,
@@ -152,6 +151,45 @@ export const useAuthStore = create<AuthStore>()(
         refreshToken: state.refreshToken,
         isAuthenticated: state.isAuthenticated,
       }),
+      // Add storage transformation for extra security
+      storage: {
+        getItem: (name) => {
+          const value = localStorage.getItem(name);
+          if (!value) return null;
+
+          try {
+            const parsed = JSON.parse(value);
+            // Decode stored tokens if encoded
+            if (parsed.state?.token && typeof parsed.state.token === 'string') {
+              parsed.state.token = decodeData(parsed.state.token);
+            }
+            if (parsed.state?.refreshToken && typeof parsed.state.refreshToken === 'string') {
+              parsed.state.refreshToken = decodeData(parsed.state.refreshToken);
+            }
+            return parsed;
+          } catch {
+            return null;
+          }
+        },
+        setItem: (name, value) => {
+          try {
+            const toStore = JSON.parse(JSON.stringify(value));
+            // Encode tokens before storing to prevent casual viewing
+            if (toStore.state?.token) {
+              toStore.state.token = encodeData(toStore.state.token);
+            }
+            if (toStore.state?.refreshToken) {
+              toStore.state.refreshToken = encodeData(toStore.state.refreshToken);
+            }
+            localStorage.setItem(name, JSON.stringify(toStore));
+          } catch {
+            localStorage.setItem(name, JSON.stringify(value));
+          }
+        },
+        removeItem: (name) => {
+          localStorage.removeItem(name);
+        },
+      },
     }
   )
 );

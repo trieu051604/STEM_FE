@@ -8,11 +8,21 @@ import { Switch } from '@/components/ui/Switch';
 import { useQuery } from '@tanstack/react-query';
 import { studentsApi } from '@/services/schoolAdminApi';
 
+// Password validation regex: min 8 chars, 1 uppercase, 1 lowercase, 1 number, 1 special char
+const PASSWORD_REGEX = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
+
+const passwordValidation = z.string()
+  .min(8, 'Mật khẩu phải có ít nhất 8 ký tự')
+  .regex(/[A-Z]/, 'Mật khẩu phải chứa ít nhất 1 chữ hoa')
+  .regex(/[a-z]/, 'Mật khẩu phải chứa ít nhất 1 chữ thường')
+  .regex(/\d/, 'Mật khẩu phải chứa ít nhất 1 số')
+  .regex(/[@$!%*?&]/, 'Mật khẩu phải chứa ít nhất 1 ký tự đặc biệt (@$!%*?&)');
+
 // Form Schema for User
 export const userFormSchema = z.object({
-  email: z.string().email('Email không hợp lệ'),
-  password: z.string().min(6, 'Mật khẩu phải có ít nhất 6 ký tự').optional(),
-  fullName: z.string().min(2, 'Họ tên phải có ít nhất 2 ký tự'),
+  email: z.string().min(1, 'Email không được để trống').email('Email không hợp lệ'),
+  password: z.string().optional(),
+  fullName: z.string().min(1, 'Họ tên không được để trống').min(2, 'Họ tên phải có ít nhất 2 ký tự'),
   role: z.enum(['Teacher', 'Student', 'SchoolAdmin']),
   phone: z.string().optional(),
   gender: z.string().optional(),
@@ -25,14 +35,14 @@ export type UserFormData = z.infer<typeof userFormSchema>;
 
 // Form Schema for Student
 export const studentFormSchema = z.object({
-  email: z.string().email('Email không hợp lệ').optional().or(z.literal('')),
-  password: z.string().min(6, 'Mật khẩu phải có ít nhất 6 ký tự').optional(),
-  fullName: z.string().refine((value) => value.trim().length === 0 || value.trim().length >= 2, {
-    message: 'Họ tên phải có ít nhất 2 ký tự nếu nhập',
-  }),
-  phone: z.string().refine((value) => value.trim().length === 0 || /^[0-9]{10}$/.test(value), {
-    message: 'Số điện thoại phải có đúng 10 chữ số nếu nhập',
-  }),
+  email: z.string().min(1, 'Email không được để trống').email('Email không hợp lệ'),
+  password: passwordValidation.optional(),
+  fullName: z.string().min(1, 'Họ tên không được để trống').min(2, 'Họ tên phải có ít nhất 2 ký tự'),
+  phone: z.string()
+    .optional()
+    .refine((val) => !val || /^[0-9]{10}$/.test(val), {
+      message: 'Số điện thoại phải có đúng 10 chữ số',
+    }),
   gender: z.string().optional(),
   dateOfBirth: z.string().optional(),
   address: z.string().optional(),
@@ -43,8 +53,21 @@ export type StudentFormData = z.infer<typeof studentFormSchema>;
 
 // Form Schema for Course
 export const courseFormSchema = z.object({
-  title: z.string().min(2, 'Tên khóa học phải có ít nhất 2 ký tự'),
+  title: z.string()
+    .min(1, 'Tên khóa học không được để trống')
+    .min(2, 'Tên khóa học phải có ít nhất 2 ký tự')
+    .max(200, 'Tên khóa học không được quá 200 ký tự'),
   description: z.string().optional(),
+}).refine((data) => {
+  // Check for invalid characters
+  const invalidChars = /[<>{}\\]/;
+  if (invalidChars.test(data.title)) {
+    return false;
+  }
+  return true;
+}, {
+  message: 'Tên khóa học không được chứa ký tự đặc biệt',
+  path: ['title'],
 });
 
 export type CourseFormData = z.infer<typeof courseFormSchema>;
@@ -70,13 +93,13 @@ export type ClassFormData = z.infer<typeof classFormSchema>;
 
 // Form Schema for Teacher
 export const teacherFormSchema = z.object({
-  fullName: z.string().refine((value) => value.trim().length === 0 || value.trim().length >= 2, {
-    message: 'Họ tên phải có ít nhất 2 ký tự nếu nhập',
-  }),
-  email: z.string().email('Email không hợp lệ'),
-  phone: z.string().refine((value) => value.trim().length === 0 || /^[0-9]{10}$/.test(value), {
-    message: 'Số điện thoại phải có đúng 10 chữ số nếu nhập',
-  }),
+  fullName: z.string().min(1, 'Họ tên không được để trống').min(2, 'Họ tên phải có ít nhất 2 ký tự'),
+  email: z.string().min(1, 'Email không được để trống').email('Email không hợp lệ'),
+  phone: z.string()
+    .optional()
+    .refine((val) => !val || /^[0-9]{10}$/.test(val), {
+      message: 'Số điện thoại phải có đúng 10 chữ số',
+    }),
   gender: z.string().optional(),
   dateOfBirth: z.string().optional(),
   address: z.string().optional(),
@@ -341,16 +364,16 @@ export function StudentForm({ onSubmit, onCancel, loading, defaultValues, hidePa
         <FormField label="Mật khẩu" error={errors.password?.message}>
           <Input
             type="password"
-            placeholder="Nhập mật khẩu (tùy chọn)"
+            placeholder="Ít nhất 8 ký tự: 1 hoa, 1 thường, 1 số, 1 đặc biệt"
             error={!!errors.password}
             {...register('password')}
           />
         </FormField>
       )}
 
-      <FormField label="Họ và tên" error={errors.fullName?.message}>
+      <FormField label="Họ và tên" required error={errors.fullName?.message}>
         <Input
-          placeholder="Nguyễn Văn A (tùy chọn)"
+          placeholder="Nguyễn Văn A"
           error={!!errors.fullName}
           {...register('fullName')}
         />
@@ -359,7 +382,8 @@ export function StudentForm({ onSubmit, onCancel, loading, defaultValues, hidePa
       <FormField label="Số điện thoại" error={errors.phone?.message}>
         <Input
           type="tel"
-          placeholder="0xxx xxx xxx"
+          placeholder="0xxx xxx xxx (10 chữ số)"
+          error={!!errors.phone}
           {...register('phone')}
         />
       </FormField>
@@ -418,9 +442,10 @@ interface CourseFormProps {
   onCancel: () => void;
   loading?: boolean;
   defaultValues?: Partial<CourseFormData>;
+  error?: string | null;
 }
 
-export function CourseForm({ onSubmit, onCancel, loading, defaultValues }: CourseFormProps) {
+export function CourseForm({ onSubmit, onCancel, loading, defaultValues, error }: CourseFormProps) {
   const {
     register,
     handleSubmit,
@@ -446,6 +471,12 @@ export function CourseForm({ onSubmit, onCancel, loading, defaultValues }: Cours
           {...register('description')}
         />
       </FormField>
+
+      {error && (
+        <div className="p-3 rounded-lg bg-destructive/10 border border-destructive/20 text-sm text-destructive">
+          {error}
+        </div>
+      )}
 
       <FormActions onCancel={onCancel} loading={loading} />
     </form>
@@ -549,9 +580,9 @@ export function TeacherForm({ onSubmit, onCancel, loading, defaultValues, hidePa
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-      <FormField label="Họ và tên" error={errors.fullName?.message}>
+      <FormField label="Họ và tên" required error={errors.fullName?.message}>
         <Input
-          placeholder="Nguyễn Văn A (tùy chọn)"
+          placeholder="Nguyễn Văn A"
           error={!!errors.fullName}
           {...register('fullName')}
         />
@@ -569,7 +600,8 @@ export function TeacherForm({ onSubmit, onCancel, loading, defaultValues, hidePa
       <FormField label="Số điện thoại" error={errors.phone?.message}>
         <Input
           type="tel"
-          placeholder="0xxx xxx xxx"
+          placeholder="0xxx xxx xxx (10 chữ số)"
+          error={!!errors.phone}
           {...register('phone')}
         />
       </FormField>

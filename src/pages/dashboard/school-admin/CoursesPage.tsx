@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Icon } from '@/components/ui/Icon';
-import { Plus, RefreshCw, Edit, Trash2, Eye, BookOpen, Users, GraduationCap } from 'lucide-react';
+import { Plus, RefreshCw, Edit, Trash2, Eye, BookOpen, Users, TrendingUp, Loader2 } from 'lucide-react';
 import {
   DataTable,
   ColumnDef,
@@ -44,21 +44,48 @@ export const CoursesPage = () => {
   });
 
   // Create course mutation
+  const [createError, setCreateError] = useState<string | null>(null);
+  const [updateError, setUpdateError] = useState<string | null>(null);
+
   const createCourseMutation = useMutation({
-    mutationFn: (data: CourseFormData) => coursesApi.create({ title: data.title, description: data.description }),
+    mutationFn: async (data: CourseFormData) => {
+      setCreateError(null);
+      return coursesApi.create({ title: data.title, description: data.description });
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['courses'] });
       setCreateModalOpen(false);
+      setCreateError(null);
+    },
+    onError: (error: any) => {
+      const message = error?.response?.data?.message || error?.message || 'Lỗi khi tạo khóa học';
+      if (message.includes('duplicate') || message.includes('trùng')) {
+        setCreateError('Tên khóa học đã tồn tại. Vui lòng sử dụng tên khác.');
+      } else {
+        setCreateError(message);
+      }
     },
   });
 
   // Update course mutation
   const updateCourseMutation = useMutation({
-    mutationFn: ({ id, data }: { id: number; data: CourseFormData }) => coursesApi.update(id, { title: data.title, description: data.description }),
+    mutationFn: async ({ id, data }: { id: number; data: CourseFormData }) => {
+      setUpdateError(null);
+      return coursesApi.update(id, { title: data.title, description: data.description });
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['courses'] });
       setEditModalOpen(false);
       setSelectedCourse(null);
+      setUpdateError(null);
+    },
+    onError: (error: any) => {
+      const message = error?.response?.data?.message || error?.message || 'Lỗi khi cập nhật khóa học';
+      if (message.includes('duplicate') || message.includes('trùng')) {
+        setUpdateError('Tên khóa học đã tồn tại. Vui lòng sử dụng tên khác.');
+      } else {
+        setUpdateError(message);
+      }
     },
   });
 
@@ -233,11 +260,11 @@ export const CoursesPage = () => {
           <div className="bg-card rounded-xl border border-border p-4">
             <div className="flex items-center gap-3">
               <div className="w-12 h-12 rounded-lg bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
-                <GraduationCap className="w-6 h-6 text-green-600 dark:text-green-400" />
+                <TrendingUp className="w-6 h-6 text-green-600 dark:text-green-400" />
               </div>
               <div>
-                <p className="text-2xl font-bold">{coursesData.items?.length || 0}</p>
-                <p className="text-sm text-muted-foreground">Đang hiển thị</p>
+                <p className="text-2xl font-bold">{coursesData.total}</p>
+                <p className="text-sm text-muted-foreground">Đang hoạt động</p>
               </div>
             </div>
           </div>
@@ -247,7 +274,9 @@ export const CoursesPage = () => {
                 <Users className="w-6 h-6 text-brand-600 dark:text-brand-400" />
               </div>
               <div>
-                <p className="text-2xl font-bold">—</p>
+                <p className="text-2xl font-bold">
+                  {coursesData.items?.reduce((sum, course) => sum + (course.enrolledStudents || 0), 0) || 0}
+                </p>
                 <p className="text-sm text-muted-foreground">Học viên đăng ký</p>
               </div>
             </div>
@@ -286,14 +315,21 @@ export const CoursesPage = () => {
       {/* Create Course Modal */}
       <Modal
         isOpen={createModalOpen}
-        onClose={() => setCreateModalOpen(false)}
+        onClose={() => {
+          setCreateModalOpen(false);
+          setCreateError(null);
+        }}
         title="Thêm khóa học mới"
         size="lg"
       >
         <CourseForm
           onSubmit={handleCreateCourse}
-          onCancel={() => setCreateModalOpen(false)}
+          onCancel={() => {
+            setCreateModalOpen(false);
+            setCreateError(null);
+          }}
           loading={createCourseMutation.isPending}
+          error={createError}
         />
       </Modal>
 
@@ -303,6 +339,7 @@ export const CoursesPage = () => {
         onClose={() => {
           setEditModalOpen(false);
           setSelectedCourse(null);
+          setUpdateError(null);
         }}
         title="Chỉnh sửa khóa học"
         size="lg"
@@ -313,8 +350,10 @@ export const CoursesPage = () => {
             onCancel={() => {
               setEditModalOpen(false);
               setSelectedCourse(null);
+              setUpdateError(null);
             }}
             loading={updateCourseMutation.isPending}
+            error={updateError}
             defaultValues={{
               title: selectedCourse.title,
               description: selectedCourse.description,

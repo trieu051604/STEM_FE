@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Icon } from '@/components/ui/Icon';
-import { UserPlus, RefreshCw, Eye, Trash2, User, Mail, Phone, MapPin, BookOpen, GraduationCap, TrendingUp, Award, Clock, CheckCircle, Pencil, Calendar, Upload } from 'lucide-react';
+import { UserPlus, RefreshCw, Eye, Trash2, User, Mail, Phone, MapPin, BookOpen, GraduationCap, TrendingUp, Award, Clock, CheckCircle, Pencil, Calendar, Upload, Ban } from 'lucide-react';
 import {
   DataTable,
   ColumnDef,
@@ -75,6 +75,10 @@ export const StudentsPage = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['students'] });
       setCreateModalOpen(false);
+      // TODO: Add toast notification here
+    },
+    onError: (error: any) => {
+      // Error handled by form
     },
   });
 
@@ -87,6 +91,7 @@ export const StudentsPage = () => {
       setEditModalOpen(false);
       setSelectedStudent(null);
       setStudentUpdateError(null);
+      // TODO: Add toast notification here
     },
     onError: (error: any) => {
       setStudentUpdateError(error?.response?.data?.message || 'Cập nhật học sinh thất bại');
@@ -100,6 +105,7 @@ export const StudentsPage = () => {
       queryClient.invalidateQueries({ queryKey: ['students'] });
       setDeleteConfirmOpen(false);
       setSelectedStudent(null);
+      // TODO: Add toast notification here
     },
   });
 
@@ -110,6 +116,7 @@ export const StudentsPage = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['students'] });
       setSelectedStudent(null);
+      // TODO: Add toast notification here
     },
   });
 
@@ -300,7 +307,7 @@ export const StudentsPage = () => {
 
       {/* Stats Cards */}
       {studentsData && (
-        <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-6 gap-4">
           <div className="bg-card rounded-xl border border-border p-4">
             <div className="flex items-center gap-3">
               <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center">
@@ -309,6 +316,35 @@ export const StudentsPage = () => {
               <div>
                 <p className="text-2xl font-bold">{studentsData.total}</p>
                 <p className="text-sm text-muted-foreground">Tổng học sinh</p>
+              </div>
+            </div>
+          </div>
+          <div className="bg-card rounded-xl border border-border p-4">
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-lg bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center">
+                <BookOpen className="w-6 h-6 text-purple-600 dark:text-purple-400" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold">
+                  {studentsData.items?.reduce((acc, s) => acc + (s.totalEnrolledClasses || 0), 0)}
+                </p>
+                <p className="text-sm text-muted-foreground">Tổng lớp đăng ký</p>
+              </div>
+            </div>
+          </div>
+          <div className="bg-card rounded-xl border border-border p-4">
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-lg bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center">
+                <Clock className="w-6 h-6 text-amber-600 dark:text-amber-400" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold">
+                  {(() => {
+                    const count = studentsData.items?.filter(s => s.totalEnrolledClasses && s.totalEnrolledClasses > 0 && (!s.averageScore || s.averageScore === 0)).length || 0;
+                    return count;
+                  })()}
+                </p>
+                <p className="text-sm text-muted-foreground">Chưa có điểm</p>
               </div>
             </div>
           </div>
@@ -327,14 +363,17 @@ export const StudentsPage = () => {
           </div>
           <div className="bg-card rounded-xl border border-border p-4">
             <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-lg bg-brand-100 dark:bg-brand-900/30 flex items-center justify-center">
-                <BookOpen className="w-6 h-6 text-brand-600 dark:text-brand-400" />
+              <div className="w-12 h-12 rounded-lg bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
+                <TrendingUp className="w-6 h-6 text-blue-600 dark:text-blue-400" />
               </div>
               <div>
                 <p className="text-2xl font-bold">
-                  {studentsData.items?.reduce((acc, s) => acc + (s.totalEnrolledClasses || 0), 0)}
+                  {(() => {
+                    const count = studentsData.items?.filter(s => (s.averageScore || 0) > 0).length || 0;
+                    return count;
+                  })()}
                 </p>
-                <p className="text-sm text-muted-foreground">Lớp đã đăng ký</p>
+                <p className="text-sm text-muted-foreground">Có điểm TB</p>
               </div>
             </div>
           </div>
@@ -346,11 +385,12 @@ export const StudentsPage = () => {
               <div>
                 <p className="text-2xl font-bold">
                   {(() => {
-                    const count = studentsData.items?.filter(s => (s.averageScore || 0) > 0).length || 0;
-                    return count;
+                    const scores = studentsData.items?.filter(s => (s.averageScore || 0) > 0).map(s => s.averageScore) || [];
+                    const avg = scores.length > 0 ? scores.reduce((a, b) => a + b, 0) / scores.length : 0;
+                    return avg.toFixed(1);
                   })()}
                 </p>
-                <p className="text-sm text-muted-foreground">Có điểm TB</p>
+                <p className="text-sm text-muted-foreground">Điểm TB chung</p>
               </div>
             </div>
           </div>

@@ -436,8 +436,20 @@ export const classesApi = {
     await api.post(`/classes/${classId}/assign-students`, { studentIds });
   },
 
+  getAvailableStudents: async (classId: number, page = 1, pageSize = 20): Promise<any> => {
+    const response = await api.get(`/classes/${classId}/available-students`, {
+      params: { page, pageSize }
+    });
+    return response.data.data;
+  },
+
   removeStudent: async (classId: number, studentId: number): Promise<void> => {
     await api.delete(`/classes/${classId}/students/${studentId}`);
+  },
+
+  getAvailableTeachers: async (classId: number): Promise<any> => {
+    const response = await api.get(`/classes/${classId}/available-teachers`);
+    return response.data;
   },
 };
 
@@ -451,11 +463,39 @@ export interface School {
   phone?: string;
   email?: string;
   description?: string;
+  status?: number | string;
   createdAt: string;
   updatedAt?: string;
 }
 
+export interface SchoolsListResponse {
+  items: School[];
+  total: number;
+  page: number;
+  pageSize: number;
+}
+
 export const schoolsApi = {
+  getAll: async (params?: {
+    pageNumber?: number;
+    pageSize?: number;
+    search?: string;
+    status?: string;
+  }): Promise<SchoolsListResponse> => {
+    const response = await api.get('/schools', { params });
+    const nestedData = response.data.data;
+    const result = nestedData?.data || nestedData?.items || nestedData || response.data;
+    const items = Array.isArray(result) ? result : [];
+    const total = nestedData?.total ?? nestedData?.totalCount ?? items.length;
+
+    return {
+      items,
+      total,
+      page: nestedData?.pageNumber || 1,
+      pageSize: nestedData?.pageSize || 10,
+    };
+  },
+
   getById: async (id: number): Promise<School> => {
     const response = await api.get(`/schools/${id}`);
     return response.data.data;
@@ -467,8 +507,18 @@ export const schoolsApi = {
     phone?: string;
     email?: string;
     description?: string;
+    status?: number;
   }): Promise<void> => {
     await api.put(`/schools/${id}`, data);
+  },
+
+  toggleLock: async (id: number): Promise<{ status: number }> => {
+    const response = await api.post(`/schools/${id}/toggle-lock`);
+    return response.data.data;
+  },
+
+  delete: async (id: number): Promise<void> => {
+    await api.delete(`/schools/${id}`);
   },
 };
 
@@ -511,6 +561,32 @@ export interface ScheduleCalendarItem {
   classCode: string;
   className: string;
   color: string;
+}
+
+export interface ScheduleConflictInfo {
+  studentId: number;
+  studentName: string;
+  studentEmail: string;
+  conflictingClassId: number;
+  conflictingClassCode: string;
+  conflictingClassName: string;
+  conflictingStartTime: string;
+  conflictingEndTime: string;
+}
+
+export interface TeacherConflictInfo {
+  conflictingClassId: number;
+  conflictingClassCode: string;
+  conflictingStartTime: string;
+  conflictingEndTime: string;
+}
+
+export interface CreateScheduleResponse {
+  success: boolean;
+  schedule: ScheduleResponse;
+  conflicts: ScheduleConflictInfo[];
+  teacherConflicts: TeacherConflictInfo[];
+  message: string;
 }
 
 export interface ScheduleResponse {
@@ -564,7 +640,7 @@ export const scheduleApi = {
     return data?.schedules || [];
   },
 
-  create: async (data: CreateScheduleRequest): Promise<ScheduleResponse> => {
+  create: async (data: CreateScheduleRequest): Promise<CreateScheduleResponse> => {
     const response = await api.post('/schedules', data);
     return response.data.data;
   },
@@ -581,5 +657,102 @@ export const scheduleApi = {
   getRooms: async (): Promise<Room[]> => {
     const response = await api.get('/rooms');
     return response.data.data || [];
+  },
+};
+
+// ==========================================
+// Payments API
+// ==========================================
+export interface PaymentPackage {
+  id: number;
+  name: string;
+  description: string;
+  durationMonths: number;
+  price: number;
+  currency: string;
+  tokenAmount: number;
+  isActive: boolean;
+  isFeatured: boolean;
+  features?: string;
+}
+
+export interface Payment {
+  id: number;
+  transactionId: string;
+  packageId: number;
+  packageName: string;
+  durationMonths: number;
+  tokenAmount: number;
+  amount: number;
+  currency: string;
+  status: string;
+  method: string;
+  paidAt?: string;
+  expiresAt?: string;
+  paymentGateway?: string;
+  gatewayTransactionId?: string;
+  createdAt: string;
+}
+
+export interface PaymentListResponse {
+  items: Payment[];
+  total: number;
+  page: number;
+  pageSize: number;
+}
+
+export interface TokenBalance {
+  schoolId: number;
+  schoolName: string;
+  totalTokensPurchased: number;
+  tokensRemaining: number;
+  tokensUsed: number;
+  expiresAt?: string;
+  lastPurchaseAt?: string;
+}
+
+export interface TokenTransaction {
+  id: number;
+  schoolId: number;
+  paymentId: number;
+  type: string;
+  quantity: number;
+  balanceAfter: number;
+  description?: string;
+  createdAt: string;
+}
+
+export const paymentsApi = {
+  getPackages: async (): Promise<PaymentPackage[]> => {
+    const response = await api.get('/payments/packages');
+    return response.data.data || [];
+  },
+
+  createPayment: async (packageId: number, method: string = 'Manual'): Promise<Payment> => {
+    const response = await api.post('/payments', { packageId, method });
+    return response.data.data;
+  },
+
+  getPayments: async (page: number = 1, pageSize: number = 10): Promise<PaymentListResponse> => {
+    const response = await api.get('/payments', { params: { page, pageSize } });
+    return response.data.data;
+  },
+
+  getBalance: async (): Promise<TokenBalance> => {
+    const response = await api.get('/payments/balance');
+    return response.data.data;
+  },
+
+  getTransactions: async (page: number = 1, pageSize: number = 20): Promise<TokenTransaction[]> => {
+    const response = await api.get('/payments/transactions', { params: { page, pageSize } });
+    return response.data.data || [];
+  },
+
+  paymentCallback: async (data: { transactionId: string; status: string; gatewayTransactionId?: string }): Promise<void> => {
+    await api.post('/payments/callback', data);
+  },
+
+  useTokens: async (amount: number, description: string): Promise<void> => {
+    await api.post('/payments/use', { amount, description });
   },
 };

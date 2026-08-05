@@ -25,6 +25,10 @@ const roleSidebarItems: Record<UserRole, SidebarItem[]> = {
   ],
   teacher: [
     { label: 'Tổng quan', path: '/dashboard', icon: 'LayoutDashboard' },
+    { label: 'Phòng lab ảo', path: '/dashboard/virtual-lab', icon: 'FlaskConical' },
+    { label: 'Lịch dạy hàng tuần', path: '/dashboard/my-classes', icon: 'GraduationCap' },
+    { label: 'Điểm danh học sinh', path: '/dashboard/attendance', icon: 'UserCheck' },
+    { label: 'Quản lý bài tập', path: '/dashboard/assignments', icon: 'ClipboardList' },
     { label: 'Lớp học của tôi', path: '/dashboard/my-classes', icon: 'GraduationCap' },
     { label: 'Khóa học', path: '/dashboard/courses', icon: 'BookOpen' },
     { label: 'Bài tập', path: '/dashboard/assignments', icon: 'ClipboardList' },

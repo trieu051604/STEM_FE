@@ -35,6 +35,7 @@ export const StudentsPage = () => {
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [selectedStudent, setSelectedStudent] = useState<StudentProfile | null>(null);
   const [studentUpdateError, setStudentUpdateError] = useState<string | null>(null);
+  const [studentCreateError, setStudentCreateError] = useState<string | null>(null);
 
   // Fetch students
   const { data: studentsData, isLoading, refetch } = useQuery({
@@ -75,10 +76,18 @@ export const StudentsPage = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['students'] });
       setCreateModalOpen(false);
-      // TODO: Add toast notification here
+      setStudentCreateError(null);
     },
     onError: (error: any) => {
-      // Error handled by form
+      const errors = error?.response?.data?.errors;
+      const message = error?.response?.data?.message;
+      if (errors && Array.isArray(errors)) {
+        setStudentCreateError(errors.join('\n'));
+      } else if (message) {
+        setStudentCreateError(message);
+      } else {
+        setStudentCreateError('Tạo học sinh thất bại. Vui lòng thử lại.');
+      }
     },
   });
 
@@ -255,11 +264,11 @@ export const StudentsPage = () => {
     await createStudentMutation.mutateAsync({
       email: data.email,
       password: data.password || '123456',
-      fullName: data.fullName || '',
-      phone: data.phone || '',
-      gender: data.gender || '',
-      dateOfBirth: data.dateOfBirth || '',
-      address: data.address || '',
+      fullName: data.fullName,
+      phone: data.phone,
+      gender: data.gender,
+      dateOfBirth: data.dateOfBirth,
+      address: data.address,
       isActive: data.isActive ?? true,
     });
   };
@@ -428,15 +437,22 @@ export const StudentsPage = () => {
       {/* Create Student Modal */}
       <Modal
         isOpen={createModalOpen}
-        onClose={() => setCreateModalOpen(false)}
+        onClose={() => {
+          setCreateModalOpen(false);
+          setStudentCreateError(null);
+        }}
         title="Thêm học sinh mới"
         size="lg"
       >
         <StudentForm
           onSubmit={handleCreateStudent}
-          onCancel={() => setCreateModalOpen(false)}
+          onCancel={() => {
+            setCreateModalOpen(false);
+            setStudentCreateError(null);
+          }}
           loading={createStudentMutation.isPending}
           hidePassword
+          error={studentCreateError}
         />
       </Modal>
 

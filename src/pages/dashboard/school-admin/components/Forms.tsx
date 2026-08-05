@@ -39,13 +39,11 @@ export const studentFormSchema = z.object({
   password: passwordValidation.optional(),
   fullName: z.string().min(1, 'Họ tên không được để trống').min(2, 'Họ tên phải có ít nhất 2 ký tự'),
   phone: z.string()
-    .optional()
-    .refine((val) => !val || /^[0-9]{10}$/.test(val), {
-      message: 'Số điện thoại phải có đúng 10 chữ số',
-    }),
-  gender: z.string().optional(),
-  dateOfBirth: z.string().optional(),
-  address: z.string().optional(),
+    .min(1, 'Số điện thoại không được để trống')
+    .regex(/^[0-9]{10}$/, 'Số điện thoại phải có đúng 10 chữ số'),
+  gender: z.string().min(1, 'Vui lòng chọn giới tính'),
+  dateOfBirth: z.string().min(1, 'Ngày sinh không được để trống'),
+  address: z.string().min(1, 'Địa chỉ không được để trống'),
   isActive: z.boolean().optional(),
 });
 
@@ -379,7 +377,7 @@ export function StudentForm({ onSubmit, onCancel, loading, defaultValues, hidePa
         />
       </FormField>
 
-      <FormField label="Số điện thoại" error={errors.phone?.message}>
+      <FormField label="Số điện thoại" required error={errors.phone?.message}>
         <Input
           type="tel"
           placeholder="0xxx xxx xxx (10 chữ số)"
@@ -388,7 +386,7 @@ export function StudentForm({ onSubmit, onCancel, loading, defaultValues, hidePa
         />
       </FormField>
 
-      <FormField label="Giới tính" error={errors.gender?.message}>
+      <FormField label="Giới tính" required error={errors.gender?.message}>
         <Select
           error={!!errors.gender}
           options={[
@@ -401,16 +399,18 @@ export function StudentForm({ onSubmit, onCancel, loading, defaultValues, hidePa
         />
       </FormField>
 
-      <FormField label="Ngày sinh" error={errors.dateOfBirth?.message}>
+      <FormField label="Ngày sinh" required error={errors.dateOfBirth?.message}>
         <Input
           type="date"
+          error={!!errors.dateOfBirth}
           {...register('dateOfBirth')}
         />
       </FormField>
 
-      <FormField label="Địa chỉ" error={errors.address?.message}>
+      <FormField label="Địa chỉ" required error={errors.address?.message}>
         <Textarea
           placeholder="Địa chỉ"
+          error={!!errors.address}
           {...register('address')}
         />
       </FormField>

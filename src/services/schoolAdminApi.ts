@@ -275,11 +275,14 @@ export const schoolAuthApi = {
     address?: string;
   }): Promise<void> => {
     await api.post('/auth/create-user', {
-      email: data.email,
-      password: data.password || 'TempPassword123',
-      roleId: data.roleId,
-      fullName: data.fullName?.trim() || undefined,
-      phone: data.phone?.trim() || undefined,
+      Email: data.email,
+      Password: data.password || 'TempPassword123',
+      RoleId: data.roleId,
+      FullName: data.fullName?.trim() || undefined,
+      Phone: data.phone?.trim() || undefined,
+      Gender: data.gender?.trim() || undefined,
+      DateOfBirth: data.dateOfBirth?.trim() || undefined,
+      Address: data.address?.trim() || undefined,
     });
   },
 };

@@ -60,6 +60,10 @@ export const authApi = {
     fullName: string;
     role: 'teacher' | 'student';
   }): Promise<void> => {
-    await api.post('/Auth/create-user', data);
+    await api.post('/Auth/create-user', {
+      Email: data.email,
+      FullName: data.fullName,
+      RoleId: data.role === 'teacher' ? 3 : 4,
+    });
   },
 };

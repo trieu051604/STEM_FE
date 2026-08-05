@@ -8,13 +8,13 @@ import { ThemeToggle } from '@/components/ui/ThemeToggle';
 import { cn } from '@/lib/utils';
 import {
   Menu,
-  X,
   LogOut,
   User,
   ChevronDown,
-  ChevronLeft,
-  ChevronRight,
   Bell,
+  Settings,
+  Plus,
+  ChevronLeft,
   Home,
   PanelLeftClose,
   PanelLeftOpen,
@@ -47,7 +47,6 @@ export const DashboardLayout = () => {
     student: 'Học sinh',
   };
 
-  // Get page title from path
   const getPageTitle = () => {
     const path = location.pathname;
     const item = sidebarItems.find((item) => path.startsWith(item.path));
@@ -71,9 +70,16 @@ export const DashboardLayout = () => {
   const sidebarWidth = sidebarCollapsed ? '0px' : '280px';
   const isSidebarVisible = isDesktop ? !sidebarCollapsed : sidebarOpen;
 
+  const handleSidebarToggle = () => {
+    const next = !sidebarCollapsed;
+    setSidebarCollapsed(next);
+    try {
+      localStorage.setItem('ui:sidebarCollapsed', String(next));
+    } catch (e) {}
+  };
+
   return (
     <div className="min-h-screen bg-background text-foreground flex flex-col">
-      {/* Mobile overlay */}
       <AnimatePresence>
         {sidebarOpen && (
           <motion.div
@@ -86,7 +92,6 @@ export const DashboardLayout = () => {
         )}
       </AnimatePresence>
 
-      {/* Sidebar */}
       <aside
         className={cn(
           'fixed left-0 top-0 z-50 h-full bg-card border-r border-border flex flex-col transition-all duration-200',
@@ -104,13 +109,7 @@ export const DashboardLayout = () => {
             <span className="font-semibold text-lg text-foreground">STEM</span>
           </Link>
           <button
-            onClick={() => {
-              const next = !sidebarCollapsed;
-              setSidebarCollapsed(next);
-              try {
-                localStorage.setItem('ui:sidebarCollapsed', String(next));
-              } catch (e) {}
-            }}
+            onClick={handleSidebarToggle}
             className="hidden lg:flex p-2 hover:bg-accent rounded-md"
           >
             {sidebarCollapsed ? (
@@ -121,9 +120,19 @@ export const DashboardLayout = () => {
           </button>
         </div>
 
-        {/* Navigation */}
-        <nav className="flex-1 py-4 px-3 overflow-y-auto">
-          <ul className="space-y-1">
+        <nav className="flex-1 py-6 overflow-y-auto">
+          {user?.role === 'teacher' && (
+            <div className="px-6 mb-6">
+              <h3 className="font-bold text-[#0f4c5c] text-sm tracking-wider uppercase mb-1">
+                INTELLECTUAL
+                <br />
+                ATELIER
+              </h3>
+              <p className="text-xs text-muted-foreground">Quản lý giảng dạy</p>
+            </div>
+          )}
+          
+          <ul className="space-y-2 px-3">
             {sidebarItems.map((item) => {
               const isActive = location.pathname === item.path;
               return (
@@ -132,12 +141,15 @@ export const DashboardLayout = () => {
                     to={item.path}
                     onClick={() => setSidebarOpen(false)}
                     className={cn(
-                      'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors',
+                      'flex items-center gap-3 px-4 py-3 text-sm font-medium transition-colors relative rounded-lg',
                       isActive
-                        ? 'bg-primary text-primary-foreground'
-                        : 'text-foreground hover:bg-accent'
+                        ? 'bg-[#eefcf6] text-[#0f4c5c]'
+                        : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
                     )}
                   >
+                    {isActive && (
+                      <div className="absolute left-0 top-0 bottom-0 w-1 bg-[#0f4c5c] rounded-r-md"></div>
+                    )}
                     <Icon name={item.icon} className="w-5 h-5 shrink-0" />
                     <span className="truncate">{item.label}</span>
                   </Link>
@@ -147,7 +159,13 @@ export const DashboardLayout = () => {
           </ul>
         </nav>
 
-        {/* User section */}
+        <div className="p-6">
+          <button className="w-full bg-[#0f4c5c] hover:bg-[#0a3540] text-white rounded-full py-3 px-4 flex items-center justify-center gap-2 text-sm font-medium transition-colors shadow-md">
+            <Plus className="w-5 h-5" />
+            Start Experiment
+          </button>
+        </div>
+
         <div className="p-4 border-t border-border shrink-0">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
@@ -171,12 +189,10 @@ export const DashboardLayout = () => {
         </div>
       </aside>
 
-      {/* Main content wrapper */}
       <div
         className="flex flex-col flex-1 transition-all duration-200"
         style={{ marginLeft: isDesktop && !sidebarCollapsed ? sidebarWidth : '0px' }}
       >
-        {/* Header */}
         <header className="h-16 sticky top-0 z-30 bg-card/95 backdrop-blur border-b border-border flex items-center justify-between px-4 lg:px-6">
           <div className="flex items-center gap-3">
             <button
@@ -186,7 +202,6 @@ export const DashboardLayout = () => {
               <Menu className="w-5 h-5 text-foreground" />
             </button>
 
-            {/* Breadcrumb / Back button */}
             <div className="flex items-center gap-2">
               <button
                 onClick={() => navigate(-1)}
@@ -209,34 +224,18 @@ export const DashboardLayout = () => {
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
-            {/* Notifications */}
-            <button className="relative p-2 hover:bg-accent rounded-md transition-colors">
-              <Bell className="w-5 h-5 text-foreground" />
-              <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full" />
-            </button>
+          <div className="flex items-center gap-4 md:gap-6">
+            <div className="flex items-center gap-3 text-muted-foreground">
+              <ThemeToggle className="hover:text-foreground transition-colors p-1" />
+              <button className="hover:text-foreground transition-colors p-1 relative">
+                <Bell className="w-5 h-5" />
+                <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-orange-500 rounded-full border border-background"></span>
+              </button>
+              <button className="hover:text-foreground transition-colors p-1">
+                <Settings className="w-5 h-5" />
+              </button>
+            </div>
 
-            {/* Sidebar toggle (desktop) */}
-            <button
-              onClick={() => {
-                const next = !sidebarCollapsed;
-                setSidebarCollapsed(next);
-                try {
-                  localStorage.setItem('ui:sidebarCollapsed', String(next));
-                } catch (e) {}
-              }}
-              className="hidden lg:flex p-2 hover:bg-accent rounded-md transition-colors"
-            >
-              {sidebarCollapsed ? (
-                <PanelLeftOpen className="w-5 h-5 text-foreground" />
-              ) : (
-                <PanelLeftClose className="w-5 h-5 text-foreground" />
-              )}
-            </button>
-
-            <ThemeToggle />
-
-            {/* User dropdown */}
             <div className="relative">
               <button
                 onClick={() => setUserMenuOpen(!userMenuOpen)}
@@ -275,12 +274,7 @@ export const DashboardLayout = () => {
                     initial={{ opacity: 0, y: -10 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: -10 }}
-                    className={cn(
-                      "absolute right-0 mt-2 w-56 rounded-lg shadow-lg border py-1 transition-colors duration-200",
-                      isMasterAdmin 
-                        ? "bg-card border-border" 
-                        : "bg-card border-border"
-                    )}
+                    className="absolute right-0 mt-2 w-56 rounded-lg shadow-lg border py-1 transition-colors duration-200 bg-card border-border"
                   >
                     <div className="px-4 py-3 border-b border-border">
                       <p className="text-sm font-medium text-foreground">{user?.fullName}</p>
@@ -299,9 +293,7 @@ export const DashboardLayout = () => {
                         logout();
                         window.location.href = '/login';
                       }}
-                      className={cn(
-                        "w-full flex items-center gap-2 px-4 py-2.5 text-sm text-destructive hover:bg-destructive/10 transition-colors"
-                      )}
+                      className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-destructive hover:bg-destructive/10 transition-colors"
                     >
                       <LogOut className="w-4 h-4" />
                       Đăng xuất
@@ -313,12 +305,10 @@ export const DashboardLayout = () => {
           </div>
         </header>
 
-        {/* Page content */}
         <main className="flex-1 p-4 lg:p-6 bg-background">
           <Outlet />
         </main>
 
-        {/* Footer */}
         <footer className="bg-card border-t border-border px-4 lg:px-6 py-4">
           <div className="flex flex-col sm:flex-row items-center justify-between gap-2">
             <div className="flex items-center gap-2">

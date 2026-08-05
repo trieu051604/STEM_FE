@@ -2,7 +2,7 @@ import axios from 'axios';
 import { useAuthStore } from '@/stores/authStore';
 
 // Get API base URL from environment or fallback to localhost
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://localhost:55158/api';
+export const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://localhost:55158/api';
 
 // Rate limiting - simple in-memory limiter
 const requestLog: Map<string, number[]> = new Map();

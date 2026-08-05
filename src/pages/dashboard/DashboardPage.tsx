@@ -6,6 +6,12 @@ import {
   TeacherStats,
   StudentStats,
 } from '@/components/Dashboard/StatsCards';
+import {
+  MasterAdminCharts,
+  SchoolAdminCharts,
+  TeacherCharts,
+  StudentCharts,
+} from '@/components/Dashboard/DashboardCharts';
 import { Icon } from '@/components/ui/Icon';
 import { Button } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
@@ -137,6 +143,27 @@ export const DashboardPage = () => {
     }
   };
 
+  const renderCharts = () => {
+    if (!stats) return null;
+
+    switch (user?.role) {
+      case 'master_admin':
+        return <MasterAdminCharts stats={stats} role="master_admin" />;
+      case 'school_admin':
+        return <SchoolAdminCharts stats={stats} role="school_admin" />;
+      case 'teacher':
+        return <TeacherCharts stats={stats} role="teacher" />;
+      case 'student':
+        return <StudentCharts stats={stats} role="student" />;
+      default:
+        return <StudentCharts stats={stats} role="student" />;
+    }
+  };
+
+  if (user?.role === 'master_admin') {
+    return <MasterAdminDashboard />;
+  }
+
   const getQuickActions = () => {
     switch (user?.role) {
       case 'master_admin':
@@ -199,6 +226,9 @@ export const DashboardPage = () => {
 
       {/* Stats */}
       {renderStats()}
+
+      {/* Charts */}
+      {renderCharts()}
 
       {/* Quick Actions */}
       <div className="bg-card rounded-xl border border-border p-6">

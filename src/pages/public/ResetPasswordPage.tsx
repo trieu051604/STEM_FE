@@ -8,12 +8,19 @@ import { Icon } from '@/components/ui/Icon';
 import ThemeToggle from '@/components/ui/ThemeToggle';
 import { api } from '@/services';
 
+// Password validation: min 8 chars, 1 uppercase, 1 lowercase, 1 number, 1 special char
+const PASSWORD_REGEX = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
+
 const resetPasswordSchema = z
   .object({
     password: z
       .string()
       .min(1, { message: 'Mật khẩu mới không được để trống.' })
-      .min(6, { message: 'Mật khẩu phải chứa ít nhất 6 ký tự.' }),
+      .min(8, { message: 'Mật khẩu phải có ít nhất 8 ký tự.' })
+      .regex(/[A-Z]/, { message: 'Phải chứa ít nhất 1 chữ hoa.' })
+      .regex(/[a-z]/, { message: 'Phải chứa ít nhất 1 chữ thường.' })
+      .regex(/\d/, { message: 'Phải chứa ít nhất 1 số.' })
+      .regex(/[@$!%*?&]/, { message: 'Phải chứa ít nhất 1 ký tự đặc biệt (@$!%*?&).' }),
     confirmPassword: z
       .string()
       .min(1, { message: 'Xác nhận mật khẩu không được để trống.' }),
@@ -166,7 +173,7 @@ export function ResetPasswordPage() {
                     Đặt lại mật khẩu
                   </h1>
                   <p className="text-slate-400 text-sm">
-                    Tạo mật khẩu mới cho tài khoản của bạn. Mật khẩu phải chứa ít nhất 6 ký tự.
+                    Tạo mật khẩu mới cho tài khoản của bạn. Mật khẩu phải có ít nhất 8 ký tự, gồm chữ hoa, chữ thường, số và ký tự đặc biệt.
                   </p>
                 </div>
 

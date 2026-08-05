@@ -6,22 +6,37 @@ export interface DashboardStats {
   pendingSchoolRequests?: number;
   totalUsers?: number;
   totalCourses?: number;
-  
+  lockedSchools?: number;
+
+
   // School Admin
   totalTeachers?: number;
   totalStudents?: number;
   totalClasses?: number;
   activeClasses?: number;
-  
+
   // Teacher
   myClasses?: number;
   myStudents?: number;
   pendingAssignments?: number;
-  
+  totalSubmissions?: number;
+  gradedSubmissions?: number;
+
+
   // Student
   enrolledClasses?: number;
   completedLessons?: number;
   pendingSubmissions?: number;
+  averageScore?: number;
+  completedAssignments?: number;
+
+  // Chart data - monthly enrollment trends (last 6 months)
+  monthlyEnrollments?: { month: string; students: number }[];
+  monthlyAssignments?: { month: string; assignments: number }[];
+  studentPerformance?: { grade: string; count: number }[];
+
+  // Role distribution
+  roleDistribution?: { role: string; count: number }[];
 }
 
 export interface RecentActivity {
@@ -34,6 +49,11 @@ export interface RecentActivity {
     name: string;
     avatar?: string;
   };
+}
+
+export interface ChartData {
+  enrollmentTrend?: { name: string; students: number }[];
+  schoolsGrowth?: { name: string; schools: number }[];
 }
 
 export const dashboardApi = {
@@ -50,6 +70,12 @@ export const dashboardApi = {
     });
     return response.data.data;
   },
+
+  // Lấy dữ liệu biểu đồ
+  getChartData: async (): Promise<ChartData> => {
+    const response = await api.get('/dashboard/chart');
+    return response.data.data;
+  },
 };
 
 // Schools API
@@ -63,9 +89,17 @@ export interface School {
   createdAt: string;
 }
 
+export interface SchoolsListResponse {
+  items: School[];
+  total: number;
+  pageNumber: number;
+  pageSize: number;
+  totalPages: number;
+}
+
 export const schoolsApi = {
-  getAll: async (): Promise<School[]> => {
-    const response = await api.get('/schools');
+  getAll: async (params?: { pageNumber?: number; pageSize?: number; search?: string }): Promise<SchoolsListResponse> => {
+    const response = await api.get('/schools', { params });
     return response.data.data;
   },
   getById: async (id: number): Promise<School> => {
@@ -74,6 +108,10 @@ export const schoolsApi = {
   },
   update: async (id: number, data: Partial<School>): Promise<void> => {
     await api.put(`/schools/${id}`, data);
+  },
+  toggleLock: async (id: number): Promise<{ status: number }> => {
+    const response = await api.put(`/schools/${id}/toggle-lock`);
+    return response.data;
   },
   delete: async (id: number): Promise<void> => {
     await api.delete(`/schools/${id}`);
@@ -164,10 +202,10 @@ export const usersApi = {
     const data = unwrapApiData<
       | string
       | {
-          avatarUrl?: string;
-          avatar?: string;
-          url?: string;
-        }
+        avatarUrl?: string;
+        avatar?: string;
+        url?: string;
+      }
       | undefined
     >(response.data);
 

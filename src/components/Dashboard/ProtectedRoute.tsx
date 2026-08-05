@@ -2,9 +2,26 @@ import { Navigate } from 'react-router-dom';
 import { useAuthStore } from '@/stores/authStore';
 import { DashboardLayout } from '@/components/Dashboard/DashboardLayout';
 import { DashboardPage } from '@/pages/dashboard/DashboardPage';
+import { ProfilePage } from '@/pages/dashboard/ProfilePage';
+import { NotificationsPage } from '@/pages/dashboard/NotificationsPage';
+import { TeacherDashboard } from '@/pages/dashboard/teacher/TeacherDashboard';
+import { StudentDashboard } from '@/pages/dashboard/student/StudentDashboard';
+import TeacherClassesPage from '@/pages/dashboard/teacher/TeacherClassesPage';
+import TeacherAssignmentsPage from '@/pages/dashboard/teacher/TeacherAssignmentsPage';
+import TeacherSubmissionsPage from '@/pages/dashboard/teacher/TeacherSubmissionsPage';
+import StudentClassesPage from '@/pages/dashboard/student/StudentClassesPage';
+import StudentAssignmentsPage from '@/pages/dashboard/student/StudentAssignmentsPage';
+import {
+  StudentsPage,
+  CoursesPage,
+  ClassesPage,
+  TeachersPage,
+  LoginHistoryPage,
+  PaymentsPage,
+} from '@/pages/dashboard/school-admin';
+import { SchoolsPage, UsersPage } from '@/pages/dashboard/master-admin';
 import { VirtualLabPage } from '@/pages/dashboard/VirtualLabPage';
 import { MyClassesPage } from '@/pages/dashboard/MyClassesPage';
-import { ProfilePage } from '@/pages/dashboard/ProfilePage';
 import { AssignmentsPage } from '@/pages/dashboard/AssignmentsPage';
 import { LabDetailPage } from '@/pages/dashboard/LabDetailPage';
 import { LabSandboxPage } from '@/pages/dashboard/LabSandboxPage';
@@ -39,30 +56,34 @@ export const dashboardRoutes = [
     ),
     children: [
       { index: true, element: <DashboardPage /> },
-      // Virtual Lab
+      { path: 'schools', element: <SchoolsPage /> },
+      { path: 'requests', element: <SchoolsPage defaultTab="requests" /> },
+      { path: 'students', element: <StudentsPage /> },
+      { path: 'courses', element: <CoursesPage /> },
+      { path: 'classes', element: <ClassesPage /> },
+      { path: 'teachers', element: <TeachersPage /> },
+      { path: 'login-history', element: <LoginHistoryPage /> },
+      { path: 'payments', element: <PaymentsPage /> },
+      { path: 'my-classes', element: <MyClassesPage /> },
+      { path: 'teacher/classes', element: <TeacherClassesPage /> },
+      { path: 'teacher/classes/:id', element: <TeacherClassesPage /> },
+      { path: 'teacher/assignments', element: <TeacherAssignmentsPage /> },
+      { path: 'teacher/assignments/:id', element: <TeacherAssignmentsPage /> },
+      { path: 'teacher/submissions', element: <TeacherSubmissionsPage /> },
+      { path: 'student/classes', element: <StudentClassesPage /> },
+      { path: 'student/classes/:id', element: <StudentClassesPage /> },
+      { path: 'student/assignments', element: <StudentAssignmentsPage /> },
+      { path: 'student/assignments/:id', element: <StudentAssignmentsPage /> },
       { path: 'virtual-lab', element: <VirtualLabPage /> },
       { path: 'virtual-lab/:id', element: <LabDetailPage /> },
       { path: 'virtual-lab/:id/sandbox', element: <LabSandboxPage /> },
       { path: 'virtual-lab/monitor/:classId', element: <ClassMonitorPage /> },
-      // Schools
-      { path: 'schools', element: <div>Schools Page</div> },
-      // Requests
-      { path: 'requests', element: <div>Requests Page</div> },
-      // Users
-      { path: 'users', element: <div>Users Page</div> },
-      // Courses
-      { path: 'courses', element: <div>Courses Page</div> },
-      // Classes
-      { path: 'classes', element: <div>Classes Page</div> },
-      { path: 'my-classes', element: <MyClassesPage /> },
-      // Assignments
       { path: 'assignments', element: <AssignmentsPage /> },
-      // Simulations
-      { path: 'simulations', element: <div>Simulations Page</div> },
-      // Notifications
-      { path: 'notifications', element: <div>Notifications Page</div> },
-      // Profile
+      { path: 'notifications', element: <NotificationsPage /> },
       { path: 'profile', element: <ProfilePage /> },
+      { path: 'users', element: <UsersPage /> },
+      { path: 'teacher-dashboard', element: <TeacherDashboard /> },
+      { path: 'student-dashboard', element: <StudentDashboard /> },
     ],
   },
 ];

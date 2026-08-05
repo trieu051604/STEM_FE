@@ -26,6 +26,7 @@ import {
   RefreshCw,
 } from 'lucide-react';
 import { MasterAdminDashboard } from '@/pages/dashboard/master-admin';
+import { SchoolAdminDashboard } from '@/pages/dashboard/school-admin';
 
 const activityIcons: Record<string, string> = {
   user_register: 'UserPlus',
@@ -99,6 +100,10 @@ export const DashboardPage = () => {
 
   if (user?.role === 'master_admin') {
     return <MasterAdminDashboard />;
+  }
+
+  if (user?.role === 'school_admin') {
+    return <SchoolAdminDashboard />;
   }
 
   const getQuickActions = () => {

@@ -52,6 +52,7 @@ export interface RecentActivity {
 export interface ChartData {
   enrollmentTrend?: { name: string; students: number }[];
   schoolsGrowth?: { name: string; schools: number }[];
+  usersByRole?: { name: string; value: number }[];
 }
 
 export const dashboardApi = {
@@ -93,6 +94,9 @@ export interface School {
   usersCount?: number;
   membersCount?: number;
   users?: any[];
+  attachmentUrl?: string;
+  attachmentFileName?: string;
+  originalAttachmentFileName?: string;
 }
 
 export interface SchoolsListResponse {
@@ -118,9 +122,6 @@ export const schoolsApi = {
   toggleLock: async (id: number): Promise<{ status: number }> => {
     const response = await api.put(`/schools/${id}/toggle-lock`);
     return response.data;
-  },
-  delete: async (id: number): Promise<void> => {
-    await api.delete(`/schools/${id}`);
   },
 };
 
@@ -239,6 +240,9 @@ export const usersApi = {
   getById: async (id: number): Promise<UserProfile> => {
     const response = await api.get(`/Users/${id}`);
     return normalizeUserProfile(unwrapApiData<UserProfile>(response.data));
+  },
+  delete: async (id: number): Promise<void> => {
+    await api.delete(`/Users/${id}`);
   },
 };
 
@@ -2301,7 +2305,12 @@ export interface SchoolRequest {
     email: string;
     fullName: string;
     phone?: string;
+    isEmailVerified?: boolean;
   };
+  attachmentUrl?: string;
+  attachmentFileName?: string;
+  originalAttachmentFileName?: string;
+  rejectionReason?: string;
 }
 
 export const schoolRequestsApi = {
@@ -2312,8 +2321,8 @@ export const schoolRequestsApi = {
   approve: async (schoolId: number): Promise<void> => {
     await api.post(`/school-requests/${schoolId}/approve`);
   },
-  reject: async (schoolId: number): Promise<void> => {
-    await api.post(`/school-requests/${schoolId}/reject`);
+  reject: async (schoolId: number, reason: string): Promise<void> => {
+    await api.post(`/school-requests/${schoolId}/reject`, { reason });
   },
 };
 

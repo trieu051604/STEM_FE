@@ -255,11 +255,11 @@ export function MasterAdminCharts({ stats }: DashboardChartsProps) {
     { name: 'T6', schools: stats?.totalSchools || 0 },
   ];
 
-  const usersByRole = [
-    { name: 'Master Admin', value: 2 },
-    { name: 'School Admin', value: Math.floor((stats?.totalUsers || 100) * 0.05) },
-    { name: 'Giáo viên', value: Math.floor((stats?.totalUsers || 100) * 0.3) },
-    { name: 'Học sinh', value: Math.floor((stats?.totalUsers || 100) * 0.65) },
+  const usersByRole = chartData?.usersByRole || [
+    { name: 'Master Admin', value: 0 },
+    { name: 'School Admin', value: 0 },
+    { name: 'Giáo viên', value: 0 },
+    { name: 'Học sinh', value: 0 },
   ];
 
   return (

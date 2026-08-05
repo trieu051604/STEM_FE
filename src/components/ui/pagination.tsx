@@ -23,8 +23,12 @@ export function Pagination({
 
   return (
     <div className="flex flex-col sm:flex-row items-center justify-between gap-4 py-4">
-      <div className="text-sm text-muted-foreground">
-        Hiển thị {startItem} - {endItem} của {totalItems} kết quả
+      <div className="text-xs sm:text-sm text-muted-foreground whitespace-nowrap">
+        <span className="hidden sm:inline">Hiển thị</span>
+        <span className="sm:hidden">·</span>
+        {startItem}-{endItem}
+        <span className="hidden sm:inline"> của {totalItems} kết quả</span>
+        <span className="sm:inline">/{totalItems}</span>
       </div>
       <div className="flex items-center gap-2">
         {onPageSizeChange && (

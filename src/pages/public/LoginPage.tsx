@@ -46,7 +46,7 @@ export function LoginPage() {
   const initiateGoogleLogin = () => {
     setError('');
     setGoogleLoading(true);
-    
+
     const googleAuthUrl = new URL('https://accounts.google.com/o/oauth2/v2/auth');
     googleAuthUrl.searchParams.set('client_id', GOOGLE_CLIENT_ID);
     googleAuthUrl.searchParams.set('redirect_uri', `${window.location.origin}/login/google/callback`);
@@ -54,7 +54,7 @@ export function LoginPage() {
     googleAuthUrl.searchParams.set('scope', 'email profile');
     googleAuthUrl.searchParams.set('nonce', crypto.randomUUID());
     googleAuthUrl.searchParams.set('prompt', 'select_account');
-    
+
     window.location.href = googleAuthUrl.toString();
   };
 
@@ -69,95 +69,101 @@ export function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen grid lg:grid-cols-2 bg-slate-950 font-sans selection:bg-blue-500/30 relative text-slate-100">
-      
+    <div className="min-h-screen grid lg:grid-cols-2 bg-background dark:bg-slate-950 font-sans selection:bg-blue-500/30 relative text-foreground">
+
       {/* Left Side (Forms Area) */}
-      <main className="flex items-center justify-center p-8 sm:p-12 md:p-16 lg:p-20 bg-slate-900 transition-colors duration-300 relative">
-        
+      <main className="flex items-center justify-center p-8 sm:p-12 md:p-16 lg:p-20 bg-background dark:bg-slate-900 transition-colors duration-300 relative">
+
         {/* Top-Right Theme Toggle */}
         <div className="absolute top-6 right-6 z-50">
           <ThemeToggle />
         </div>
 
         <div className="w-full max-w-md space-y-8">
-          
-          <a 
-            href="/" 
-            className="inline-flex items-center gap-2 text-xs font-bold text-slate-400 hover:text-white uppercase tracking-wider transition-colors mb-2"
+
+          <a
+            href="/"
+            className="inline-flex items-center gap-2 text-xs font-bold text-muted-foreground hover:text-foreground uppercase tracking-wider transition-colors mb-2 dark:text-slate-400 dark:hover:text-white"
           >
-            <ArrowLeft size={14} /> Quay lại trang chủ
+            <ArrowLeft size={14} />
+            Quay lại trang chủ
           </a>
 
           {/* Logo (Visible on mobile/tablet) */}
           <div className="flex lg:hidden items-center gap-2 mb-8 select-none">
-            <Icon name="Cpu" className="text-blue-500 w-8 h-8 animate-pulse" />
-            <span className="font-extrabold text-2xl tracking-tight text-white">
-              Stem<span className="text-blue-500">Flow</span>
+            <Icon name="Cpu" className="text-primary w-8 h-8 animate-pulse" />
+            <span className="font-extrabold text-2xl tracking-tight text-foreground dark:text-white">
+              Stem<span className="text-primary">Flow</span>
             </span>
           </div>
 
           <div className="space-y-2">
-            <h1 className="text-3xl font-extrabold text-white tracking-tight">
+            <h1 className="text-3xl font-extrabold text-foreground tracking-tight dark:text-white">
               Chào mừng quay trở lại
             </h1>
-            <p className="text-slate-400 text-sm">
+            <p className="text-muted-foreground text-sm dark:text-slate-400">
               Đăng nhập để tiếp tục hành trình STEM của bạn.
             </p>
           </div>
 
           {/* Login Type Toggle - 3 options */}
-          <div className="flex rounded-xl bg-slate-800 p-1">
+          <div className="flex rounded-xl bg-muted p-1 dark:bg-slate-800 gap-1 overflow-hidden">
             <button
               type="button"
               onClick={() => setLoginType('student')}
-              className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-lg text-sm font-medium transition-all ${
+              className={`flex-1 flex items-center justify-center gap-1 py-2 px-1.5 rounded-lg text-xs font-medium transition-all whitespace-nowrap ${
                 loginType === 'student'
-                  ? 'bg-blue-600 text-white'
-                  : 'text-slate-400 hover:text-white'
+                  ? 'bg-primary text-primary-foreground'
+                  : 'text-muted-foreground hover:text-foreground dark:text-slate-400 dark:hover:text-white'
               }`}
             >
-              <User size={18} />
-              Học sinh / Giáo viên
+              <User size={14} className="shrink-0" />
+              <span className="hidden sm:inline">Học sinh /</span>
+              <span className="sm:hidden">HS/</span>
+              <span className="hidden sm:inline">Giáo viên</span>
+              <span className="sm:hidden">GV</span>
             </button>
             <button
               type="button"
               onClick={() => setLoginType('school_admin')}
-              className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-lg text-sm font-medium transition-all ${
+              className={`flex-1 flex items-center justify-center gap-1 py-2 px-1.5 rounded-lg text-xs font-medium transition-all whitespace-nowrap ${
                 loginType === 'school_admin'
                   ? 'bg-emerald-600 text-white'
-                  : 'text-slate-400 hover:text-white'
+                  : 'text-muted-foreground hover:text-foreground dark:text-slate-400 dark:hover:text-white'
               }`}
             >
-              <Building2 size={18} />
-              Quản trị trường
+              <Building2 size={14} className="shrink-0" />
+              <span className="hidden sm:inline">Quản trị</span>
+              <span className="sm:hidden">QT</span>
             </button>
             <button
               type="button"
               onClick={() => setLoginType('master_admin')}
-              className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-lg text-sm font-medium transition-all ${
+              className={`flex-1 flex items-center justify-center gap-1 py-2 px-1.5 rounded-lg text-xs font-medium transition-all whitespace-nowrap ${
                 loginType === 'master_admin'
                   ? 'bg-purple-600 text-white'
-                  : 'text-slate-400 hover:text-white'
+                  : 'text-muted-foreground hover:text-foreground dark:text-slate-400 dark:hover:text-white'
               }`}
             >
-              <Crown size={18} />
-              Quản trị hệ thống
+              <Crown size={14} className="shrink-0" />
+              <span className="hidden sm:inline">Quản trị HT</span>
+              <span className="sm:hidden">HT</span>
             </button>
           </div>
 
           {loginType === 'student' ? (
             /* Student/Teacher Login (Google OAuth) */
             <div className="space-y-4">
-              <div className="p-4 bg-blue-950/30 border border-blue-500/30 rounded-xl">
-                <p className="text-sm text-blue-300">
-                  <strong>Lưu ý:</strong> Tài khoản của bạn cần được Quản trị viên trường tạo trước. 
+              <div className="p-4 bg-primary/10 border border-primary/20 rounded-xl dark:bg-blue-950/30 dark:border-blue-500/30">
+                <p className="text-sm text-foreground dark:text-blue-300">
+                  <strong>Lưu ý:</strong> Tài khoản của bạn cần được Quản trị viên trường tạo trước.
                   Nếu chưa có tài khoản, vui lòng liên hệ Quản trị viên trường để được cấp.
                 </p>
               </div>
 
               {/* Error Message */}
               {error && (
-                <div className="flex items-center gap-2 p-3.5 rounded-xl bg-red-950/20 border border-red-500/30 text-red-400 text-sm">
+                <div className="flex items-center gap-2 p-3.5 rounded-xl bg-destructive/10 border border-destructive/20 text-destructive text-sm dark:bg-red-950/20 dark:border-red-500/30 dark:text-red-400">
                   <AlertCircle size={14} className="shrink-0" />
                   <span>{error}</span>
                 </div>
@@ -168,7 +174,7 @@ export function LoginPage() {
                 type="button"
                 onClick={initiateGoogleLogin}
                 disabled={googleLoading}
-                className="w-full flex items-center justify-center gap-3 bg-white hover:bg-gray-100 text-gray-800 font-semibold py-3.5 rounded-xl transition-all duration-150 disabled:opacity-50 disabled:pointer-events-none"
+                className="w-full flex items-center justify-center gap-3 bg-primary hover:bg-primary/90 text-primary-foreground font-semibold py-3.5 rounded-xl transition-all duration-150 disabled:opacity-50 disabled:pointer-events-none dark:bg-white dark:text-gray-800 dark:hover:bg-gray-100"
               >
                 {googleLoading ? (
                   <>
@@ -200,18 +206,18 @@ export function LoginPage() {
                 )}
               </button>
 
-              <p className="text-xs text-slate-500 text-center">
+              <p className="text-xs text-muted-foreground text-center dark:text-slate-500">
                 Bằng việc đăng nhập, bạn đồng ý với{' '}
-                <a href="#" className="text-blue-400 hover:underline">Điều khoản sử dụng</a>
+                <a href="#" className="text-primary hover:underline dark:text-blue-400">Điều khoản sử dụng</a>
                 {' '}và{' '}
-                <a href="#" className="text-blue-400 hover:underline">Chính sách bảo mật</a>
+                <a href="#" className="text-primary hover:underline dark:text-blue-400">Chính sách bảo mật</a>
               </p>
             </div>
           ) : loginType === 'school_admin' ? (
             /* School Admin Login (Email/Password) */
             <div className="space-y-4">
-              <div className="p-4 bg-emerald-950/30 border border-emerald-500/30 rounded-xl">
-                <p className="text-sm text-emerald-300">
+              <div className="p-4 bg-emerald-500/10 border border-emerald-500/20 rounded-xl dark:bg-emerald-950/30 dark:border-emerald-500/30">
+                <p className="text-sm text-foreground dark:text-emerald-300">
                   <strong>Quản trị trường học:</strong> Đăng nhập để quản lý học sinh, giáo viên, khóa học và lớp học của trường bạn.
                 </p>
               </div>
@@ -219,16 +225,16 @@ export function LoginPage() {
               <form onSubmit={handleSubmit(handleAdminLogin)} className="space-y-4">
                 {/* Email Field */}
                 <div>
-                  <label className="block text-sm font-semibold text-slate-300 mb-2" htmlFor="school-admin-email">
+                  <label className="block text-sm font-semibold text-foreground mb-2 dark:text-slate-300" htmlFor="school-admin-email">
                     Email Quản trị trường
                   </label>
                   <div className="relative">
-                    <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500">
+                    <div className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground">
                       <Icon name="Mail" size={16} />
                     </div>
                     <input
                       {...register('email')}
-                      className="w-full pl-12 pr-4 py-3 bg-slate-950 border border-slate-800 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 rounded-xl transition-all text-white placeholder-slate-600 outline-none text-sm"
+                      className="w-full pl-12 pr-4 py-3 bg-background border border-input rounded-xl transition-all text-foreground placeholder:text-muted-foreground outline-none focus:ring-2 focus:ring-ring focus:border-primary text-sm dark:bg-slate-950 dark:border-slate-800 dark:text-white dark:placeholder-slate-600 dark:focus:border-emerald-500 dark:focus:ring-emerald-500/20"
                       id="school-admin-email"
                       placeholder="admin@truong.edu.vn"
                       type="email"
@@ -236,7 +242,7 @@ export function LoginPage() {
                     />
                   </div>
                   {errors.email && (
-                    <p className="text-xs text-red-400 mt-1 flex items-center gap-1">
+                    <p className="text-xs text-destructive mt-1 flex items-center gap-1 dark:text-red-400">
                       <AlertCircle size={12} className="shrink-0" /> {errors.email.message}
                     </p>
                   )}
@@ -245,23 +251,23 @@ export function LoginPage() {
                 {/* Password Field */}
                 <div>
                   <div className="flex justify-between items-center mb-2">
-                    <label className="text-sm font-semibold text-slate-300" htmlFor="school-admin-password">
+                    <label className="text-sm font-semibold text-foreground dark:text-slate-300" htmlFor="school-admin-password">
                       Mật khẩu
                     </label>
                     <a
                       href="/forgot-password"
-                      className="text-xs text-emerald-400 font-medium hover:underline hover:text-emerald-300 transition-colors"
+                      className="text-xs text-emerald-600 font-medium hover:underline dark:text-emerald-400 dark:hover:text-emerald-300 transition-colors"
                     >
                       Quên mật khẩu?
                     </a>
                   </div>
                   <div className="relative">
-                    <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500">
+                    <div className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground dark:text-slate-500">
                       <Icon name="Lock" size={16} />
                     </div>
                     <input
                       {...register('password')}
-                      className="w-full pl-12 pr-12 py-3 bg-slate-950 border border-slate-800 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 rounded-xl transition-all text-white placeholder-slate-600 outline-none text-sm"
+                      className="w-full pl-12 pr-12 py-3 bg-background border border-input rounded-xl transition-all text-foreground placeholder:text-muted-foreground outline-none focus:ring-2 focus:ring-ring text-sm dark:bg-slate-950 dark:border-slate-800 dark:text-white dark:placeholder-slate-600 dark:focus:border-emerald-500 dark:focus:ring-emerald-500/20"
                       id="school-admin-password"
                       placeholder="••••••••"
                       type={showPass ? 'text' : 'password'}
@@ -269,7 +275,7 @@ export function LoginPage() {
                     />
                     <button
                       type="button"
-                      className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 hover:text-emerald-400 transition-colors"
+                      className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-emerald-600 transition-colors dark:text-slate-500 dark:hover:text-emerald-400"
                       onClick={() => setShowPass(!showPass)}
                       disabled={isLoading}
                     >
@@ -277,7 +283,7 @@ export function LoginPage() {
                     </button>
                   </div>
                   {errors.password && (
-                    <p className="text-xs text-red-400 mt-1 flex items-center gap-1">
+                    <p className="text-xs text-destructive mt-1 flex items-center gap-1 dark:text-red-400">
                       <AlertCircle size={12} className="shrink-0" /> {errors.password.message}
                     </p>
                   )}
@@ -285,7 +291,7 @@ export function LoginPage() {
 
                 {/* Error Message */}
                 {error && (
-                  <div className="flex items-center gap-2 p-3.5 rounded-xl bg-red-950/20 border border-red-500/30 text-red-400 text-sm">
+                  <div className="flex items-center gap-2 p-3.5 rounded-xl bg-destructive/10 border border-destructive/20 text-destructive text-sm dark:bg-red-950/20 dark:border-red-500/30 dark:text-red-400">
                     <AlertCircle size={14} className="shrink-0" />
                     <span>{error}</span>
                   </div>
@@ -312,12 +318,12 @@ export function LoginPage() {
               </form>
 
               {/* Link to Register */}
-              <div className="text-center pt-2 border-t border-slate-800/40">
-                <p className="text-sm text-slate-400">
-                  Chưa có tài khoản?{' '}
+              <div className="text-center pt-2 border-t border-border dark:border-slate-800/40">
+                <p className="text-sm text-muted-foreground dark:text-slate-400">
+                  Chưa có tài khoản?
                   <a
                     href="/register"
-                    className="text-emerald-400 font-bold hover:underline hover:text-emerald-300 transition-colors"
+                    className="text-emerald-600 font-bold hover:underline dark:text-emerald-400 dark:hover:text-emerald-300 transition-colors ml-1"
                   >
                     Đăng ký trường học
                   </a>
@@ -327,8 +333,8 @@ export function LoginPage() {
           ) : (
             /* Master Admin Login (Email/Password) */
             <div className="space-y-4">
-              <div className="p-4 bg-purple-950/30 border border-purple-500/30 rounded-xl">
-                <p className="text-sm text-purple-300">
+              <div className="p-4 bg-purple-500/10 border border-purple-500/20 rounded-xl dark:bg-purple-950/30 dark:border-purple-500/30">
+                <p className="text-sm text-foreground dark:text-purple-300">
                   <strong>Quản trị hệ thống:</strong> Đăng nhập để quản lý toàn bộ hệ thống STEM, duyệt trường học và người dùng.
                 </p>
               </div>
@@ -336,16 +342,16 @@ export function LoginPage() {
               <form onSubmit={handleSubmit(handleAdminLogin)} className="space-y-4">
                 {/* Email Field */}
                 <div>
-                  <label className="block text-sm font-semibold text-slate-300 mb-2" htmlFor="master-admin-email">
+                  <label className="block text-sm font-semibold text-foreground mb-2 dark:text-slate-300" htmlFor="master-admin-email">
                     Email Quản trị hệ thống
                   </label>
                   <div className="relative">
-                    <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500">
+                    <div className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground dark:text-slate-500">
                       <Icon name="Mail" size={16} />
                     </div>
                     <input
                       {...register('email')}
-                      className="w-full pl-12 pr-4 py-3 bg-slate-950 border border-slate-800 focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 rounded-xl transition-all text-white placeholder-slate-600 outline-none text-sm"
+                      className="w-full pl-12 pr-4 py-3 bg-background border border-input rounded-xl transition-all text-foreground placeholder:text-muted-foreground outline-none focus:ring-2 focus:ring-ring text-sm dark:bg-slate-950 dark:border-slate-800 dark:text-white dark:placeholder-slate-600 dark:focus:border-purple-500 dark:focus:ring-purple-500/20"
                       id="master-admin-email"
                       placeholder="superadmin@stemflow.com"
                       type="email"
@@ -353,7 +359,7 @@ export function LoginPage() {
                     />
                   </div>
                   {errors.email && (
-                    <p className="text-xs text-red-400 mt-1 flex items-center gap-1">
+                    <p className="text-xs text-destructive mt-1 flex items-center gap-1 dark:text-red-400">
                       <AlertCircle size={12} className="shrink-0" /> {errors.email.message}
                     </p>
                   )}
@@ -362,23 +368,23 @@ export function LoginPage() {
                 {/* Password Field */}
                 <div>
                   <div className="flex justify-between items-center mb-2">
-                    <label className="text-sm font-semibold text-slate-300" htmlFor="master-admin-password">
+                    <label className="text-sm font-semibold text-foreground dark:text-slate-300" htmlFor="master-admin-password">
                       Mật khẩu
                     </label>
                     <a
                       href="/forgot-password"
-                      className="text-xs text-purple-400 font-medium hover:underline hover:text-purple-300 transition-colors"
+                      className="text-xs text-purple-600 font-medium hover:underline dark:text-purple-400 dark:hover:text-purple-300 transition-colors"
                     >
                       Quên mật khẩu?
                     </a>
                   </div>
                   <div className="relative">
-                    <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500">
+                    <div className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground dark:text-slate-500">
                       <Icon name="Lock" size={16} />
                     </div>
                     <input
                       {...register('password')}
-                      className="w-full pl-12 pr-12 py-3 bg-slate-950 border border-slate-800 focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 rounded-xl transition-all text-white placeholder-slate-600 outline-none text-sm"
+                      className="w-full pl-12 pr-12 py-3 bg-background border border-input rounded-xl transition-all text-foreground placeholder:text-muted-foreground outline-none focus:ring-2 focus:ring-ring text-sm dark:bg-slate-950 dark:border-slate-800 dark:text-white dark:placeholder-slate-600 dark:focus:border-purple-500 dark:focus:ring-purple-500/20"
                       id="master-admin-password"
                       placeholder="••••••••"
                       type={showPass ? 'text' : 'password'}
@@ -386,7 +392,7 @@ export function LoginPage() {
                     />
                     <button
                       type="button"
-                      className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 hover:text-purple-400 transition-colors"
+                      className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-purple-600 transition-colors dark:text-slate-500 dark:hover:text-purple-400"
                       onClick={() => setShowPass(!showPass)}
                       disabled={isLoading}
                     >
@@ -394,7 +400,7 @@ export function LoginPage() {
                     </button>
                   </div>
                   {errors.password && (
-                    <p className="text-xs text-red-400 mt-1 flex items-center gap-1">
+                    <p className="text-xs text-destructive mt-1 flex items-center gap-1 dark:text-red-400">
                       <AlertCircle size={12} className="shrink-0" /> {errors.password.message}
                     </p>
                   )}
@@ -402,7 +408,7 @@ export function LoginPage() {
 
                 {/* Error Message */}
                 {error && (
-                  <div className="flex items-center gap-2 p-3.5 rounded-xl bg-red-950/20 border border-red-500/30 text-red-400 text-sm">
+                  <div className="flex items-center gap-2 p-3.5 rounded-xl bg-destructive/10 border border-destructive/20 text-destructive text-sm dark:bg-red-950/20 dark:border-red-500/30 dark:text-red-400">
                     <AlertCircle size={14} className="shrink-0" />
                     <span>{error}</span>
                   </div>
@@ -434,77 +440,77 @@ export function LoginPage() {
       </main>
 
       {/* Right Side (Branding & Showcase Area) */}
-      <section className="hidden lg:flex relative bg-slate-950 border-l border-slate-800 text-white flex-col justify-between p-16 overflow-hidden select-none">
-        
+      <section className="hidden lg:flex relative bg-secondary border-l border-border text-foreground dark:bg-slate-950 dark:border-slate-800 flex-col justify-between p-16 overflow-hidden select-none">
+
         {/* Wokwi-style Engineering dot grid background */}
-        <div className="absolute inset-0 z-0 bg-[radial-gradient(#334155_1px,transparent_1px)] [background-size:24px_24px] opacity-25"></div>
-        
+        <div className="absolute inset-0 z-0 bg-[radial-gradient(#e5e7eb_1px,transparent_1px)] [background-size:24px_24px] opacity-25 dark:bg-[radial-gradient(#334155_1px,transparent_1px)]"></div>
+
         {/* Soft Radial Ambient Glows */}
-        <div className="absolute top-1/4 left-1/3 w-[500px] h-[500px] bg-blue-600/10 rounded-full blur-[140px] pointer-events-none"></div>
-        <div className="absolute bottom-1/4 right-1/4 w-[400px] h-[400px] bg-emerald-500/5 rounded-full blur-[120px] pointer-events-none"></div>
+        <div className="absolute top-1/4 left-1/3 w-[500px] h-[500px] bg-primary/10 rounded-full blur-[140px] pointer-events-none dark:bg-blue-600/10"></div>
+        <div className="absolute bottom-1/4 right-1/4 w-[400px] h-[400px] bg-emerald-500/5 rounded-full blur-[120px] pointer-events-none dark:bg-emerald-500/5"></div>
 
         {/* Brand Header */}
         <div className="relative z-10 flex items-center gap-2.5">
-          <Icon name="Cpu" className="text-blue-500 w-8 h-8 animate-pulse" />
-          <span className="font-extrabold text-2xl tracking-tight text-white">
-            Stem<span className="text-blue-500">Flow</span>
+          <Icon name="Cpu" className="text-primary w-8 h-8 animate-pulse" />
+          <span className="font-extrabold text-2xl tracking-tight text-foreground dark:text-white">
+            Stem<span className="text-primary">Flow</span>
           </span>
         </div>
 
         {/* Main Branding copy */}
         <div className="relative z-10 space-y-8 max-w-lg">
-          <h2 className="text-4xl font-extrabold text-white leading-tight">
+          <h2 className="text-4xl font-extrabold text-foreground leading-tight dark:text-white">
             Nền tảng thực hành <br />
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-emerald-400">
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-emerald-500 dark:from-blue-400 dark:to-emerald-400">
               STEM không giới hạn.
             </span>
           </h2>
-          <p className="text-slate-400 leading-relaxed text-lg">
+          <p className="text-muted-foreground leading-relaxed text-lg dark:text-slate-400">
             Viết code, nối mạch điện tử và chạy mô phỏng cảm biến trực tuyến y như thật ngay trên trình duyệt mà không lo cháy nổ hay hao tổn thiết bị.
           </p>
 
           {/* Role-based features */}
           <div className="space-y-3">
-            <div className="flex items-center gap-3 p-3 rounded-lg bg-slate-900/60 border border-slate-800">
-              <div className="w-8 h-8 rounded-lg bg-blue-500/20 flex items-center justify-center">
-                <User size={16} className="text-blue-400" />
+            <div className="flex items-center gap-3 p-3 rounded-lg bg-background border border-border dark:bg-slate-900/60 dark:border-slate-800">
+              <div className="w-8 h-8 rounded-lg bg-primary/20 flex items-center justify-center dark:bg-blue-500/20">
+                <User size={16} className="text-primary dark:text-blue-400" />
               </div>
               <div>
-                <p className="text-sm font-medium">Học sinh & Giáo viên</p>
-                <p className="text-xs text-slate-500">Đăng nhập bằng Google</p>
+                <p className="text-sm font-medium text-foreground dark:text-white">Học sinh & Giáo viên</p>
+                <p className="text-xs text-muted-foreground dark:text-slate-500">Đăng nhập bằng Google</p>
               </div>
             </div>
-            <div className="flex items-center gap-3 p-3 rounded-lg bg-slate-900/60 border border-emerald-500/30">
+            <div className="flex items-center gap-3 p-3 rounded-lg bg-background border border-emerald-500/20 dark:bg-slate-900/60 dark:border-emerald-500/30">
               <div className="w-8 h-8 rounded-lg bg-emerald-500/20 flex items-center justify-center">
-                <Building2 size={16} className="text-emerald-400" />
+                <Building2 size={16} className="text-emerald-600 dark:text-emerald-400" />
               </div>
               <div>
-                <p className="text-sm font-medium">Quản trị trường học</p>
-                <p className="text-xs text-slate-500">Quản lý HS, GV, khóa học</p>
+                <p className="text-sm font-medium text-foreground dark:text-white">Quản trị trường học</p>
+                <p className="text-xs text-muted-foreground dark:text-slate-500">Quản lý HS, GV, khóa học</p>
               </div>
             </div>
-            <div className="flex items-center gap-3 p-3 rounded-lg bg-slate-900/60 border border-purple-500/30">
+            <div className="flex items-center gap-3 p-3 rounded-lg bg-background border border-purple-500/20 dark:bg-slate-900/60 dark:border-purple-500/30">
               <div className="w-8 h-8 rounded-lg bg-purple-500/20 flex items-center justify-center">
-                <Crown size={16} className="text-purple-400" />
+                <Crown size={16} className="text-purple-600 dark:text-purple-400" />
               </div>
               <div>
-                <p className="text-sm font-medium">Quản trị hệ thống</p>
-                <p className="text-xs text-slate-500">Toàn quyền quản lý</p>
+                <p className="text-sm font-medium text-foreground dark:text-white">Quản trị hệ thống</p>
+                <p className="text-xs text-muted-foreground dark:text-slate-500">Toàn quyền quản lý</p>
               </div>
             </div>
           </div>
         </div>
 
         {/* Customer testimonial */}
-        <div className="relative z-10 border-t border-slate-800/60 pt-8 max-w-lg">
-          <blockquote className="text-slate-400 text-sm italic leading-relaxed">
+        <div className="relative z-10 border-t border-border pt-8 max-w-lg dark:border-slate-800/60">
+          <blockquote className="text-muted-foreground text-sm italic leading-relaxed dark:text-slate-400">
             &ldquo;StemFlow giúp học sinh của chúng tôi tiếp cận với lập trình nhúng và thiết kế mạch điện tử chỉ trong vài phút, loại bỏ hoàn toàn chi phí phần cứng vật lý đắt đỏ.&rdquo;
           </blockquote>
           <div className="mt-4">
-            <cite className="not-italic text-sm font-semibold text-white block">
+            <cite className="not-italic text-sm font-semibold text-foreground block dark:text-white">
               Thầy Nguyễn Văn An
             </cite>
-            <span className="text-xs text-slate-500">
+            <span className="text-xs text-muted-foreground dark:text-slate-500">
               Giám đốc Trung tâm STEM EduTech
             </span>
           </div>

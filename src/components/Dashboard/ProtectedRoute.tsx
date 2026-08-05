@@ -27,6 +27,14 @@ import {
   PaymentsPage,
 } from '@/pages/dashboard/school-admin';
 import { SchoolsPage, UsersPage } from '@/pages/dashboard/master-admin';
+import React from 'react';
+
+interface RouteConfig {
+  path?: string;
+  index?: boolean;
+  element?: React.ReactNode;
+  allowedRoles?: string[];
+}
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -47,6 +55,23 @@ export const ProtectedRoute = ({ children, allowedRoles }: ProtectedRouteProps) 
   return <>{children}</>;
 };
 
+const ProtectedElement = ({ element, allowedRoles }: { element: React.ReactNode; allowedRoles?: string[] }) => {
+  const { user } = useAuthStore();
+  
+  if (allowedRoles && user?.role && !allowedRoles.includes(user.role)) {
+    return (
+      <div className="p-6">
+        <div className="text-center py-12">
+          <h2 className="text-xl font-bold mb-2 text-destructive">Không có quyền truy cập</h2>
+          <p className="text-muted-foreground">Bạn không có quyền truy cập trang này.</p>
+        </div>
+      </div>
+    );
+  }
+  
+  return <>{element}</>;
+};
+
 export const dashboardRoutes = [
   {
     path: '/dashboard',
@@ -62,43 +87,43 @@ export const dashboardRoutes = [
       { path: 'virtual-lab/:id', element: <LabDetailPage /> },
       { path: 'virtual-lab/:id/sandbox', element: <LabSandboxPage /> },
       { path: 'virtual-lab/monitor/:classId', element: <ClassMonitorPage /> },
-      { path: 'requests', element: <div>Requests Page</div> },
-      // Users
-      { path: 'users', element: <div>Users Page</div> },
-      { path: 'my-classes', element: <MyClassesPage /> },
-      { path: 'attendance', element: <AttendancePage /> },
       // Schools (Master Admin only)
       { 
         path: 'schools', 
-        element: <SchoolsPage />,
+        element: <ProtectedElement element={<SchoolsPage />} allowedRoles={['master_admin']} />,
       },
       // Requests (Master Admin only)
       { 
         path: 'requests', 
-        element: <SchoolsPage defaultTab="requests" />,
+        element: <ProtectedElement element={<SchoolsPage defaultTab="requests" />} allowedRoles={['master_admin']} />,
       },
-      // Students (School Admin)
+      // Users (Master Admin only)
+      { 
+        path: 'users', 
+        element: <ProtectedElement element={<UsersPage />} allowedRoles={['master_admin']} />,
+      },
+      // Students (Master Admin only - school admin can only view stats)
       { 
         path: 'students', 
-        element: <StudentsPage />,
+        element: <ProtectedElement element={<StudentsPage />} allowedRoles={['master_admin', 'school_admin']} />,
       },
-      // Courses (School Admin)
+      // Courses (Master Admin only - school admin can only view stats)
       { 
         path: 'courses', 
-        element: <CoursesPage />,
+        element: <ProtectedElement element={<CoursesPage />} allowedRoles={['master_admin', 'school_admin']} />,
       },
-      // Classes (School Admin)
+      // Classes (Master Admin only - school admin can only view stats)
       { 
         path: 'classes', 
-        element: <ClassesPage />,
+        element: <ProtectedElement element={<ClassesPage />} allowedRoles={['master_admin', 'school_admin']} />,
       },
-      // Teachers (School Admin)
+      // Teachers (Master Admin only - school admin can only view stats)
       { 
         path: 'teachers', 
-        element: <TeachersPage />,
+        element: <ProtectedElement element={<TeachersPage />} allowedRoles={['master_admin', 'school_admin']} />,
       },
       // My Classes (Teacher/Student)
-      { path: 'my-classes', element: <StudentClassesPage /> },
+      { path: 'my-classes', element: <MyClassesPage /> },
       { path: 'teacher/classes', element: <TeacherClassesPage /> },
       { path: 'teacher/classes/:id', element: <TeacherClassesPage /> },
       { path: 'teacher/assignments', element: <TeacherAssignmentsPage /> },
@@ -111,12 +136,12 @@ export const dashboardRoutes = [
       // Login History (School Admin)
       { 
         path: 'login-history', 
-        element: <LoginHistoryPage />,
+        element: <ProtectedElement element={<LoginHistoryPage />} allowedRoles={['school_admin']} />,
       },
       // Payments (School Admin)
       { 
         path: 'payments', 
-        element: <PaymentsPage />,
+        element: <ProtectedElement element={<PaymentsPage />} allowedRoles={['school_admin']} />,
       },
       // Assignments
       { path: 'assignments', element: <AssignmentsPage /> },
@@ -124,14 +149,10 @@ export const dashboardRoutes = [
       { path: 'simulations', element: <div className="p-6"><div className="text-center py-12"><h2 className="text-xl font-bold mb-2">Mô phỏng</h2><p className="text-muted-foreground">Trang đang được phát triển...</p></div></div> },
       // Notifications
       { path: 'notifications', element: <NotificationsPage /> },
+      // Attendance
+      { path: 'attendance', element: <AttendancePage /> },
       // Profile
       { path: 'profile', element: <ProfilePage /> },
-      // Users (Master Admin only)
-      { path: 'users', element: <UsersPage /> },
-      // Teacher Dashboard
-      { path: 'teacher-dashboard', element: <TeacherDashboard /> },
-      // Student Dashboard  
-      { path: 'student-dashboard', element: <StudentDashboard /> },
     ],
   },
 ];

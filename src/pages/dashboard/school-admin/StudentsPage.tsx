@@ -2,7 +2,8 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Icon } from '@/components/ui/Icon';
-import { UserPlus, RefreshCw, Eye, Trash2, User, Mail, Phone, MapPin, BookOpen, GraduationCap, TrendingUp, Award, Clock, CheckCircle, Pencil, Calendar, Upload, Ban } from 'lucide-react';
+import { UserPlus, RefreshCw, Eye, Trash2, User, Mail, Phone, MapPin, BookOpen, GraduationCap, TrendingUp, Award, Clock, CheckCircle, Pencil, Calendar, Upload, Ban, Lock, Unlock, AlertCircle, CheckCircle2, XCircle } from 'lucide-react';
+import { AnimatePresence, motion } from 'framer-motion';
 import {
   DataTable,
   ColumnDef,
@@ -18,6 +19,13 @@ import { studentsApi, schoolAuthApi, StudentProfile, LearningProgress } from '@/
 import { format } from 'date-fns';
 import { vi } from 'date-fns/locale';
 
+type ToastType = 'success' | 'error' | 'warning' | 'info';
+interface Toast {
+  id: string;
+  message: string;
+  type: ToastType;
+}
+
 const ITEMS_PER_PAGE = 10;
 
 export const StudentsPage = () => {
@@ -25,6 +33,16 @@ export const StudentsPage = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(ITEMS_PER_PAGE);
+  const [toasts, setToasts] = useState<Toast[]>([]);
+
+  // Toast notification
+  const showToast = (message: string, type: ToastType = 'success') => {
+    const id = Math.random().toString(36).substring(2, 9);
+    setToasts((prev) => [...prev, { id, message, type }]);
+    setTimeout(() => {
+      setToasts((prev) => prev.filter((t) => t.id !== id));
+    }, 4000);
+  };
 
   // Modal states
   const [createModalOpen, setCreateModalOpen] = useState(false);
@@ -33,22 +51,25 @@ export const StudentsPage = () => {
   const [detailModalOpen, setDetailModalOpen] = useState(false);
   const [progressModalOpen, setProgressModalOpen] = useState(false);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [lockConfirmOpen, setLockConfirmOpen] = useState(false);
   const [selectedStudent, setSelectedStudent] = useState<StudentProfile | null>(null);
   const [studentUpdateError, setStudentUpdateError] = useState<string | null>(null);
   const [studentCreateError, setStudentCreateError] = useState<string | null>(null);
 
   // Fetch students
-  const { data: studentsData, isLoading, refetch } = useQuery({
+  const { data: studentsData, isLoading, isRefetching, refetch, error: studentsError } = useQuery({
     queryKey: ['students', currentPage, pageSize, searchTerm],
     queryFn: () => studentsApi.getAll({
       pageNumber: currentPage,
       pageSize: pageSize,
       search: searchTerm,
     }),
+    staleTime: 30000,
+    refetchOnWindowFocus: false,
   });
 
   // Fetch learning progress
-  const { data: progressData, isLoading: progressLoading } = useQuery({
+  const { data: progressData, isLoading: progressLoading, error: progressError } = useQuery({
     queryKey: ['student-progress', selectedStudent?.id],
     queryFn: () => studentsApi.getLearningProgress(selectedStudent!.id),
     enabled: !!selectedStudent?.id && progressModalOpen,
@@ -77,6 +98,7 @@ export const StudentsPage = () => {
       queryClient.invalidateQueries({ queryKey: ['students'] });
       setCreateModalOpen(false);
       setStudentCreateError(null);
+      showToast('Tạo học sinh thành công!', 'success');
     },
     onError: (error: any) => {
       const errors = error?.response?.data?.errors;
@@ -88,6 +110,7 @@ export const StudentsPage = () => {
       } else {
         setStudentCreateError('Tạo học sinh thất bại. Vui lòng thử lại.');
       }
+      showToast('Tạo học sinh thất bại!', 'error');
     },
   });
 
@@ -100,10 +123,11 @@ export const StudentsPage = () => {
       setEditModalOpen(false);
       setSelectedStudent(null);
       setStudentUpdateError(null);
-      // TODO: Add toast notification here
+      showToast('Cập nhật học sinh thành công!', 'success');
     },
     onError: (error: any) => {
       setStudentUpdateError(error?.response?.data?.message || 'Cập nhật học sinh thất bại');
+      showToast('Cập nhật học sinh thất bại!', 'error');
     },
   });
 
@@ -114,7 +138,11 @@ export const StudentsPage = () => {
       queryClient.invalidateQueries({ queryKey: ['students'] });
       setDeleteConfirmOpen(false);
       setSelectedStudent(null);
-      // TODO: Add toast notification here
+      showToast('Xóa học sinh thành công!', 'success');
+    },
+    onError: () => {
+      setDeleteConfirmOpen(false);
+      showToast('Xóa học sinh thất bại!', 'error');
     },
   });
 
@@ -124,10 +152,24 @@ export const StudentsPage = () => {
       studentsApi.update(id, { isActive: !isActive }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['students'] });
+      setLockConfirmOpen(false);
       setSelectedStudent(null);
-      // TODO: Add toast notification here
+      showToast('Cập nhật trạng thái tài khoản thành công!', 'success');
+    },
+    onError: () => {
+      setLockConfirmOpen(false);
+      showToast('Cập nhật trạng thái thất bại!', 'error');
     },
   });
+
+  const handleToggleLock = async () => {
+    if (selectedStudent) {
+      await toggleStudentStatusMutation.mutateAsync({
+        id: selectedStudent.id,
+        isActive: selectedStudent.isActive,
+      });
+    }
+  };
 
   const totalPages = Math.ceil((studentsData?.total || 0) / pageSize);
 
@@ -180,12 +222,15 @@ export const StudentsPage = () => {
     {
       key: 'averageScore',
       header: 'Điểm TB',
-      render: (student) => (
-        <span className="flex items-center gap-1.5 text-sm">
-          <CheckCircle className="w-3.5 h-3.5 text-success" />
-          {student.averageScore?.toFixed(1) || '—'}
-        </span>
-      ),
+      render: (student) => {
+        const score = student.averageScore;
+        return (
+          <span className="flex items-center gap-1.5 text-sm">
+            <CheckCircle className="w-3.5 h-3.5 text-success" />
+            {score != null && score > 0 ? score.toFixed(1) : '—'}
+          </span>
+        );
+      },
     },
     {
       key: 'isActive',
@@ -222,11 +267,15 @@ export const StudentsPage = () => {
             onClick={(e) => {
               e.stopPropagation();
               setSelectedStudent(student);
-              setProgressModalOpen(true);
+              setLockConfirmOpen(true);
             }}
-            title="Xem tiến độ học tập"
+            title={student.isActive ? "Khóa tài khoản" : "Mở khóa tài khoản"}
           >
-            <TrendingUp className="w-4 h-4" />
+            {student.isActive ? (
+              <Lock className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+            ) : (
+              <Unlock className="w-4 h-4 text-success" />
+            )}
           </Button>
           <Button
             variant="ghost"
@@ -241,22 +290,9 @@ export const StudentsPage = () => {
           >
             <Pencil className="w-4 h-4" />
           </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="size-8 text-destructive hover:text-destructive"
-            onClick={(e) => {
-              e.stopPropagation();
-              setSelectedStudent(student);
-              setDeleteConfirmOpen(true);
-            }}
-            title="Xóa"
-          >
-            <Trash2 className="w-4 h-4" />
-          </Button>
         </div>
       ),
-      className: 'w-36',
+      className: 'w-28',
     },
   ];
 
@@ -281,6 +317,35 @@ export const StudentsPage = () => {
 
   return (
     <div className="space-y-6">
+      {/* Toast Notification Container */}
+      <div className="fixed top-6 right-6 z-50 flex flex-col gap-2 w-96 max-w-full">
+        <AnimatePresence>
+          {toasts.map((toast) => (
+            <motion.div
+              key={toast.id}
+              initial={{ opacity: 0, y: -20, scale: 0.9 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 20, scale: 0.9 }}
+              className={`p-4 rounded-xl shadow-lg border flex items-start gap-3 backdrop-blur-md ${
+                toast.type === 'success'
+                  ? 'bg-green-50 border-green-200 text-green-800 dark:bg-green-900/30 dark:text-green-400 dark:border-green-800'
+                  : toast.type === 'error'
+                  ? 'bg-red-50 border-red-200 text-red-800 dark:bg-red-900/30 dark:text-red-400 dark:border-red-800'
+                  : toast.type === 'warning'
+                  ? 'bg-yellow-50 border-yellow-200 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400 dark:border-yellow-800'
+                  : 'bg-blue-50 border-blue-200 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400 dark:border-blue-800'
+              }`}
+            >
+              {toast.type === 'success' && <CheckCircle2 className="w-5 h-5 shrink-0 text-green-600 dark:text-green-400" />}
+              {toast.type === 'error' && <XCircle className="w-5 h-5 shrink-0 text-red-600 dark:text-red-400" />}
+              {toast.type === 'warning' && <AlertCircle className="w-5 h-5 shrink-0 text-yellow-600 dark:text-yellow-400" />}
+              {toast.type === 'info' && <CheckCircle2 className="w-5 h-5 shrink-0 text-blue-600 dark:text-blue-400" />}
+              <div className="flex-1 text-sm font-medium">{toast.message}</div>
+            </motion.div>
+          ))}
+        </AnimatePresence>
+      </div>
+
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
@@ -309,14 +374,43 @@ export const StudentsPage = () => {
           placeholder="Tìm kiếm học sinh..."
           className="sm:max-w-sm"
         />
-        <Button variant="outline" size="icon" onClick={() => refetch()}>
-          <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
+        <Button variant="outline" size="icon" onClick={() => refetch({ throwOnError: false })} disabled={isRefetching}>
+          <RefreshCw className={`w-4 h-4 ${isRefetching ? 'animate-spin' : ''}`} />
         </Button>
       </div>
 
+      {/* Error State */}
+      {studentsError && (
+        <div className="bg-destructive/10 border border-destructive/20 rounded-xl p-6 text-center">
+          <AlertCircle className="w-12 h-12 mx-auto text-destructive mb-3" />
+          <h3 className="font-semibold text-destructive mb-2">Không thể tải dữ liệu học sinh</h3>
+          <p className="text-sm text-muted-foreground mb-4">
+            {studentsError instanceof Error ? studentsError.message : 'Đã xảy ra lỗi khi tải dữ liệu'}
+          </p>
+          <Button variant="outline" onClick={() => refetch()}>
+            <RefreshCw className="w-4 h-4 mr-2" />
+            Thử lại
+          </Button>
+        </div>
+      )}
+
       {/* Stats Cards */}
-      {studentsData && (
-        <div className="grid grid-cols-1 sm:grid-cols-6 gap-4">
+      {isLoading ? (
+        <div className="grid grid-cols-2 sm:grid-cols-5 gap-4">
+          {[1, 2, 3, 4, 5].map((i) => (
+            <div key={i} className="bg-card rounded-xl border border-border p-4 animate-pulse">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-lg bg-muted" />
+                <div className="space-y-2">
+                  <div className="h-8 w-16 bg-muted rounded" />
+                  <div className="h-4 w-20 bg-muted rounded" />
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : studentsData && !studentsError ? (
+        <div className="grid grid-cols-2 sm:grid-cols-5 gap-4">
           <div className="bg-card rounded-xl border border-border p-4">
             <div className="flex items-center gap-3">
               <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center">
@@ -337,7 +431,7 @@ export const StudentsPage = () => {
                 <p className="text-2xl font-bold">
                   {studentsData.items?.reduce((acc, s) => acc + (s.totalEnrolledClasses || 0), 0)}
                 </p>
-                <p className="text-sm text-muted-foreground">Tổng lớp đăng ký</p>
+                <p className="text-sm text-muted-foreground">Tổng lớp ĐK</p>
               </div>
             </div>
           </div>
@@ -386,25 +480,8 @@ export const StudentsPage = () => {
               </div>
             </div>
           </div>
-          <div className="bg-card rounded-xl border border-border p-4">
-            <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-lg bg-accent-100 dark:bg-accent-900/30 flex items-center justify-center">
-                <Award className="w-6 h-6 text-accent-600 dark:text-accent-400" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold">
-                  {(() => {
-                    const scores = studentsData.items?.filter(s => (s.averageScore || 0) > 0).map(s => s.averageScore) || [];
-                    const avg = scores.length > 0 ? scores.reduce((a, b) => a + b, 0) / scores.length : 0;
-                    return avg.toFixed(1);
-                  })()}
-                </p>
-                <p className="text-sm text-muted-foreground">Điểm TB chung</p>
-              </div>
-            </div>
-          </div>
         </div>
-      )}
+      ) : null}
 
       {/* Data Table */}
       <DataTable
@@ -420,7 +497,7 @@ export const StudentsPage = () => {
       />
 
       {/* Pagination */}
-      {studentsData && totalPages > 1 && (
+      {studentsData && studentsData.total > 0 && (
         <Pagination
           currentPage={currentPage}
           totalPages={totalPages}
@@ -703,12 +780,38 @@ export const StudentsPage = () => {
               </div>
             </div>
           </div>
+        ) : progressError ? (
+          <div className="text-center py-8">
+            <AlertCircle className="w-12 h-12 mx-auto text-destructive mb-3" />
+            <p className="text-destructive font-medium">Không thể tải tiến độ học tập</p>
+            <p className="text-sm text-muted-foreground mt-1">
+              {progressError instanceof Error ? progressError.message : 'Đã xảy ra lỗi'}
+            </p>
+          </div>
         ) : (
           <div className="text-center py-8">
-            <p className="text-muted-foreground">Không thể tải tiến độ học tập</p>
+            <p className="text-muted-foreground">Không có dữ liệu tiến độ học tập</p>
           </div>
         )}
       </Modal>
+
+      {/* Lock/Unlock Confirmation */}
+      <ConfirmDialog
+        isOpen={lockConfirmOpen}
+        onClose={() => {
+          setLockConfirmOpen(false);
+          setSelectedStudent(null);
+        }}
+        onConfirm={handleToggleLock}
+        title={selectedStudent?.isActive ? "Khóa tài khoản" : "Mở khóa tài khoản"}
+        message={
+          selectedStudent?.isActive
+            ? `Bạn có chắc muốn khóa tài khoản của "${selectedStudent?.fullName}"? Học sinh sẽ không thể đăng nhập cho đến khi được mở khóa.`
+            : `Bạn có chắc muốn mở khóa tài khoản của "${selectedStudent?.fullName}"?`
+        }
+        confirmText={selectedStudent?.isActive ? "Khóa" : "Mở khóa"}
+        loading={toggleStudentStatusMutation.isPending}
+      />
 
       {/* Delete Confirmation */}
       <ConfirmDialog

@@ -662,15 +662,15 @@ function ClassDetailContent({ classId, classCode }: ClassDetailContentProps) {
   };
 
   const students = data?.students || [];
-  const enrolledStudents = data?.enrolledStudents || [];
-  const availableStudents = availableData?.students || [];
+  const enrolledStudents = data?.enrolledStudents || 0;
+  const availableStudents: { id: number; fullName: string; email: string; phone?: string; gender?: string }[] = availableData?.students || [];
 
-  const filteredStudents = students.filter((s) =>
+  const filteredStudents = students.filter((s: { fullName?: string; email?: string }) =>
     (s.fullName || '').toLowerCase().includes(query.toLowerCase()) ||
     (s.email || '').toLowerCase().includes(query.toLowerCase())
   );
 
-  const filteredAvailable = availableStudents.filter((s) =>
+  const filteredAvailable = availableStudents.filter((s: { fullName?: string; email?: string }) =>
     (s.fullName || '').toLowerCase().includes(query.toLowerCase()) ||
     (s.email || '').toLowerCase().includes(query.toLowerCase())
   );

@@ -19,23 +19,17 @@ import {
   PanelLeftClose,
   PanelLeftOpen,
 } from 'lucide-react';
+import { useSidebarStore } from '@/stores/sidebarStore';
 
 export const DashboardLayout = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const { user, logout } = useAuthStore();
-  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const { sidebarOpen, setSidebarOpen, sidebarCollapsed, toggleSidebar } = useSidebarStore();
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [isDesktop, setIsDesktop] = useState(
     typeof window !== 'undefined' && window.innerWidth >= 1024
   );
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
-    try {
-      return localStorage.getItem('ui:sidebarCollapsed') === 'true';
-    } catch (e) {
-      return false;
-    }
-  });
 
   const sidebarItems = getSidebarItems(user?.role || 'student');
   const isMasterAdmin = user?.role === 'master_admin';
@@ -71,11 +65,11 @@ export const DashboardLayout = () => {
   const isSidebarVisible = isDesktop ? !sidebarCollapsed : sidebarOpen;
 
   const handleSidebarToggle = () => {
-    const next = !sidebarCollapsed;
-    setSidebarCollapsed(next);
-    try {
-      localStorage.setItem('ui:sidebarCollapsed', String(next));
-    } catch (e) {}
+    if (isDesktop) {
+      toggleSidebar();
+    } else {
+      setSidebarOpen(!sidebarOpen);
+    }
   };
 
   return (
@@ -225,6 +219,16 @@ export const DashboardLayout = () => {
           </div>
 
           <div className="flex items-center gap-4 md:gap-6">
+            <button
+              onClick={toggleSidebar}
+              className="hover:text-foreground transition-colors p-1"
+            >
+              {sidebarCollapsed ? (
+                <Menu className="w-5 h-5" />
+              ) : (
+                <PanelLeftClose className="w-5 h-5" />
+              )}
+            </button>
             <div className="flex items-center gap-3 text-muted-foreground">
               <ThemeToggle className="hover:text-foreground transition-colors p-1" />
               <button className="hover:text-foreground transition-colors p-1 relative">

@@ -19,6 +19,7 @@ import { Icon } from '@/components/ui/Icon';
 import { useAuthStore } from '@/stores/authStore';
 import { useUIStore } from '@/stores/uiStore';
 import { dashboardApi, DashboardStats, RecentActivity } from '@/services/dashboardApi';
+import { MasterAdminCharts } from '@/components/Dashboard/DashboardCharts';
 import { formatDistanceToNow } from 'date-fns';
 import { vi } from 'date-fns/locale';
 
@@ -189,6 +190,9 @@ export function MasterAdminDashboard() {
           </div>
         </motion.div>
       </div>
+
+      {/* Charts Section */}
+      {!loading && stats && <MasterAdminCharts stats={stats} role="master_admin" />}
 
       {/* Quick Actions */}
       <div className={`backdrop-blur-md rounded-2xl p-6 shadow-xl space-y-4 border ${sectionSurface}`}>

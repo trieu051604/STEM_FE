@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { AlertCircle, Loader2, Sparkles, ArrowLeft } from 'lucide-react';
+import { AlertCircle, Loader2, Sparkles, ArrowLeft, Upload, X, FileText } from 'lucide-react';
 import { Icon } from '@/components/ui/Icon';
 import ThemeToggle from '@/components/ui/ThemeToggle';
 import { api } from '@/services';
@@ -62,6 +62,9 @@ type B2BFormData = z.infer<typeof B2BSchema>;
 export function RegisterPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [serverError, setServerError] = useState('');
+  const [uploadingFile, setUploadingFile] = useState(false);
+  const [uploadedFile, setUploadedFile] = useState<{ url: string; fileName: string; originalName: string } | null>(null);
+  const [fileError, setFileError] = useState('');
   const navigate = useNavigate();
 
   // Form: B2B React Hook Form
@@ -88,9 +91,10 @@ export function RegisterPage() {
         studentScale: data.studentSize,
         website: data.website,
         notes: data.notes,
-        fullName: data.repName, // Map representative name to user full name
+        fullName: data.repName,
         phone: data.phone,
         password: data.password,
+        documentUrl: uploadedFile?.url || null,
       };
       await api.post('/schools/register', payload);
       setIsLoading(false);
@@ -99,6 +103,54 @@ export function RegisterPage() {
       setIsLoading(false);
       setServerError(err.response?.data?.message || 'Có lỗi xảy ra trong quá trình đăng ký. Vui lòng thử lại.');
     }
+  };
+
+  // Handle file upload
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    const allowedTypes = ['application/pdf', 'image/jpeg', 'image/png', 'image/jpg'];
+    if (!allowedTypes.includes(file.type)) {
+      setFileError('Chỉ chấp nhận file PDF, JPEG, JPG hoặc PNG.');
+      return;
+    }
+
+    // Validate file size (max 10MB)
+    if (file.size > 10 * 1024 * 1024) {
+      setFileError('Kích thước file không được vượt quá 10MB.');
+      return;
+    }
+
+    setFileError('');
+    setUploadingFile(true);
+
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('type', 'school-registration');
+
+      const response = await api.post('/upload/school-registration', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+
+      setUploadedFile({
+        url: response.data.url,
+        fileName: response.data.fileName,
+        originalName: file.name,
+      });
+    } catch (err: any) {
+      setFileError('Tải file thất bại. Vui lòng thử lại.');
+    } finally {
+      setUploadingFile(false);
+    }
+  };
+
+  // Remove uploaded file
+  const handleRemoveFile = () => {
+    setUploadedFile(null);
+    setFileError('');
   };
 
   return (
@@ -342,7 +394,7 @@ export function RegisterPage() {
               {/* --- Section 3: Additional Info (Optional) --- */}
               <div className="space-y-4 pb-2">
                 <h3 className="text-[11px] font-bold text-blue-400 uppercase tracking-widest">3. Thông tin bổ sung (Tùy chọn)</h3>
-                
+
                 {/* Website */}
                 <div>
                   <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2" htmlFor="org-website">
@@ -358,6 +410,67 @@ export function RegisterPage() {
                   {B2BErrors.website && (
                     <p className="text-xs text-red-400 mt-1 flex items-center gap-1">
                       <AlertCircle size={12} className="shrink-0" /> {B2BErrors.website.message}
+                    </p>
+                  )}
+                </div>
+
+                {/* File Upload - Certificate */}
+                <div>
+                  <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">
+                    Giấy chứng nhận / Tài liệu
+                  </label>
+
+                  {!uploadedFile ? (
+                    <div className="border-2 border-dashed border-slate-700 rounded-xl p-4 text-center hover:border-slate-500 transition-colors">
+                      <input
+                        type="file"
+                        id="certificate-file"
+                        className="hidden"
+                        accept=".pdf,.jpg,.jpeg,.png"
+                        onChange={handleFileUpload}
+                        disabled={isLoading || uploadingFile}
+                      />
+                      <label
+                        htmlFor="certificate-file"
+                        className="cursor-pointer flex flex-col items-center gap-2"
+                      >
+                        {uploadingFile ? (
+                          <>
+                            <Loader2 size={24} className="text-blue-400 animate-spin" />
+                            <span className="text-xs text-slate-400">Đang tải file...</span>
+                          </>
+                        ) : (
+                          <>
+                            <Upload size={24} className="text-slate-500" />
+                            <span className="text-xs text-slate-400">
+                              Tải lên giấy chứng nhận (PDF, JPG, PNG) - Tối đa 10MB
+                            </span>
+                          </>
+                        )}
+                      </label>
+                    </div>
+                  ) : (
+                    <div className="flex items-center justify-between p-3 bg-slate-800/50 rounded-xl border border-slate-700">
+                      <div className="flex items-center gap-3 overflow-hidden">
+                        <FileText size={20} className="text-blue-400 shrink-0" />
+                        <span className="text-sm text-slate-300 truncate" title={uploadedFile.originalName}>
+                          {uploadedFile.originalName}
+                        </span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={handleRemoveFile}
+                        className="p-1.5 hover:bg-slate-700 rounded-lg transition-colors shrink-0"
+                        title="Xóa file"
+                      >
+                        <X size={16} className="text-slate-400" />
+                      </button>
+                    </div>
+                  )}
+
+                  {fileError && (
+                    <p className="text-xs text-red-400 mt-1 flex items-center gap-1">
+                      <AlertCircle size={12} className="shrink-0" /> {fileError}
                     </p>
                   )}
                 </div>

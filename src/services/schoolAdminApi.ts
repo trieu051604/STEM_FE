@@ -298,6 +298,7 @@ export interface Course {
   schoolName?: string;
   createdAt: string;
   updatedAt?: string;
+  enrolledStudents?: number;
 }
 
 export interface CoursesListResponse {
@@ -370,6 +371,7 @@ export interface ClassEntity {
   endDate?: string;
   createdAt: string;
   studentCount: number;
+  enrolledStudents?: number;
   students?: { id: number; fullName: string; email: string; enrolledAt: string }[];
   availableStudents?: { id: number; fullName: string; email: string; phone?: string; gender?: string }[];
   schedules?: any[];

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Monitor, Play, CheckCircle2, Code2, Users, Loader2 } from 'lucide-react';
+import { ArrowLeft, Monitor, Play, CheckCircle2, XCircle, Code2, PencilRuler, Square, Users, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { virtualLabHub } from '@/services/virtualLabHub';
 import { StudentSandboxViewer } from '@/components/Dashboard/VirtualLab/Monitor/StudentSandboxViewer';
@@ -10,11 +10,27 @@ import { formatDistanceToNow } from 'date-fns';
 import { vi } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 
+// Đúng danh sách trạng thái mục 4.5 yêu cầu — "idle" là trạng thái ngay sau
+// StudentJoined (chưa sửa gì); không có "offline" thật sự phát hiện được vì
+// VirtualLabHub.OnDisconnectedAsync chỉ âm thầm rời group, KHÔNG broadcast
+// gì cho các Teacher đang xem — ghi vào backlog VIRTUAL_LAB_PLAN.md, không
+// tự thêm event mới ở BE trong task này.
+type StudentStatusValue =
+  | 'idle'
+  | 'editing_diagram'
+  | 'editing_code'
+  | 'compiling'
+  | 'compile_success'
+  | 'compile_failed'
+  | 'running'
+  | 'stopped'
+  | 'submitted';
+
 interface StudentStatus {
   projectId: string;
   studentId: number;
   studentName: string;
-  status: 'offline' | 'coding' | 'compiling' | 'running' | 'submitted';
+  status: StudentStatusValue;
   lastUpdated: number;
 }
 
@@ -56,14 +72,14 @@ export const ClassMonitorPage = () => {
       setStudents(prev => {
         const existing = prev[projectId];
         if (!existing && !updates.studentName) return prev; // Only join can create new entry
-        
+
         return {
           ...prev,
           [projectId]: {
             projectId,
-            studentId: updates.studentId || existing?.studentId || 0,
-            studentName: updates.studentName || existing?.studentName || 'Unknown',
-            status: updates.status || existing?.status || 'coding',
+            studentId: updates.studentId ?? existing?.studentId ?? 0,
+            studentName: updates.studentName ?? existing?.studentName ?? 'Unknown',
+            status: updates.status ?? existing?.status ?? 'idle',
             lastUpdated: Date.now()
           }
         };
@@ -71,28 +87,38 @@ export const ClassMonitorPage = () => {
     };
 
     const onJoined = (projectId: string, studentId: number, studentName: string) => {
-      updateStudent(projectId, { studentId, studentName, status: 'coding' });
+      updateStudent(projectId, { studentId, studentName, status: 'idle' });
     };
 
     const onCodeUpdated = (projectId: string) => {
-      updateStudent(projectId, { status: 'coding' });
+      updateStudent(projectId, { status: 'editing_code' });
     };
 
     const onDiagramUpdated = (projectId: string) => {
-      updateStudent(projectId, { status: 'coding' });
+      updateStudent(projectId, { status: 'editing_diagram' });
     };
 
     const onCompileStarted = (projectId: string) => {
       updateStudent(projectId, { status: 'compiling' });
     };
 
-    const onCompileFinished = (projectId: string) => {
-      // Revert to coding, wait for runStarted
-      updateStudent(projectId, { status: 'coding' });
+    // success là bool THẬT do BE gửi (BroadcastCompileFinishedAsync) — phân
+    // biệt đúng compile_success/compile_failed thay vì gộp chung "coding"
+    // như bản cũ (mất hẳn tín hiệu biên dịch lỗi trên dashboard).
+    const onCompileFinished = (projectId: string, success: boolean) => {
+      updateStudent(projectId, { status: success ? 'compile_success' : 'compile_failed' });
     };
 
-    const onRunStarted = (projectId: string) => {
+    // StudentRunBooting/StudentRunCompleted giờ đã broadcast tới CẢ class
+    // group (xem SignalRSimulationEventBroadcaster.cs) — trước đây chỉ tới
+    // project group nên dashboard lớp KHÔNG BAO GIỜ nhận được, học sinh
+    // "kẹt" mãi ở compiling dù đã chạy xong từ lâu.
+    const onRunBooting = (projectId: string) => {
       updateStudent(projectId, { status: 'running' });
+    };
+
+    const onRunCompleted = (projectId: string) => {
+      updateStudent(projectId, { status: 'stopped' });
     };
 
     const onSubmitted = (projectId: string) => {
@@ -100,7 +126,7 @@ export const ClassMonitorPage = () => {
     };
 
     const onStopped = (projectId: string) => {
-      updateStudent(projectId, { status: 'offline' });
+      updateStudent(projectId, { status: 'stopped' });
     };
 
     virtualLabHub.on('StudentJoined', onJoined);
@@ -108,7 +134,8 @@ export const ClassMonitorPage = () => {
     virtualLabHub.on('StudentDiagramUpdated', onDiagramUpdated);
     virtualLabHub.on('StudentCompileStarted', onCompileStarted);
     virtualLabHub.on('StudentCompileFinished', onCompileFinished);
-    virtualLabHub.on('StudentRunStarted', onRunStarted);
+    virtualLabHub.on('StudentRunBooting', onRunBooting);
+    virtualLabHub.on('StudentRunCompleted', onRunCompleted);
     virtualLabHub.on('StudentSubmitted', onSubmitted);
     virtualLabHub.on('StudentStopped', onStopped);
 
@@ -118,7 +145,8 @@ export const ClassMonitorPage = () => {
       virtualLabHub.off('StudentDiagramUpdated', onDiagramUpdated);
       virtualLabHub.off('StudentCompileStarted', onCompileStarted);
       virtualLabHub.off('StudentCompileFinished', onCompileFinished);
-      virtualLabHub.off('StudentRunStarted', onRunStarted);
+      virtualLabHub.off('StudentRunBooting', onRunBooting);
+      virtualLabHub.off('StudentRunCompleted', onRunCompleted);
       virtualLabHub.off('StudentSubmitted', onSubmitted);
       virtualLabHub.off('StudentStopped', onStopped);
       virtualLabHub.unwatchClass(Number(classId)).catch(console.error);
@@ -126,20 +154,28 @@ export const ClassMonitorPage = () => {
   }, [classId]);
 
   const studentList = Object.values(students).sort((a, b) => b.lastUpdated - a.lastUpdated);
-  const activeCount = studentList.filter(s => s.status !== 'offline' && s.status !== 'submitted').length;
+  const activeCount = studentList.filter(s => s.status !== 'stopped' && s.status !== 'submitted' && s.status !== 'idle').length;
 
   const getStatusBadge = (status: StudentStatus['status']) => {
     switch (status) {
-      case 'coding':
-        return <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-blue-100 text-blue-700"><Code2 className="w-3.5 h-3.5" /> Đang thao tác</span>;
+      case 'idle':
+        return <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-slate-100 text-slate-500">Đã vào, chưa thao tác</span>;
+      case 'editing_diagram':
+        return <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-blue-100 text-blue-700"><PencilRuler className="w-3.5 h-3.5" /> Đang chỉnh mạch</span>;
+      case 'editing_code':
+        return <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-blue-100 text-blue-700"><Code2 className="w-3.5 h-3.5" /> Đang chỉnh code</span>;
       case 'compiling':
         return <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-100 text-amber-700"><Loader2 className="w-3.5 h-3.5 animate-spin" /> Biên dịch</span>;
+      case 'compile_success':
+        return <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-cyan-100 text-cyan-700"><CheckCircle2 className="w-3.5 h-3.5" /> Biên dịch OK</span>;
+      case 'compile_failed':
+        return <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-red-100 text-red-700"><XCircle className="w-3.5 h-3.5" /> Lỗi biên dịch</span>;
       case 'running':
         return <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-700"><Play className="w-3.5 h-3.5" /> Đang chạy Lab</span>;
+      case 'stopped':
+        return <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-slate-100 text-slate-600"><Square className="w-3.5 h-3.5" /> Đã dừng</span>;
       case 'submitted':
         return <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-slate-100 text-slate-700"><CheckCircle2 className="w-3.5 h-3.5" /> Đã nộp bài</span>;
-      case 'offline':
-        return <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-slate-100 text-slate-500">Ngoại tuyến</span>;
     }
   };
 
@@ -154,7 +190,7 @@ export const ClassMonitorPage = () => {
         </button>
         <div>
           <h1 className="text-2xl font-bold text-[#0f4c5c]">
-            {isLoading ? 'Đang tải...' : classInfo ? `Giám sát: ${classInfo.name}` : 'Giám sát lớp học'}
+            {isLoading ? 'Đang tải...' : classInfo ? `Giám sát: ${classInfo.classCode ?? classInfo.name}` : 'Giám sát lớp học'}
           </h1>
           <p className="text-sm text-muted-foreground flex items-center gap-2 mt-1">
             <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
@@ -173,26 +209,18 @@ export const ClassMonitorPage = () => {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {studentList.map(student => (
-              <div 
+              <div
                 key={student.projectId}
-                className={cn(
-                  "p-4 rounded-xl border transition-all hover:shadow-md cursor-pointer group flex flex-col gap-4",
-                  student.status === 'offline' ? "border-slate-200 bg-slate-50/50 opacity-70" : "border-cyan-100 bg-white hover:border-cyan-300"
-                )}
-                onClick={() => {
-                  if (student.status !== 'offline') setSelectedStudent(student);
-                }}
+                className="p-4 rounded-xl border transition-all hover:shadow-md cursor-pointer group flex flex-col gap-4 border-cyan-100 bg-white hover:border-cyan-300"
+                onClick={() => setSelectedStudent(student)}
               >
                 <div className="flex items-start justify-between">
                   <div className="flex items-center gap-3">
-                    <div className={cn(
-                      "w-10 h-10 rounded-full flex items-center justify-center font-bold text-white shadow-inner",
-                      student.status === 'offline' ? "bg-slate-300" : "bg-gradient-to-br from-cyan-500 to-[#0f4c5c]"
-                    )}>
+                    <div className="w-10 h-10 rounded-full flex items-center justify-center font-bold text-white shadow-inner bg-gradient-to-br from-cyan-500 to-[#0f4c5c]">
                       {student.studentName.charAt(0).toUpperCase()}
                     </div>
                     <div>
-                      <h3 className={cn("font-bold", student.status === 'offline' ? "text-slate-600" : "text-[#0f4c5c]")}>
+                      <h3 className="font-bold text-[#0f4c5c]">
                         {student.studentName}
                       </h3>
                       <p className="text-xs text-muted-foreground">
@@ -203,13 +231,9 @@ export const ClassMonitorPage = () => {
                   {getStatusBadge(student.status)}
                 </div>
 
-                <Button 
-                  variant="outline" 
-                  disabled={student.status === 'offline'}
-                  className={cn(
-                    "w-full bg-slate-50 border-slate-200 group-hover:bg-cyan-50 group-hover:border-cyan-200 transition-colors",
-                    student.status !== 'offline' && "text-cyan-700"
-                  )}
+                <Button
+                  variant="outline"
+                  className="w-full bg-slate-50 border-slate-200 group-hover:bg-cyan-50 group-hover:border-cyan-200 transition-colors text-cyan-700"
                 >
                   <Monitor className="w-4 h-4 mr-2" />
                   Xem màn hình

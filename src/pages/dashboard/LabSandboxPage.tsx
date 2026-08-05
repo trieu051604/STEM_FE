@@ -5,10 +5,13 @@ import { Button } from '@/components/ui/button';
 import { useAuthStore } from '@/stores/authStore';
 import { labsApi, virtualLabProjectsApi, diagramsApi, submissionsApi } from '@/services/dashboardApi';
 import { virtualLabHub } from '@/services/virtualLabHub';
-import type { LabCircuitComponent, LabEntity, DiagramValidationResult, SimulationEventEntity, AutoGradeResultEntity } from '@/services/dashboardApi';
+import type { LabCircuitComponent, LabEntity, DiagramValidationResult, SimulationEventEntity, AutoGradeResultEntity, ComponentGlueRegistryEntity, SensorScenarioConfig } from '@/services/dashboardApi';
 import { CodeEditorPanel } from '@/components/Dashboard/VirtualLab/Sandbox/CodeEditorPanel';
 import { CircuitCanvas, type PartVisualState } from '@/components/Dashboard/VirtualLab/Sandbox/CircuitCanvas';
 import { SerialMonitorPanel } from '@/components/Dashboard/VirtualLab/Sandbox/SerialMonitorPanel';
+import { ComponentPalettePopup } from '@/components/Dashboard/VirtualLab/Sandbox/ComponentPalettePopup';
+import { SensorScenarioPanel } from '@/components/Dashboard/VirtualLab/Sandbox/SensorScenarioPanel';
+import { CloudDashboardPanel, type CloudComponentState } from '@/components/Dashboard/VirtualLab/Sandbox/CloudDashboardPanel';
 import { getSandboxProjectId } from '@/components/Dashboard/VirtualLab/Sandbox/projectId';
 
 const DIAGRAM_SAVE_DEBOUNCE_MS = 1500;
@@ -70,7 +73,23 @@ export const LabSandboxPage = () => {
   const [submitMessage, setSubmitMessage] = useState<string | null>(null);
   const [sandboxComponents, setSandboxComponents] = useState<LabCircuitComponent[]>(defaultComponents);
   const [sandboxConnections, setSandboxConnections] = useState<any[]>([]);
+  // Sensor Input Bridge — Phase 1 (scenario/timeline, xem SensorScenarioPanel.tsx
+  // + BE SensorRuntimeHeaderGenerator.cs) — lưu/tải theo đúng cơ chế diagram
+  // save/reload có sẵn (nhúng trong circuitConfig, KHÔNG API/DB riêng).
+  const [sensorScenario, setSensorScenario] = useState<SensorScenarioConfig>({ sensors: {} });
+  const [isSensorPanelOpen, setIsSensorPanelOpen] = useState(false);
+  // WiFi/Cloud — Virtual Cloud Runtime Phase 1 (xem CloudDashboardPanel.tsx +
+  // BE CloudRuntimeHeaderGenerator.cs/QemuEsp32Runner.cs). key=componentId
+  // (Cloud/Dashboard node trên canvas) -> topics theo tên (latest value) + log
+  // gần nhất. Reset mỗi lần Run mới, giống partStates.
+  const [cloudState, setCloudState] = useState<Record<string, CloudComponentState>>({});
   const [projectId, setProjectId] = useState<string | null>(null);
+  // Nút "+" trên canvas (Wokwi-style) — danh sách linh kiện lấy qua ĐÚNG API
+  // component-glue-registry đã có sẵn (labsApi.getComponentGlueRegistry),
+  // cùng nguồn CircuitBuilderTeacherMode.tsx đang dùng, không gọi API mới.
+  const [componentGlueRegistry, setComponentGlueRegistry] = useState<ComponentGlueRegistryEntity[]>([]);
+  const [isPaletteOpen, setIsPaletteOpen] = useState(false);
+  const [autoSelectPartId, setAutoSelectPartId] = useState<string | null>(null);
   const [projectBoard, setProjectBoard] = useState('esp32');
   const [projectLanguage, setProjectLanguage] = useState('arduino');
   const [diagramValidation, setDiagramValidation] = useState<DiagramValidationResult | null>(null);
@@ -95,6 +114,35 @@ export const LabSandboxPage = () => {
   // onSimulationEvent tới sau khi đã dừng, không phụ thuộc thứ tự tới của
   // gói tin.
   const isStoppedRef = useRef(true);
+  // Log hệ thống — chỉ dùng đúng data/event ĐÃ CÓ sẵn (không gọi thêm API/đổi
+  // event shape nào). true nếu StudentCompileStarted đã bắn cho lần Run hiện
+  // tại (cache MISS thật — xem QemuEsp32Runner.cs: cache HIT thì hàm này
+  // KHÔNG bắn) — nhờ đó lúc StudentRunBooting tới, biết chắc lần chạy này có
+  // dùng cache hay không mà không cần đoán/thêm field mới từ BE.
+  const compileStartedThisRunRef = useRef(false);
+  const hasReceivedFirstEventThisRunRef = useRef(false);
+  // "--- Simulation started ---" chỉ in 1 lần, ngay TRƯỚC dòng serial thật đầu
+  // tiên của lần Run hiện tại (không phải ngay khi bấm Run — phải đợi tới khi
+  // có serial thật để tách đúng ranh giới "trước đó toàn log hệ thống, từ đây
+  // là output thật của firmware").
+  const hasPrintedSimulationSeparatorRef = useRef(false);
+  // Dedupe "Mô phỏng đã dừng"/"Đã reset trạng thái linh kiện" — BUG THẬT tìm
+  // thấy khi test: bấm Dừng khiến CẢ handleStop() (log ngay, local) LẪN
+  // onRunCompleted (log lại khi StudentRunCompleted từ server tới sau đó) đều
+  // in cặp dòng này, dư 1 lần. Bên nào tới trước (luôn là handleStop() vì
+  // không cần round-trip) thắng, bên còn lại tự bỏ qua qua cờ này.
+  const hasLoggedStopThisRunRef = useRef(false);
+
+  const appendLog = useCallback((prefix: 'compile' | 'simulation' | 'error', message: string) => {
+    setSerialOutput((prev) => (prev.length > 0 && !prev.endsWith('\n') ? `${prev}\n` : prev) + `[${prefix}] ${message}\n`);
+  }, []);
+
+  // Dòng phân cách trần (không có prefix [xxx]) — dùng cho "--- Compile ---"/
+  // "--- Simulation started ---", tách rõ log hệ thống khỏi raw serial thật
+  // của firmware (yêu cầu "tách rõ" — SerialMonitorPanel.tsx tô riêng 1 màu).
+  const appendRawLine = useCallback((text: string) => {
+    setSerialOutput((prev) => (prev.length > 0 && !prev.endsWith('\n') ? `${prev}\n` : prev) + `${text}\n`);
+  }, []);
 
   const loadLab = useCallback(async () => {
     if (!id) {
@@ -119,6 +167,7 @@ export const LabSandboxPage = () => {
       let resolvedCode = labResponse.starterCode || defaultStarterCode;
       let resolvedComponents = starterComponents;
       let resolvedConnections = starterConnections;
+      let resolvedSensorScenario: SensorScenarioConfig = labResponse.circuitConfig?.sensorScenario ?? { sensors: {} };
 
       // Lab (catalog) và VirtualLabProject (Guid, nơi lưu diagram/code thật)
       // không có liên kết nào ở BE — suy ra Guid tất định từ (labId, studentId)
@@ -134,6 +183,7 @@ export const LabSandboxPage = () => {
             resolvedComponents = project.circuitConfig.parts;
           }
           resolvedConnections = (project.circuitConfig.connections as any[]) ?? resolvedConnections;
+          resolvedSensorScenario = project.circuitConfig.sensorScenario ?? resolvedSensorScenario;
           // Board/Language của compile phải theo đúng VirtualLabProject (nguồn
           // sự thật duy nhất từ giờ), không còn hardcode Uno như luồng cũ.
           setProjectBoard(project.board || 'esp32');
@@ -172,12 +222,19 @@ export const LabSandboxPage = () => {
         // KHÔNG BAO GIỜ nhận được bất kỳ SignalR broadcast nào
         // (StudentCompileStarted/StudentSimulationEvent/...) dù BE chạy đúng
         // 100% — verify thật: DB có event GPIO thật nhưng canvas đứng im.
-        virtualLabHub.joinSession(pid).catch(e => console.error('[LabSandboxPage] SignalR join failed', e));
+        virtualLabHub
+          .joinSession(pid)
+          .then(() => appendLog('simulation', 'SignalR đã kết nối, đang lắng nghe sự kiện mô phỏng.'))
+          .catch(e => {
+            console.error('[LabSandboxPage] SignalR join failed', e);
+            appendLog('error', 'SignalR kết nối thất bại — sự kiện mô phỏng realtime có thể không hiển thị.');
+          });
       }
 
       setCode(resolvedCode);
       setSandboxComponents(resolvedComponents);
       setSandboxConnections(resolvedConnections);
+      setSensorScenario(resolvedSensorScenario);
 
       if (user?.role === 'student') {
         try {
@@ -217,6 +274,24 @@ export const LabSandboxPage = () => {
     };
   }, []);
 
+  // Sự kiện nội bộ additive (virtualLabHub.ts) — không có trước task này,
+  // không đổi shape/API SignalR thật nào, chỉ expose lại đúng thời điểm
+  // onclose/onreconnecting/onreconnected thật của SignalR client cho Serial
+  // Monitor log ([error]/[simulation] SignalR ...).
+  useEffect(() => {
+    const onConnectionClosed = () => appendLog('error', 'SignalR đã ngắt kết nối.');
+    const onConnectionReconnecting = () => appendLog('error', 'SignalR mất kết nối — đang thử kết nối lại...');
+    const onConnectionReconnected = () => appendLog('simulation', 'SignalR đã kết nối lại.');
+    virtualLabHub.on('ConnectionClosed', onConnectionClosed);
+    virtualLabHub.on('ConnectionReconnecting', onConnectionReconnecting);
+    virtualLabHub.on('ConnectionReconnected', onConnectionReconnected);
+    return () => {
+      virtualLabHub.off('ConnectionClosed', onConnectionClosed);
+      virtualLabHub.off('ConnectionReconnecting', onConnectionReconnecting);
+      virtualLabHub.off('ConnectionReconnected', onConnectionReconnected);
+    };
+  }, [appendLog]);
+
   // BE giờ tự chạy nền + đẩy từng SimulationEvent qua Hub ngay khi tính ra
   // (xem VirtualLabRuntimeService/EducationalSimulationRunner) — không còn
   // FE tự relay lại (virtualLabHub.simulationEvent) như trước, và không còn
@@ -231,13 +306,18 @@ export const LabSandboxPage = () => {
       // của handleStop/onRunCompleted, làm LED/Buzzer "tự sáng lại" dù đã tắt.
       if (isStoppedRef.current) return;
 
+      if (!hasReceivedFirstEventThisRunRef.current) {
+        hasReceivedFirstEventThisRunRef.current = true;
+        appendLog('simulation', 'QEMU đã chạy — bắt đầu nhận dữ liệu mô phỏng.');
+      }
+
       // Event mô phỏng đầu tiên tới = tín hiệu chuyển sang canvas thật, bất
       // kể mode (educational nhảy thẳng từ "analyzing", qemu đi qua đủ
       // "compiling"→"booting" trước khi tới đây).
       setRunStage('running');
       applySimulationEvent(evt);
     };
-    const onRunCompleted = (_projectId: string, _status: string, _reason?: string) => {
+    const onRunCompleted = (_projectId: string, status: string, reason?: string) => {
       setIsRunning(false);
       setRunStage('idle');
       // BUG THẬT vừa vá: mô phỏng dừng (tự nhiên hết MaxDurationMs, hay lỗi)
@@ -247,9 +327,18 @@ export const LabSandboxPage = () => {
       // trạng thái tắt, giống hành vi thật (ngắt điện thì LED tắt).
       isStoppedRef.current = true;
       setPartStates({});
+      if (status === 'error') {
+        appendLog('error', `Mô phỏng dừng do lỗi${reason ? `: ${reason}` : '.'}`);
+      } else if (!hasLoggedStopThisRunRef.current) {
+        hasLoggedStopThisRunRef.current = true;
+        appendLog('simulation', 'Mô phỏng đã dừng.');
+        appendLog('simulation', 'Đã reset trạng thái linh kiện.');
+      }
     };
     const onCompileStarted = (_projectId: string) => {
       setRunStage('compiling');
+      compileStartedThisRunRef.current = true;
+      appendLog('compile', 'Không có firmware cache khớp — bắt đầu biên dịch thật (có thể mất tới 90 giây)...');
     };
     const onCompileFinished = (_projectId: string, success: boolean, errorSummary?: string) => {
       // Nếu compile thất bại, StudentRunCompleted (status=error) cũng sẽ tới
@@ -258,10 +347,20 @@ export const LabSandboxPage = () => {
       // dẹp cuối của background task.
       if (!success) {
         setCompileError(errorSummary || 'Biên dịch thất bại.');
+        appendLog('error', `Biên dịch thất bại${errorSummary ? `:\n${errorSummary}` : '.'}`);
+      } else {
+        appendLog('compile', 'Biên dịch thành công.');
       }
     };
     const onRunBooting = (_projectId: string) => {
       setRunStage('booting');
+      // StudentCompileStarted KHÔNG bắn khi cache HIT (xem QemuEsp32Runner.cs)
+      // — nếu tới đây mà cờ đó vẫn false, đúng nghĩa lần chạy này đã dùng
+      // cache, không phải suy đoán.
+      if (!compileStartedThisRunRef.current) {
+        appendLog('compile', 'Dùng firmware cache — bỏ qua biên dịch.');
+      }
+      appendLog('simulation', 'Đang khởi động QEMU...');
     };
     virtualLabHub.on('StudentSimulationEvent', onSimulationEvent);
     virtualLabHub.on('StudentRunCompleted', onRunCompleted);
@@ -282,6 +381,13 @@ export const LabSandboxPage = () => {
     void loadLab();
   }, [loadLab]);
 
+  useEffect(() => {
+    labsApi
+      .getComponentGlueRegistry(true)
+      .then(setComponentGlueRegistry)
+      .catch((error) => console.error('[LabSandboxPage] Failed to load component glue registry', error));
+  }, []);
+
   // Lưu diagram/code debounce ~1.5s sau khi ngừng thao tác — tránh gọi PUT
   // theo từng pixel khi kéo linh kiện (onComponentMove bắn liên tục lúc kéo).
   useEffect(() => {
@@ -292,14 +398,14 @@ export const LabSandboxPage = () => {
     saveTimerRef.current = setTimeout(() => {
       void diagramsApi
         .save(projectId, {
-          circuitConfig: { parts: sandboxComponents, connections: sandboxConnections },
+          circuitConfig: { parts: sandboxComponents, connections: sandboxConnections, sensorScenario },
           sourceCode: code,
         })
         .then((session) => {
           setDiagramValidation(session.validation);
           setSaveStatus('saved');
           if (projectId) {
-            virtualLabHub.diagramUpdated(projectId, JSON.stringify({ parts: sandboxComponents, connections: sandboxConnections })).catch(() => {});
+            virtualLabHub.diagramUpdated(projectId, JSON.stringify({ parts: sandboxComponents, connections: sandboxConnections, sensorScenario })).catch(() => {});
             virtualLabHub.codeUpdated(projectId, code).catch(() => {});
           }
         })
@@ -312,7 +418,7 @@ export const LabSandboxPage = () => {
     return () => {
       if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
     };
-  }, [projectId, sandboxComponents, sandboxConnections, code]);
+  }, [projectId, sandboxComponents, sandboxConnections, sensorScenario, code]);
 
   // Precompile nền (Wokwi-like): 2.5s sau khi ngừng gõ code, "làm ấm" firmware
   // cache trước khi học sinh bấm Run — để lúc Run thật, QemuEsp32Runner rơi
@@ -353,6 +459,10 @@ export const LabSandboxPage = () => {
     setLastSimulationEvents((prev) => [...prev, event]);
 
     if (event.type === 'serial') {
+      if (!hasPrintedSimulationSeparatorRef.current) {
+        hasPrintedSimulationSeparatorRef.current = true;
+        appendRawLine('--- Simulation started ---');
+      }
       const message = typeof event.payload.message === 'string' ? event.payload.message : '';
       setSerialOutput((prev) => prev + message + (event.payload.newline ? '\n' : ''));
       return;
@@ -363,16 +473,60 @@ export const LabSandboxPage = () => {
       const component = typeof event.payload.component === 'string' ? event.payload.component : '';
       if (!partId) return;
 
+      const stateDescription = Object.entries(event.payload)
+        .filter(([key]) => key !== 'partId' && key !== 'component')
+        .map(([key, value]) => `${key}=${value}`)
+        .join(' ');
+      appendLog('simulation', `part-state: ${component || partId} ${stateDescription}`.trim());
+
       if (component === 'led') {
         const value = event.payload.state === 'on' ? '1' : '0';
         setPartStates((prev) => ({ ...prev, [partId]: { ...prev[partId], value } }));
       } else if (component === 'buzzer') {
         const buzzing = event.payload.state === 'buzzing';
         setPartStates((prev) => ({ ...prev, [partId]: { ...prev[partId], buzzing } }));
+      } else if (component === 'l298n') {
+        // Runtime adapter thật (L298nModel.cs) — suy ra state từ cặp chân IN
+        // qua QEMU, không phải giả lập. motor: "A" | "B".
+        const motor = event.payload.motor === 'B' ? 'motorB' : 'motorA';
+        const state = event.payload.state as PartVisualState['motorA'];
+        setPartStates((prev) => ({ ...prev, [partId]: { ...prev[partId], [motor]: state } }));
+      } else if (component === 'rgb-led') {
+        const channelKey = event.payload.channel === 'G' ? 'rgbG' : event.payload.channel === 'B' ? 'rgbB' : 'rgbR';
+        const on = event.payload.state === 'on';
+        setPartStates((prev) => ({ ...prev, [partId]: { ...prev[partId], [channelKey]: on } }));
       }
-      // Button/Servo/DHT/Ultrasonic: VirtualLabMockRunner không phát
-      // part-state cho các loại này — không có gì để ánh xạ (giới hạn đã
-      // biết của mock runner, không phải thiếu sót ở adapter này).
+      // Button/Servo/DHT/Ultrasonic: chưa có adapter runtime — không có gì để
+      // ánh xạ (giới hạn kỹ thuật đã ghi trong Component Support Matrix, xem
+      // robotKitComponents.ts, không phải thiếu sót ở nơi này).
+      return;
+    }
+
+    // WiFi/Cloud Phase 1 — StemFlowCloud.publish() (xem CloudDashboardPanel.tsx
+    // + BE QemuEsp32Runner.cs TryParseSfCloudEvent). componentId trong Payload,
+    // KHÔNG phải partId — giữ đúng đặc tả cloud-event của tính năng này (khác
+    // quy ước "part-state" cũ), xem CloudRuntimeHeaderGenerator.cs.
+    if (event.type === 'cloud-event') {
+      const componentId = typeof event.payload.componentId === 'string' ? event.payload.componentId : '';
+      const topic = typeof event.payload.topic === 'string' ? event.payload.topic : '';
+      const value = event.payload.value;
+      if (!componentId || !topic) return;
+      if (typeof value !== 'string' && typeof value !== 'number' && typeof value !== 'boolean') return;
+
+      const timeMs = typeof event.payload.timeMs === 'number' ? event.payload.timeMs : event.time;
+      appendLog('simulation', `cloud: ${componentId} ${topic} = ${value}`);
+      setPartStates((prev) => ({ ...prev, [componentId]: { ...prev[componentId], cloudLive: true } }));
+
+      setCloudState((prev) => {
+        const existing = prev[componentId] ?? { topics: {}, log: [] };
+        return {
+          ...prev,
+          [componentId]: {
+            topics: { ...existing.topics, [topic]: { value, timeMs } },
+            log: [...existing.log, `${topic} = ${value}`].slice(-20),
+          },
+        };
+      });
     }
   };
 
@@ -382,6 +536,7 @@ export const LabSandboxPage = () => {
   const replaySimulationEvents = (events: SimulationEventEntity[]) => {
     clearReplayTimers();
     setPartStates({});
+    setCloudState({});
     setLastSimulationEvents(events);
 
     if (events.length === 0) {
@@ -409,13 +564,21 @@ export const LabSandboxPage = () => {
     setSerialOutput('');
     clearReplayTimers();
     setPartStates({});
+    setCloudState({});
     setIsRunning(false);
     // Mở lại cổng nhận event — phải đặt SAU setPartStates({}) ở trên, TRƯỚC
     // khi có event nào của lần chạy MỚI này có thể tới (xem isStoppedRef).
     isStoppedRef.current = false;
+    compileStartedThisRunRef.current = false;
+    hasReceivedFirstEventThisRunRef.current = false;
+    hasPrintedSimulationSeparatorRef.current = false;
+    hasLoggedStopThisRunRef.current = false;
     // Set ngay lúc bấm, không chờ tín hiệu BE — Analyze() rất nhanh (đo thật
     // ~ms), không cần round-trip riêng cho giai đoạn này.
     setRunStage('analyzing');
+    appendRawLine('--- Compile ---');
+    appendLog('compile', 'Bắt đầu kiểm tra sơ đồ mạch (Analyze)...');
+    appendLog('compile', `Board: ${projectBoard}, Framework: ${projectLanguage}`);
 
     try {
       if (projectId) {
@@ -433,23 +596,24 @@ export const LabSandboxPage = () => {
 
       setLastSimulationEvents([]);
       setPartStates({});
-      setSerialOutput('');
 
       const runResult = await virtualLabProjectsApi.start(projectId, {
         code,
-        diagram: { parts: sandboxComponents, connections: sandboxConnections },
+        diagram: { parts: sandboxComponents, connections: sandboxConnections, sensorScenario },
       });
 
       if (runResult.status === 'error') {
         isStoppedRef.current = true;
-        setCompileError(
-          runResult.validation.errors.length
-            ? runResult.validation.errors.join('\n')
-            : 'Mạch không hợp lệ, không thể chạy mô phỏng.'
-        );
+        const message = runResult.validation.errors.length
+          ? runResult.validation.errors.join('\n')
+          : 'Mạch không hợp lệ, không thể chạy mô phỏng.';
+        setCompileError(message);
+        appendLog('error', `Compile failed — ${message}`);
         setRunStage('idle');
         return;
       }
+
+      appendLog('compile', 'Sơ đồ hợp lệ — đang chờ biên dịch/khởi động mô phỏng...');
 
       // BE đã kick off chạy nền và sẽ đẩy từng event qua Hub
       // (StudentSimulationEvent) — không còn events[] đầy đủ để phát lại
@@ -461,7 +625,9 @@ export const LabSandboxPage = () => {
       setIsRunning(true);
     } catch (error) {
       isStoppedRef.current = true;
-      setCompileError(getErrorMessage(error, 'Không gọi được API chạy mô phỏng.'));
+      const message = getErrorMessage(error, 'Không gọi được API chạy mô phỏng.');
+      setCompileError(message);
+      appendLog('error', `Start API failed — ${message}`);
       setRunStage('idle');
     } finally {
       setIsCompiling(false);
@@ -477,15 +643,22 @@ export const LabSandboxPage = () => {
     // tắt LED/Buzzer (round-trip qua BE/SignalR có độ trễ, học sinh bấm Dừng
     // phải thấy mạch tắt ngay lập tức, giống ngắt điện thật).
     setPartStates({});
+    appendLog('simulation', 'Đang dừng mô phỏng...');
 
     if (!projectId) return;
     try {
       await virtualLabProjectsApi.stop(projectId);
+      if (!hasLoggedStopThisRunRef.current) {
+        hasLoggedStopThisRunRef.current = true;
+        appendLog('simulation', 'Đã dừng.');
+        appendLog('simulation', 'Đã reset trạng thái linh kiện.');
+      }
       if (projectId) {
         virtualLabHub.stopped(projectId).catch(() => {});
       }
     } catch (error) {
       console.error('[LabSandboxPage] Failed to stop simulation', error);
+      appendLog('error', `Simulation failed — không dừng được: ${getErrorMessage(error, 'lỗi không rõ')}`);
     }
   };
 
@@ -502,7 +675,7 @@ export const LabSandboxPage = () => {
       const result = await submissionsApi.submitVirtualLab({
         assignmentId: linkedAssignmentId,
         sessionId: projectId,
-        circuitConfig: { parts: sandboxComponents, connections: sandboxConnections },
+        circuitConfig: { parts: sandboxComponents, connections: sandboxConnections, sensorScenario },
         sourceCode: code,
         simulationEvents: lastSimulationEvents,
       });
@@ -520,6 +693,26 @@ export const LabSandboxPage = () => {
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  // Thêm linh kiện qua popup "+" — vị trí mặc định rải theo bậc thang gần góc
+  // nút (top-left), giống pattern createPart() đã có trong
+  // CircuitBuilderTeacherMode.tsx (không phá cách thêm linh kiện hiện tại ở
+  // đó, đây là đường thêm MỚI dành cho Sandbox học sinh — trước đây học sinh
+  // KHÔNG có cách nào tự thêm linh kiện, chỉ có sẵn từ diagram giáo viên soạn).
+  const handleAddComponent = (componentType: string) => {
+    const index = sandboxComponents.length;
+    const newPart: LabCircuitComponent = {
+      id: `${componentType}-${Date.now()}-${index}`,
+      type: componentType,
+      x: 60 + (index % 5) * 90,
+      y: 220 + Math.floor(index / 5) * 90,
+      attrs: {},
+      pinMapping: {},
+    };
+    setSandboxComponents((prev) => [...prev, newPart]);
+    setAutoSelectPartId(newPart.id);
+    setIsPaletteOpen(false);
   };
 
   const handleComponentMove = (id: string, x: number, y: number) => {
@@ -666,7 +859,17 @@ export const LabSandboxPage = () => {
           </div>
         </div>
 
-        {linkedAssignmentId ? (
+        <div className="flex items-center gap-2 shrink-0">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => setIsSensorPanelOpen(true)}
+            className="rounded-full border-cyan-300 text-cyan-700 hover:bg-cyan-50"
+            title="Cấu hình kịch bản sensor (Phase 1 — scenario/timeline)"
+          >
+            Sensor Scenario
+          </Button>
+          {linkedAssignmentId ? (
           <Button
             type="button"
             disabled={isSubmitting}
@@ -685,6 +888,7 @@ export const LabSandboxPage = () => {
             Lab này chưa gắn bài đánh giá — không thể nộp bài.
           </p>
         )}
+        </div>
       </div>
 
       {submitMessage && (
@@ -761,7 +965,26 @@ export const LabSandboxPage = () => {
                   return { ...p, rotate };
                 }));
               }}
+              onOpenPalette={() => setIsPaletteOpen(true)}
+              autoSelectId={autoSelectPartId}
             />
+
+            <ComponentPalettePopup
+              open={isPaletteOpen}
+              onClose={() => setIsPaletteOpen(false)}
+              componentOptions={componentGlueRegistry}
+              onSelect={handleAddComponent}
+            />
+
+            <SensorScenarioPanel
+              open={isSensorPanelOpen}
+              onClose={() => setIsSensorPanelOpen(false)}
+              components={sandboxComponents}
+              scenario={sensorScenario}
+              onChange={setSensorScenario}
+            />
+
+            <CloudDashboardPanel components={sandboxComponents} cloudState={cloudState} />
 
             {(runStage === 'analyzing' || runStage === 'compiling' || runStage === 'booting') && (
               <div className="absolute inset-0 z-20 flex flex-col items-center justify-center gap-3 bg-[#222]/90 text-white">

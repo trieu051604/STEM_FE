@@ -1,22 +1,23 @@
+import { useMemo, useState } from 'react';
 import {
   Cable,
   CheckCircle2,
   CircuitBoard,
   Cpu,
   Gauge,
-  Lightbulb,
   PlusCircle,
   RefreshCw,
-  RotateCw,
-  SlidersHorizontal,
-  Thermometer,
-  ToggleLeft,
+  Search,
   Trash2,
-  Volume2,
-  Zap,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { CircuitCanvas } from './CircuitCanvas';
+import { RobotKitBomPanel } from './RobotKitBomPanel';
+import { ComponentPalettePopup } from './ComponentPalettePopup';
+import {
+  getComponentReference,
+  normalizeComponentType,
+} from './componentReferenceCatalog';
 import type {
   ComponentGlueRegistryEntity,
   LabBoardType,
@@ -50,100 +51,13 @@ interface CircuitBuilderTeacherModeProps {
   onRetry?: () => void;
 }
 
-type ComponentIcon = typeof Cpu;
 type Waypoint = { x: number; y: number };
 type WireConnection = [string, string, string, Waypoint[]?];
-
-interface ComponentReference {
-  label: string;
-  summary: string;
-  role: string;
-  pins: string[];
-  sample: string;
-  icon: ComponentIcon;
-  iconClassName: string;
-}
 
 interface WireConnectionItem {
   connection: WireConnection;
   originalIndex: number;
 }
-
-const COMPONENT_REFERENCES: Record<string, ComponentReference> = {
-  led: {
-    label: 'LED',
-    summary: '2 chân phân cực: A và C',
-    role: 'Phát sáng khi dòng đi đúng chiều.',
-    pins: ['A', 'C'],
-    sample: 'D13 -> A, C -> GND',
-    icon: Lightbulb,
-    iconClassName: 'bg-rose-50 text-rose-600',
-  },
-  resistor: {
-    label: 'Điện trở',
-    summary: '2 chân không phân cực',
-    role: 'Giới hạn dòng, thường đặt nối tiếp với LED.',
-    pins: ['1', '2'],
-    sample: 'D13 -> 1, 2 -> LED A',
-    icon: Zap,
-    iconClassName: 'bg-amber-50 text-amber-700',
-  },
-  push_button: {
-    label: 'Push Button',
-    summary: 'Dùng cặp 1.l và 2.r',
-    role: 'Công tắc tạm thời cho tín hiệu digital.',
-    pins: ['1.l', '2.r'],
-    sample: 'D2 -> 1.l, 2.r -> GND',
-    icon: ToggleLeft,
-    iconClassName: 'bg-sky-50 text-sky-700',
-  },
-  buzzer: {
-    label: 'Buzzer',
-    summary: '2 chân: tín hiệu và GND',
-    role: 'Phát âm thanh bằng HIGH/LOW hoặc PWM.',
-    pins: ['1 (+)', '2 (-)'],
-    sample: 'D9 -> 1, 2 -> GND',
-    icon: Volume2,
-    iconClassName: 'bg-violet-50 text-violet-700',
-  },
-  potentiometer: {
-    label: 'Biến trở',
-    summary: '3 chân: VCC, SIG, GND',
-    role: 'Tạo giá trị analog thay đổi liên tục.',
-    pins: ['VCC', 'SIG', 'GND'],
-    sample: '5V -> VCC, SIG -> A0',
-    icon: SlidersHorizontal,
-    iconClassName: 'bg-emerald-50 text-emerald-700',
-  },
-  servo: {
-    label: 'Servo',
-    summary: '3 chân: GND, V+, PWM',
-    role: 'Điều khiển góc quay qua chân PWM.',
-    pins: ['GND', 'V+', 'PWM'],
-    sample: '5V -> V+, PWM -> D9',
-    icon: RotateCw,
-    iconClassName: 'bg-orange-50 text-orange-700',
-  },
-  dht22: {
-    label: 'Cảm biến DHT22',
-    summary: '4 chân: VCC, SDA, NC, GND',
-    role: 'Đo nhiệt độ/độ ẩm, trả dữ liệu qua chân SDA.',
-    pins: ['VCC', 'SDA', 'NC', 'GND'],
-    sample: '3V3 -> VCC, SDA -> D4, GND -> GND',
-    icon: Thermometer,
-    iconClassName: 'bg-cyan-50 text-cyan-700',
-  },
-};
-
-const UNKNOWN_COMPONENT_REFERENCE: ComponentReference = {
-  label: 'Linh kiện',
-  summary: 'Theo registry backend',
-  role: 'Linh kiện đã được backend đánh dấu hỗ trợ.',
-  pins: ['pin'],
-  sample: 'Chọn pin trên canvas',
-  icon: CircuitBoard,
-  iconClassName: 'bg-slate-100 text-slate-600',
-};
 
 const WIRE_PALETTE = [
   { label: 'GND', color: 'black', note: 'GND, Ground, C' },
@@ -166,32 +80,8 @@ const QUICK_REFERENCES = [
   { title: 'Biến trở analog', value: '5V -> VCC | SIG -> A0 | GND -> GND' },
 ];
 
-function normalizeComponentType(type: string) {
-  const normalized = type
-    .toLowerCase()
-    .trim()
-    .replace(/^wokwi[-_]/, '')
-    .replace(/-/g, '_');
-
-  if (normalized === 'pushbutton' || normalized === 'button') return 'push_button';
-  if (normalized === 'arduino' || normalized === 'arduino_uno') return 'arduino_uno';
-  return normalized;
-}
-
 function getParts(value: LabCircuitConfig): LabCircuitComponent[] {
   return Array.isArray(value.parts) ? value.parts : [];
-}
-
-function getComponentReference(componentType: string) {
-  const normalizedType = normalizeComponentType(componentType);
-  const reference = COMPONENT_REFERENCES[normalizedType];
-
-  if (reference) return reference;
-
-  return {
-    ...UNKNOWN_COMPONENT_REFERENCE,
-    label: componentType,
-  };
 }
 
 function getDefaultAttrs(componentType: string): Record<string, string> {
@@ -258,6 +148,22 @@ export const CircuitBuilderTeacherMode = ({
   const parts = getParts(value);
   const supportedComponents = componentOptions.filter((component) => component.supported);
   const unsupportedCount = componentOptions.length - supportedComponents.length;
+  // Thư viện linh kiện đã lên tới ~60 loại — cuộn thuần không còn đủ dùng,
+  // cần lọc theo tên hiển thị (label BE hoặc reference FE) + componentType.
+  const [paletteSearch, setPaletteSearch] = useState('');
+  // Nút "+" trên canvas — entry point THÊM, không thay thế sidebar bên trái
+  // (đã hoạt động từ trước, giữ nguyên 100%).
+  const [isPaletteOpen, setIsPaletteOpen] = useState(false);
+  const [autoSelectPartId, setAutoSelectPartId] = useState<string | null>(null);
+  const filteredComponents = useMemo(() => {
+    const query = paletteSearch.trim().toLowerCase();
+    if (!query) return supportedComponents;
+    return supportedComponents.filter((component) => {
+      const reference = getComponentReference(component.componentType);
+      const haystack = `${component.label ?? ''} ${reference.label} ${component.componentType}`.toLowerCase();
+      return haystack.includes(query);
+    });
+  }, [supportedComponents, paletteSearch]);
   const wireItems = getWireConnectionItems(value.connections);
   const wireConnections = wireItems.map((item) => item.connection);
   const selectedBoard: LabBoardType = value.board === 'esp32_devkit_v1' ? 'esp32_devkit_v1' : 'arduino_uno';
@@ -286,7 +192,14 @@ export const CircuitBuilderTeacherMode = ({
   };
 
   const handleAddPart = (componentType: string) => {
-    updateParts([...parts, createPart(componentType, parts.length)]);
+    const newPart = createPart(componentType, parts.length);
+    updateParts([...parts, newPart]);
+    setAutoSelectPartId(newPart.id);
+  };
+
+  const handleAddPartFromPalette = (componentType: string) => {
+    handleAddPart(componentType);
+    setIsPaletteOpen(false);
   };
 
   const handleRemovePart = (id: string) => {
@@ -467,7 +380,20 @@ export const CircuitBuilderTeacherMode = ({
               </div>
             )}
 
-            <div className="mt-3 space-y-2">
+            {!isLoading && supportedComponents.length > 0 && (
+              <div className="relative mt-3">
+                <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
+                <input
+                  type="text"
+                  value={paletteSearch}
+                  onChange={(e) => setPaletteSearch(e.target.value)}
+                  placeholder="Tìm linh kiện..."
+                  className="w-full rounded-lg border border-slate-200 bg-white py-2 pl-8 pr-2 text-sm text-slate-800 placeholder:text-slate-400 focus:border-teal-400 focus:outline-none focus:ring-1 focus:ring-teal-300"
+                />
+              </div>
+            )}
+
+            <div className="mt-3 max-h-[520px] space-y-2 overflow-y-auto pr-1">
               {isLoading && (
                 <div className="flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-3 text-sm font-semibold text-slate-500">
                   <RefreshCw className="h-4 w-4 animate-spin" />
@@ -475,8 +401,14 @@ export const CircuitBuilderTeacherMode = ({
                 </div>
               )}
 
+              {!isLoading && supportedComponents.length > 0 && filteredComponents.length === 0 && (
+                <div className="rounded-lg border border-dashed border-slate-200 bg-slate-50 px-3 py-6 text-center text-xs font-semibold text-slate-500">
+                  Không tìm thấy linh kiện khớp "{paletteSearch}".
+                </div>
+              )}
+
               {!isLoading &&
-                supportedComponents.map((component) => {
+                filteredComponents.map((component) => {
                   const reference = getComponentReference(component.componentType);
                   const Icon = reference.icon;
 
@@ -499,6 +431,17 @@ export const CircuitBuilderTeacherMode = ({
                           </span>
                           <PlusCircle className="mt-0.5 h-4 w-4 shrink-0 text-slate-400 group-hover:text-teal-700" />
                         </span>
+                        {reference.badge && (
+                          <span
+                            className={`mt-1 inline-block rounded-full px-1.5 py-0.5 text-[10px] font-bold ${
+                              reference.badge === 'Chỉ hiển thị'
+                                ? 'bg-slate-100 text-slate-500'
+                                : 'bg-amber-100 text-amber-700'
+                            }`}
+                          >
+                            {reference.badge}
+                          </span>
+                        )}
                         <span className="mt-1 block text-xs leading-4 text-slate-500">
                           {reference.summary}
                         </span>
@@ -591,6 +534,15 @@ export const CircuitBuilderTeacherMode = ({
                   })
                 );
               }}
+              onOpenPalette={() => setIsPaletteOpen(true)}
+              autoSelectId={autoSelectPartId}
+            />
+
+            <ComponentPalettePopup
+              open={isPaletteOpen}
+              onClose={() => setIsPaletteOpen(false)}
+              componentOptions={componentOptions}
+              onSelect={handleAddPartFromPalette}
             />
           </div>
         </section>
@@ -709,6 +661,8 @@ export const CircuitBuilderTeacherMode = ({
               ))}
             </div>
           </section>
+
+          <RobotKitBomPanel parts={parts} />
         </aside>
       </div>
     </div>

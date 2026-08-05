@@ -45,27 +45,6 @@ const mockTodayClasses = [
   },
 ];
 
-const mockActiveLabs = [
-  {
-    id: 1,
-    title: 'Lab Điện xoay chiều',
-    classCode: 'Lớp 12A1',
-    classId: 1, // Added for routing
-    progress: 'Đang thực hiện Bước 4/6',
-    activeUsers: 18,
-    isDark: true,
-  },
-  {
-    id: 2,
-    title: 'Lab Tế bào thực vật',
-    classCode: 'Lớp 10B5',
-    classId: 2,
-    progress: 'Đang quan sát tiêu bản...',
-    activeUsers: 12,
-    isDark: false,
-  },
-];
-
 const mockLatestSubmissions = [
   {
     id: 1,
@@ -163,6 +142,7 @@ export const TeacherDashboard = () => {
   const [stats, setStats] = useState(mockStats);
   const [isStatsLoading, setIsStatsLoading] = useState(false);
   const [statsError, setStatsError] = useState<string | null>(null);
+  const [myClasses, setMyClasses] = useState<ClassEntity[]>([]);
 
   const resolveUserId = useCallback(async () => {
     const storeUserId = getIdentityId(user as unknown as Record<string, unknown> | null);
@@ -213,6 +193,11 @@ export const TeacherDashboard = () => {
           ? countNewClasses(myClasses.items)
           : current.newClasses,
       }));
+      // Dùng CHÍNH data lớp học thật này cho "Giám sát Virtual Lab trực
+      // tiếp" bên dưới thay vì mockActiveLabs — trước đây nút "Giám sát lớp
+      // học" điều hướng bằng classId GIẢ (1, 2 hard-code), nghĩa là
+      // ClassMonitorPage không bao giờ có điểm vào thật nào trong app.
+      setMyClasses(myClasses.items);
     } catch {
       setStatsError('Không tải được số lớp học');
     } finally {
@@ -394,75 +379,54 @@ export const TeacherDashboard = () => {
               </div>
               <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
                 <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
-                {mockActiveLabs.length} Lab Online
+                {myClasses.length} lớp học
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {mockActiveLabs.map((lab) => (
-                <div 
-                  key={lab.id} 
-                  className={cn(
-                    "p-5 rounded-2xl relative overflow-hidden",
-                    lab.isDark ? "bg-[#1e293b] text-white" : "bg-slate-50 text-[#0f4c5c]"
-                  )}
-                >
-                  {lab.isDark && (
-                    <div className="absolute top-0 right-0 p-2 opacity-10">
-                      <Icon name="Zap" className="w-24 h-24" />
-                    </div>
-                  )}
-                  <div className="flex items-start justify-between mb-8 relative z-10">
-                    <h3 className="font-bold text-base w-3/4">{lab.title}</h3>
-                    <span className={cn(
-                      "text-xs font-semibold px-2.5 py-1 rounded-full",
-                      lab.isDark ? "bg-white/10 text-white" : "bg-slate-200 text-slate-600"
-                    )}>
-                      {lab.classCode}
-                    </span>
-                  </div>
-                  
-                  <div className="flex items-center justify-between relative z-10">
-                    <div className="flex -space-x-2">
-                      {[1, 2].map((i) => (
-                        <div key={i} className={cn(
-                          "w-7 h-7 rounded-full border-2 flex items-center justify-center text-[10px] font-medium",
-                          lab.isDark ? "border-[#1e293b] bg-slate-400 text-transparent" : "border-slate-50 bg-emerald-400 text-transparent"
-                        )}>
-                        </div>
-                      ))}
-                      <div className={cn(
-                        "w-7 h-7 rounded-full border-2 flex items-center justify-center text-[10px] font-medium z-10",
-                        lab.isDark ? "border-[#1e293b] bg-slate-500 text-white" : "border-slate-50 bg-emerald-500 text-white"
-                      )}>
-                        +{lab.activeUsers}
-                      </div>
-                    </div>
-                    <span className={cn(
-                      "text-xs font-medium",
-                      lab.isDark ? "text-slate-300" : "text-muted-foreground"
-                    )}>
-                      {lab.progress}
-                    </span>
-                  </div>
-                  
-                  <div className="mt-4 pt-4 border-t border-slate-500/20 relative z-10 flex justify-end">
-                    <Button 
-                      variant="ghost" 
-                      size="sm" 
-                      onClick={() => navigate(`/dashboard/virtual-lab/monitor/${lab.classId}`)}
-                      className={cn(
-                        "h-8 text-xs font-semibold",
-                        lab.isDark ? "text-cyan-400 hover:text-cyan-300 hover:bg-white/10" : "text-[#0f4c5c] hover:bg-slate-200"
+            {/* Danh sách LỚP THẬT (classesApi.getMyClasses) — trước đây dùng
+                mockActiveLabs với classId GIẢ (1, 2 hard-code), nghĩa là nút
+                "Giám sát lớp học" chưa từng điều hướng đúng lớp thật nào.
+                Không hiện "đang online bao nhiêu học sinh" ở đây vì chưa có
+                REST cho việc đó (ClassMonitorPage tự build hoàn toàn từ
+                SignalR — số liệu đó chỉ có SAU khi mở trang giám sát). */}
+            {isStatsLoading ? (
+              <p className="text-sm text-muted-foreground">Đang tải danh sách lớp...</p>
+            ) : myClasses.length === 0 ? (
+              <p className="text-sm text-muted-foreground">Bạn chưa có lớp học nào.</p>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {myClasses.map((cls) => (
+                  <div key={cls.id} className="p-5 rounded-2xl relative overflow-hidden bg-slate-50 text-[#0f4c5c]">
+                    <div className="flex items-start justify-between mb-8 relative z-10">
+                      <h3 className="font-bold text-base w-3/4">{cls.name}</h3>
+                      {cls.classCode && (
+                        <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-slate-200 text-slate-600">
+                          {cls.classCode}
+                        </span>
                       )}
-                    >
-                      <Monitor className="w-3.5 h-3.5 mr-1.5" />
-                      Giám sát lớp học
-                    </Button>
+                    </div>
+
+                    <div className="flex items-center justify-between relative z-10">
+                      <span className="text-xs font-medium text-muted-foreground">
+                        {cls.studentCount} học sinh
+                      </span>
+                    </div>
+
+                    <div className="mt-4 pt-4 border-t border-slate-500/20 relative z-10 flex justify-end">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => navigate(`/dashboard/virtual-lab/monitor/${cls.id}`)}
+                        className="h-8 text-xs font-semibold text-[#0f4c5c] hover:bg-slate-200"
+                      >
+                        <Monitor className="w-3.5 h-3.5 mr-1.5" />
+                        Giám sát lớp học
+                      </Button>
+                    </div>
                   </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
 

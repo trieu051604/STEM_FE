@@ -9,6 +9,7 @@ import { AssignmentsPage } from '@/pages/dashboard/AssignmentsPage';
 import { LabDetailPage } from '@/pages/dashboard/LabDetailPage';
 import { LabSandboxPage } from '@/pages/dashboard/LabSandboxPage';
 import { ClassMonitorPage } from '@/pages/dashboard/ClassMonitorPage';
+import { AttendancePage } from '@/pages/dashboard/AttendancePage';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -55,6 +56,7 @@ export const dashboardRoutes = [
       // Classes
       { path: 'classes', element: <div>Classes Page</div> },
       { path: 'my-classes', element: <MyClassesPage /> },
+      { path: 'attendance', element: <AttendancePage /> },
       // Assignments
       { path: 'assignments', element: <AssignmentsPage /> },
       // Simulations

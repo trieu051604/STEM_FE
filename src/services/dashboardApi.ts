@@ -242,6 +242,13 @@ export const coursesApi = {
 };
 
 // Classes API
+export interface ClassStudentEntry {
+  id: number;
+  fullName: string;
+  email: string;
+  enrolledAt: string;
+}
+
 export interface ClassEntity {
   id: number;
   name: string;
@@ -254,6 +261,8 @@ export interface ClassEntity {
   schoolId: number;
   studentCount: number;
   createdAt: string;
+  // Chỉ có trong response của getById (GetClassDetailHandler), không có trong getMyClasses.
+  students?: ClassStudentEntry[];
 }
 
 export interface ClassesListResponse {
@@ -372,6 +381,162 @@ export const classesApi = {
   },
   delete: async (id: number): Promise<void> => {
     await api.delete(`/classes/${id}`);
+  },
+};
+
+// Schedules API
+export interface ScheduleCalendarItem {
+  id: number;
+  title: string;
+  start: string;
+  end: string;
+  classCode: string;
+  className: string;
+  color: string;
+}
+
+export interface GetMyScheduleParams {
+  classId?: number;
+  fromDate?: string;
+  toDate?: string;
+}
+
+function normalizeScheduleItem(source: Record<string, unknown>): ScheduleCalendarItem {
+  return {
+    id: toNumberValue(pick(source, 'id', 'Id')),
+    title: (pick<string>(source, 'title', 'Title')) ?? '',
+    start: (pick<string>(source, 'start', 'Start')) ?? '',
+    end: (pick<string>(source, 'end', 'End')) ?? '',
+    classCode: (pick<string>(source, 'classCode', 'ClassCode')) ?? '',
+    className: (pick<string>(source, 'className', 'ClassName')) ?? '',
+    color: (pick<string>(source, 'color', 'Color')) ?? '#3b82f6',
+  };
+}
+
+export const schedulesApi = {
+  getMySchedule: async (params?: GetMyScheduleParams): Promise<ScheduleCalendarItem[]> => {
+    const queryParams: Record<string, string | number> = {};
+
+    if (params?.classId) queryParams.ClassId = params.classId;
+    if (params?.fromDate) queryParams.FromDate = params.fromDate;
+    if (params?.toDate) queryParams.ToDate = params.toDate;
+
+    const response = await api.get('/Schedules/my-schedule', {
+      params: queryParams,
+    });
+
+    const data = unwrapApiData<unknown>(response.data);
+    const items = Array.isArray(data) ? data : [];
+    return items.map((item) => normalizeScheduleItem(item as Record<string, unknown>));
+  },
+};
+
+// Attendance API
+export type AttendanceStatus = 'Present' | 'Absent' | 'Late' | 'Excused';
+
+export interface AttendanceRecord {
+  id: number;
+  classId: number;
+  classCode: string;
+  studentId: number;
+  studentName: string;
+  studentEmail: string;
+  attendanceDate: string;
+  status: AttendanceStatus;
+  note?: string;
+  markedById: number;
+  markedByName: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface GetAttendanceParams {
+  classId?: number;
+  studentId?: number;
+  attendanceDate?: string;
+  pageNumber?: number;
+  pageSize?: number;
+}
+
+export interface PagedAttendanceResult {
+  totalCount: number;
+  pageNumber: number;
+  pageSize: number;
+  totalPages: number;
+  items: AttendanceRecord[];
+}
+
+export interface CreateAttendanceRecordInput {
+  studentId: number;
+  status: AttendanceStatus;
+  note?: string;
+}
+
+export interface CreateAttendanceRequestPayload {
+  classId: number;
+  attendanceDate: string;
+  records: CreateAttendanceRecordInput[];
+}
+
+function normalizeAttendanceRecord(source: Record<string, unknown>): AttendanceRecord {
+  return {
+    id: toNumberValue(pick(source, 'id', 'Id')),
+    classId: toNumberValue(pick(source, 'classId', 'ClassId')),
+    classCode: (pick<string>(source, 'classCode', 'ClassCode')) ?? '',
+    studentId: toNumberValue(pick(source, 'studentId', 'StudentId')),
+    studentName: (pick<string>(source, 'studentName', 'StudentName')) ?? '',
+    studentEmail: (pick<string>(source, 'studentEmail', 'StudentEmail')) ?? '',
+    attendanceDate: (pick<string>(source, 'attendanceDate', 'AttendanceDate')) ?? '',
+    status: ((pick<string>(source, 'status', 'Status')) ?? 'Present') as AttendanceStatus,
+    note: pick<string>(source, 'note', 'Note'),
+    markedById: toNumberValue(pick(source, 'markedById', 'MarkedById')),
+    markedByName: (pick<string>(source, 'markedByName', 'MarkedByName')) ?? '',
+    createdAt: (pick<string>(source, 'createdAt', 'CreatedAt')) ?? '',
+    updatedAt: (pick<string>(source, 'updatedAt', 'UpdatedAt')) ?? '',
+  };
+}
+
+export const attendanceApi = {
+  getAttendance: async (params?: GetAttendanceParams): Promise<PagedAttendanceResult> => {
+    const queryParams: Record<string, string | number> = {};
+
+    if (params?.classId) queryParams.ClassId = params.classId;
+    if (params?.studentId) queryParams.StudentId = params.studentId;
+    if (params?.attendanceDate) queryParams.AttendanceDate = params.attendanceDate;
+    queryParams.PageNumber = params?.pageNumber ?? 1;
+    queryParams.PageSize = params?.pageSize ?? 100;
+
+    const response = await api.get('/Attendance', { params: queryParams });
+    const data = unwrapApiData<Record<string, unknown>>(response.data) ?? {};
+    const items = pick<unknown[]>(data, 'items', 'Items') ?? [];
+
+    return {
+      totalCount: toNumberValue(pick(data, 'totalCount', 'TotalCount')),
+      pageNumber: toNumberValue(pick(data, 'pageNumber', 'PageNumber')),
+      pageSize: toNumberValue(pick(data, 'pageSize', 'PageSize')),
+      totalPages: toNumberValue(pick(data, 'totalPages', 'TotalPages')),
+      items: items.map((item) => normalizeAttendanceRecord(item as Record<string, unknown>)),
+    };
+  },
+  createAttendance: async (
+    payload: CreateAttendanceRequestPayload
+  ): Promise<AttendanceRecord[]> => {
+    const response = await api.post('/Attendance', {
+      classId: payload.classId,
+      attendanceDate: payload.attendanceDate,
+      records: payload.records,
+    });
+    const data = unwrapApiData<Record<string, unknown>>(response.data) ?? {};
+    const items = pick<unknown[]>(data, 'items', 'Items') ?? [];
+    return items.map((item) => normalizeAttendanceRecord(item as Record<string, unknown>));
+  },
+  updateAttendance: async (
+    id: number,
+    status: AttendanceStatus,
+    note?: string
+  ): Promise<AttendanceRecord> => {
+    const response = await api.put(`/Attendance/${id}`, { status, note });
+    return normalizeAttendanceRecord(unwrapApiData<Record<string, unknown>>(response.data) ?? {});
   },
 };
 
@@ -809,10 +974,39 @@ export interface LabCircuitComponent {
   pinMapping: Record<string, number>;
 }
 
+// Sensor Input Bridge — Phase 1 (scenario/timeline). Khớp đúng shape BE
+// SensorScenarioDtos.cs (SensorScenarioConfig/SensorTimeline/SensorTimelineEntry)
+// — key trong `sensors` là componentId (part.id), KHÔNG phải componentType.
+export interface SensorTimelineEntry {
+  timeMs: number;
+  distanceCm?: number;
+  motion?: boolean;
+  // Phase 2.1 — Line Tracking 3ch/5ch: 'center'|'left'|'right'|'lost'|'intersection'
+  // (3ch) hoặc thêm 'far-left'|'far-right' (5ch). Khớp đúng
+  // LineTracking{3,5}ChPatterns trong BE SensorRuntimeHeaderGenerator.cs.
+  pattern?: string;
+  // Phase 2.2 — Water Leak/Flame/Soil Moisture/Rain/Vibration.
+  detected?: boolean;
+  analog?: number;
+  // Phase 2.3 — DHT11/DHT22 (đọc qua StemFlowDHT helper).
+  temperature?: number;
+  humidity?: number;
+}
+
+export interface SensorTimeline {
+  type: string;
+  timeline: SensorTimelineEntry[];
+}
+
+export interface SensorScenarioConfig {
+  sensors: Record<string, SensorTimeline>;
+}
+
 export interface LabCircuitConfig {
   board?: LabBoardType | string;
   parts?: LabCircuitComponent[];
   connections?: unknown[];
+  sensorScenario?: SensorScenarioConfig;
   [key: string]: unknown;
 }
 
@@ -950,6 +1144,35 @@ export interface VirtualLabProjectEntity {
   librariesJson: string;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface TeacherProjectSnapshot {
+  projectId: string;
+  studentId: number | null;
+  board: string;
+  language: string;
+  codeContent: string;
+  diagramJson: string;
+  circuitConfig: LabCircuitConfig;
+  status: string;
+  updatedAt: string;
+}
+
+function normalizeTeacherProjectSnapshot(value: unknown): TeacherProjectSnapshot {
+  const source = toRecord(unwrapApiData<unknown>(value)) ?? {};
+  const diagramJson = toStringValue(pick(source, 'diagramJson', 'DiagramJson'), '{}');
+
+  return {
+    projectId: toStringValue(pick(source, 'projectId', 'ProjectId')),
+    studentId: toNullableNumber(pick(source, 'studentId', 'StudentId')),
+    board: toStringValue(pick(source, 'board', 'Board'), 'esp32'),
+    language: toStringValue(pick(source, 'language', 'Language'), 'arduino'),
+    codeContent: toStringValue(pick(source, 'codeContent', 'CodeContent')),
+    diagramJson,
+    circuitConfig: normalizeCircuitConfig(diagramJson),
+    status: toStringValue(pick(source, 'status', 'Status')),
+    updatedAt: toStringValue(pick(source, 'updatedAt', 'UpdatedAt')),
+  };
 }
 
 export interface StartVirtualLabProjectSimulationRequest {
@@ -1708,6 +1931,15 @@ export const virtualLabProjectsApi = {
   precompile: async (id: string, code: string): Promise<void> => {
     await api.post(`/virtual-lab/projects/${id}/precompile`, { code });
   },
+  // Snapshot 1 lần (không realtime) cho Teacher "Xem live" — StudentSandboxViewer.tsx
+  // gọi lúc mount để không bắt đầu từ rỗng nếu học sinh đã join TRƯỚC khi
+  // giáo viên mở màn hình (SignalR chỉ phát cho THAY ĐỔI, không phát lại
+  // state hiện tại lúc join nhóm). 403 nếu lab không thuộc lớp giáo viên
+  // này dạy — throw để caller tự hiện message rõ (không nuốt silently).
+  getTeacherView: async (id: string): Promise<TeacherProjectSnapshot> => {
+    const response = await api.get(`/virtual-lab/projects/${id}/teacher-view`);
+    return normalizeTeacherProjectSnapshot(response.data);
+  },
 };
 
 export interface DiagramValidationResult {
@@ -1798,6 +2030,11 @@ export const diagramsApi = {
       diagramJson: JSON.stringify({
         parts: data.circuitConfig.parts ?? [],
         connections: data.circuitConfig.connections ?? [],
+        // Sensor Input Bridge — Phase 1: chỉ ghi key này khi thật sự có dữ
+        // liệu, giữ diagramJson cho lab không dùng sensor scenario y hệt như
+        // trước (không key thừa) — BE TryParseScenario() coi thiếu key này là
+        // "không có scenario", không phải lỗi.
+        ...(data.circuitConfig.sensorScenario ? { sensorScenario: data.circuitConfig.sensorScenario } : {}),
       }),
       sourceCode: data.sourceCode,
       labId: data.labId,

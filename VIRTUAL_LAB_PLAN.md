@@ -190,10 +190,10 @@ Quyết định đầy đủ: [`VIRTUAL_LAB_ADR.md`](VIRTUAL_LAB_ADR.md).
 - [x] 4.1 (BE) `stop` (`VirtualLabProjectController.StopSimulation`) hiện là **stub hoàn toàn** — trả hardcode `{status:"stopped", events:[]}`, không chạm DB/service nào. Cần làm thật: đổi state `VirtualLabProject`, không dùng `SimulationSession` nữa (sau 0.2).
 - [x] 4.2 (BE) Setup SignalR: `AddSignalR()` trong `Program.cs`, tạo `VirtualLabHub` (hoặc tên tương đương), `MapHub<VirtualLabHub>()`. Room theo `classId`/`assignmentId` dùng SignalR Groups.
 - [x] 4.3 (BE) Lưu `simulationEvents[]` vào `VirtualLabProject` (không phải `ExperimentLogs`/`SimulationSession`).
-- [ ] 4.4 (FE) Đổi từ kế hoạch `socket.io-client` sang `@microsoft/signalr`. Student gửi event khi thao tác (tên method giữ ý nghĩa cũ: join/diagram-updated/code-updated/compile-started/finished/run-started/simulation-event/stopped/submitted, nhưng là SignalR hub invocation, không phải Socket.IO emit).
-- [ ] 4.5 (FE) Teacher Dashboard: danh sách học sinh + trạng thái realtime.
-- [ ] 4.6 (FE) Teacher xem live diagram/code/log/event của 1 học sinh (`watch-student` qua SignalR).
-- [ ] 4.7 (FE+BE) Teacher gửi góp ý realtime (`send-guidance` qua SignalR).
+- [x] 4.4 (FE) — **code xong 2026-07-26, CHƯA test 2 tab thật (backend đang tắt lúc verify).** `virtualLabHub.ts` dùng `@microsoft/signalr`, token qua query-string `access_token`, `ensureConnected()` ổn định, thêm rejoin-tracking (`watchedClassIds`/`watchedProjectIds`/`joinedSessionProjectId`) + `rejoinAfterReconnect()` gọi lại `JoinSession`/`WatchClass`/`WatchStudent` sau khi `onreconnected` (group membership SignalR không sống sót qua reconnect, phải tự rejoin). Không đổi luồng student sandbox hiện có.
+- [x] 4.5 (FE) — **code xong 2026-07-26, CHƯA test 2 tab thật.** `TeacherDashboard.tsx` bỏ `mockActiveLabs` giả, dùng `myClasses` thật (`classesApi.getMyClasses`) làm entry point vào `ClassMonitorPage`. `ClassMonitorPage.tsx` mở rộng trạng thái từ 5 lên 9 (`idle/editing_diagram/editing_code/compiling/compile_success/compile_failed/running/stopped/submitted`), wire đủ sự kiện `StudentJoined/StudentDiagramUpdated/StudentCodeUpdated/StudentCompileStarted/StudentCompileFinished/StudentRunBooting/StudentRunCompleted/StudentStopped/StudentSubmitted`. `WatchClass` lúc vào, `UnwatchClass` lúc rời, không reload trang.
+- [x] 4.6 (FE+BE) — **code xong 2026-07-26, CHƯA test 2 tab thật.** `StudentSandboxViewer.tsx` gọi `WatchStudent(projectId)` + `GET /api/virtual-lab/projects/{id}/teacher-view` (endpoint mới, `VirtualLabProjectController.GetTeacherView`, chỉ Role Teacher, tự check quyền qua `LabClassAssignments`) để lấy snapshot code/diagram/status hiện tại lúc mount (bù chỗ hổng: SignalR chỉ phát khi có THAY ĐỔI, học sinh đã join trước thì teacher mở lên sẽ trống tay đến khi có update tiếp theo). Live update tiếp tục qua `StudentDiagramUpdated/StudentCodeUpdated/StudentRunBooting/StudentSimulationEvent/StudentRunCompleted/StudentStopped`. Lỗi 403/404 khi `WatchStudent`/snapshot hiển thị rõ ràng trên UI (không còn nuốt lỗi qua `.catch(console.error)`). View-only, không có control chỉnh sửa.
+- [x] 4.7 (FE+BE) — **code xong 2026-07-26, CHƯA test 2 tab thật.** Teacher gửi `SendGuidance(projectId, message)` từ `StudentSandboxViewer.tsx`, chỉ xóa input khi gửi thành công, hiển thị lỗi khi thất bại (trước đó xóa input bất kể thành công/thất bại). Phía student nhận `ReceiveGuidance` (đã có handler từ trước, không đổi).
 
 **Output:** Giáo viên xem realtime qua SignalR, `stop` đổi state thật. Test: 2 tab (student/teacher) — thao tác bên student phản ánh bên teacher <2s.
 
@@ -206,6 +206,8 @@ Quyết định đầy đủ: [`VIRTUAL_LAB_ADR.md`](VIRTUAL_LAB_ADR.md).
 **Cập nhật 2026-07-20 — BE Giai đoạn 4 hoàn thành sau JWT query-string gate.** Đã áp dụng `JwtBearerEvents.OnMessageReceived` trong `Program.cs`: chỉ nhận `access_token` query-string khi request path `StartsWithSegments("/hubs/virtual-lab")`; REST API không nhận token query-string. Verify thật bằng API test port riêng + raw SignalR client không gửi `Authorization` header: (1) REST `GET /api/virtual-lab/projects/{id}` với Bearer header owner vẫn `200`, token user khác vẫn `403`; (2) cùng REST chỉ có `?access_token=...`, không Bearer header, vẫn `401`; (3) Hub `/hubs/virtual-lab` connect thành công bằng query-string `access_token` trên cả negotiate/WebSocket và gọi được các method student/teacher đã verify trước đó (`JoinSession`, `DiagramUpdated`, `CodeUpdated`, `CompileStarted`, `CompileFinished`, `RunStarted`, `SimulationEvent`, `Stopped`, `Submitted`, `WatchClass`, `WatchStudent`, `SendGuidance`, `Unwatch*`); (4) regression các endpoint quan trọng PASS: login invalid credentials vẫn `401`; virtual-lab project create/get/update/start/stop và diagrams giữ đúng `200/403`; compile với Bearer vào service validation trả `200 success:false`, compile query-only vẫn `401`; submit với Bearer vào service trả `404 Assignment not found`, submit query-only vẫn `401`. `dotnet build STEM.Api` pass; verifier tạm và log đã dọn sạch. **Phần BE của Giai đoạn 4 đã xong; còn thiếu so với brief gốc nằm ở FE 4.4-4.7** (`@microsoft/signalr`, Teacher Dashboard, live view, guidance UI).
 
 **Cập nhật 2026-07-21 — BE sửa lại contract `JoinSession` đã verify ở Giai đoạn 4, không phải việc mới.** `VirtualLabHub.JoinSession` đổi chữ ký từ `JoinSession(projectId, classId)` thành `JoinSession(projectId)`: BE không tin `classId` client gửi nữa mà tự resolve bằng `VirtualLabProject.LabId`, giao với `LabClassAssignments` và `Enrollments` của `currentUserId`. Nếu resolve đúng 1 lớp thì join cả `project-{projectId}` và `class-{classId}`, broadcast `StudentJoined` vào class group đó. Nếu không resolve được lớp (project không có `LabId` hoặc học sinh không thuộc lớp nào được gán lab), vẫn join `project-{projectId}` để `WatchStudent` hoạt động, không join/broadcast class group và ghi log. Nếu có nhiều lớp khớp, chọn nhất quán theo `ClassId` tăng dần và ghi warning để theo dõi tần suất thật.
+
+**Cập nhật 2026-07-26 — FE 4.4-4.7 hoàn thiện code, phát hiện + vá 1 lỗ hổng BE, CHƯA test 2 tab thật.** Trước khi code đã audit lại repo thật (không giả định): xác nhận `VirtualLabHub.cs` có sẵn đủ method `WatchClass/UnwatchClass/WatchStudent/UnwatchStudent/SendGuidance`; xác nhận endpoint diagram REST cũ (`LoadOwnedProjectAsync`) chỉ cho phép `project.UserId == currentUserId`, cấu trúc không dùng được cho Teacher → phải thêm endpoint mới thay vì tái dùng. Phát hiện lỗ hổng: `SignalRSimulationEventBroadcaster.BroadcastRunBootingAsync`/`BroadcastRunCompletedAsync` chỉ gửi vào `project-{id}` group, không gửi `class-{id}` group, nghĩa là cột trạng thái "đang chạy"/"đã dừng" trên `ClassMonitorPage` (chỉ join class group qua `WatchClass`, không tự `WatchStudent` từng em) sẽ không bao giờ nhận được 2 event này — đã sửa dùng lại helper `SendToProjectAndClassAsync` có sẵn (cùng pattern với `CompileStarted/CompileFinished`), để nguyên `BroadcastEventAsync` (StudentSimulationEvent, tick GPIO chi tiết) chỉ gửi project-group vì tần suất cao, cố tình không đổi. Danh sách file đã sửa/thêm: BE — `SignalRSimulationEventBroadcaster.cs` (broadcast group fix), `SimulationDtos.cs` (+`TeacherProjectSnapshotResponse`), `IVirtualLabRuntimeService.cs` + `VirtualLabRuntimeService.cs` (+`GetProjectSnapshotForTeacherAsync`, tự check quyền qua `LabClassAssignments` giống hệt logic `EnsureTeacherCanWatchProjectAsync` của Hub), `VirtualLabProjectController.cs` (+`GET {id}/teacher-view`, `[Authorize(Roles = RoleNames.Teacher)]`). FE — `virtualLabHub.ts` (rejoin-tracking), `dashboardApi.ts` (+`getTeacherView`), `ClassMonitorPage.tsx` (9 trạng thái, wire lại event), `StudentSandboxViewer.tsx` (prefetch snapshot, hiển thị lỗi rõ, sửa bug xóa input khi gửi góp ý thất bại), `TeacherDashboard.tsx` (bỏ mock, dùng lớp thật). `dotnet build STEM.Api/STEM.Api.csproj` — 0 lỗi; `tsc --noEmit` toàn bộ file FE đã sửa — 0 lỗi. **Test 2 tab thật (12 case theo brief) CHƯA chạy được**: lúc verify bằng Browser pane, `/dashboard` trắng trang, console lặp lại `Failed to complete negotiation with the server: TypeError: Failed to fetch` và `WebSocket closed with status code: 1006` — dấu hiệu backend hiện không chạy (khớp với việc `dotnet build` trước đó không báo lỗi khóa file DLL, tức không có process nào đang giữ). Đã báo lại người dùng, chờ rebuild + restart backend rồi mới test thật; không đánh dấu case nào PASS khi chưa chạy.
 
 ## GIAI ĐOẠN 5 — SUBMIT + AUTO-GRADING — ✅ khung đã có sẵn, cần vá 1 lỗ hổng đã chốt hướng
 
@@ -401,3 +403,1315 @@ Quyết định đầy đủ: [`VIRTUAL_LAB_ADR.md`](VIRTUAL_LAB_ADR.md#5-kiến
 **Đã xác nhận (2026-07-23), không cần sửa:** grep toàn `STEM_BE` mọi chỗ so sánh `VirtualLabProject.Status`/`VirtualLabProjectStatuses.Running` — không có nơi nào (ngoài Bước 7/Submit, đã dùng đúng `IRunningSimulationRegistry.IsRunning()`) đọc và ngầm hiểu `Status == "running"` là "đang chạy real-time". Toàn bộ chỗ còn lại chỉ là ghi trạng thái cuối (đúng ngữ nghĩa tại thời điểm ghi) hoặc test assertion.
 
 **Output:** Bấm Run qua UI (không đổi route/FE) → BE tự chọn runner qua resolver, event được ghi server-side ngay khi Run xong, AutoGrade tầng behavior chỉ tin dữ liệu đã lưu DB — không có cách nào client ghi đè.
+
+## COMPONENT PLATFORM — Robot Delivery Kit + Runtime Adapter Layer (2026-07-27)
+
+Mở rộng hệ thống linh kiện Virtual Lab theo hướng nền tảng (Component Registry
++ Runtime Adapter Layer), KHÔNG chỉ thêm palette cho đẹp — mỗi component đưa
+vào có `supportLevel` rõ ràng, verify thật qua browser + API, không đánh dấu
+runtime-supported nếu chưa có event thật. Additive tuyệt đối — không đổi
+`TryGetCachedFirmwareAsync`/`CompileAndCacheAsync` cache key, không đổi QEMU
+runner core, không đổi SignalR event shape (chỉ thêm `component:"l298n"` mới
+vào field `component` đã có sẵn trong payload `part-state`, không đổi cấu
+trúc), không đổi Run/Stop flow.
+
+### 1. Component Registry (nguồn sự thật tập trung)
+
+`STEM_FE/src/components/Dashboard/VirtualLab/Sandbox/robotKitComponents.ts` —
+mỗi entry có `componentType`/`displayName`/`category`/`source`/`supportLevel`/
+`quantity`/`pins`/`defaultProps`/`wiringRules`/`runtimeAdapter`/`renderer`/
+`notes`. `supportLevel` (`runtime-supported`/`wiring-validation`/`visual-only`/
+`bom-only`) là field DUY NHẤT quyết định badge — BOM panel và palette đều đọc
+từ đây, không tự suy đoán riêng (`SUPPORT_LEVEL_BADGE` map). File này cũng ghi
+rõ "Cần sửa thủ công khi thêm component mới" (7 điểm: BE SupportedPins, BE
+ComponentGlueRegistry, FE pinMaps, FE CircuitCanvas render dispatch, FE
+CircuitBuilderTeacherMode COMPONENT_REFERENCES, FE registry file này, BE+FE
+runtime adapter nếu cần) — kiến trúc HIỆN TẠI chưa tự động hoá được 7 điểm
+này thành 1 định nghĩa duy nhất (backlog, xem cuối mục).
+
+### 2. Component Support Matrix — Robot Delivery Kit (14 linh kiện)
+
+| Component | supportLevel | Ghi chú |
+|---|---|---|
+| ESP32 DevKit V1 | runtime-supported | QEMU thật, không đổi trong task này |
+| HC-SR04 Ultrasonic Sensor | wiring-validation | Element @wokwi/elements thật + wiring rule đầy đủ ở BE; KHÔNG có distance simulation thật — xem Limitation |
+| L298N Motor Driver | **runtime-supported** | Đọc thật IN1-4 qua QEMU, suy ra forward/backward/stopped/brake, verify live PASS |
+| DC Geared Motor / TT Motor | **runtime-supported** | State hiển thị gộp trên card L298N (đúng bản chất điện — động cơ không tự có logic) |
+| Robot Wheel | visual-only | Không pin, không netlist |
+| Caster Wheel | visual-only | Không pin, không netlist |
+| Robot Chassis | visual-only | Không pin, không netlist |
+| Battery Pack 7.4V (2×18650) | wiring-validation | Không mô phỏng điện áp thật |
+| Power Switch | wiring-validation | Structural-only, chưa có logic đồ thị riêng |
+| Breadboard | visual-only | Chưa có netlist breadboard thật |
+| Jumper Wires | bom-only | Không lên canvas |
+| USB Cable Type-C/Micro USB | bom-only | Không lên canvas |
+| Mounting Screws & Nuts | bom-only | Không lên canvas |
+| Mini Delivery Box | visual-only | Không pin, không netlist |
+
+Linh kiện cũ đang chạy (tóm tắt, xem `LEGACY_COMPONENTS_SUMMARY` trong
+`robotKitComponents.ts` + `COMPONENT_REFERENCES` trong
+`CircuitBuilderTeacherMode.tsx` là nguồn đầy đủ): LED/Buzzer =
+runtime-supported (adapter có sẵn từ trước, không đổi); Resistor/Push
+Button/Servo/Potentiometer/DHT22 = wiring-validation (chưa có runtime
+adapter).
+
+### 3. Runtime Adapter Layer
+
+Pattern: mỗi adapter là 1 class C# nhỏ (`XxxModel.cs`, namespace
+`STEM.Application.UseCases.Simulation.Runners.Educational.Components`) —
+nhận GPIO pin đổi từ SF_EVENT (`digitalWrite` qua QEMU), map sang
+`SimulationEventResponse` kiểu `part-state`, được `QemuEsp32Runner.ComponentIndex`
+tra cứu theo GPIO. Reset state qua cơ chế `setPartStates({})` CHUNG đã có sẵn
+(không cần code reset riêng cho adapter mới — chỉ cần field mới sống trong
+cùng object `PartVisualState`).
+
+- **LedModel.cs / BuzzerModel.cs** — có sẵn từ trước, không đổi.
+- **L298nModel.cs** (MỚI, `STEM_BE/STEM.Application/UseCases/Simulation/Runners/Educational/Components/L298nModel.cs`)
+  — `ComputeState(bool? a, bool? b)` theo đúng bảng sự thật L298N
+  (HIGH/LOW→forward, LOW/HIGH→backward, LOW/LOW→stopped, HIGH/HIGH→brake).
+  `QemuEsp32Runner.ComponentIndex` mở rộng `_l298nByPin` (GPIO → model +
+  slot IN1-4), `ReadNewLogLinesAsync` tính lại state MỖI KHI 1 trong 2 chân
+  của 1 motor đổi, chỉ emit event khi state thật sự đổi (tránh spam). KHÔNG
+  đọc ENA/ENB (QEMU chỉ instrument `digitalWrite`, không có `analogWrite`/
+  `ledcWrite` PWM) — coi như luôn enabled, ghi rõ trong registry notes.
+- **RGB LED / HC-SR04 adapter** — CHƯA làm (xem Limitation bên dưới).
+
+FE: `PartVisualState` (`CircuitCanvas.tsx`) thêm `motorA?`/`motorB?:
+MotorDriveState`. `LabSandboxPage.tsx` + `StudentSandboxViewer.tsx` (giáo
+viên xem live) đều xử lý `component === 'l298n'` → cập nhật đúng field.
+`CircuitCanvas.tsx` fallback card cho L298N hiện trực tiếp "A:Tiến B:—" v.v.
+
+### 4. Limitation kỹ thuật — HC-SR04 distance simulation
+
+**KHÔNG implement** — đã cân nhắc theo đúng yêu cầu "không fake PASS". Lý do
+cụ thể: `QemuEsp32Runner` hiện chỉ có đường ĐỌC RA từ QEMU (`-serial
+file:...`, host poll file log) — không có cơ chế GHI/INJECT tín hiệu input
+(ECHO) ngược vào máy ảo đang chạy. Để làm thật cần 1 trong 2 hướng, cả 2 đều
+là hạng mục kiến trúc mới, không phải sửa nhỏ:
+1. QEMU monitor command / custom GPIO peripheral device model để set mức
+   điện áp 1 chân input từ bên ngoài trong lúc máy đang chạy.
+2. Instrument thêm 1 hàm đọc cảm biến ở tầng firmware-wrapper (giống cách
+   `digitalWrite` đã bị tiêm macro) để đọc giá trị `distanceCm` từ 1 kênh
+   phụ (file/biến môi trường container) thay vì đo thời gian xung ECHO thật
+   — khả thi hơn nhưng vẫn cần thiết kế wrapper mới cho `pulseIn()`.
+
+`distanceCm` prop + slider UI **KHÔNG được xây** trong task này — xây UI cho
+1 giá trị không ảnh hưởng gì tới firmware thật đúng là "palette cho đẹp" mà
+yêu cầu gốc cấm. HC-SR04 giữ `wiring-validation`, không đánh dấu
+runtime-supported.
+
+### 5. Test đã chạy thật (browser + API trực tiếp qua fetch có token thật, không giả lập)
+
+- **CASE 1 (Palette):** PASS — 16 loại khả dụng (6 cũ + 10 robot kit), badge
+  đúng cho từng loại, verify qua `CircuitBuilderTeacherMode` modal thật.
+- **CASE 2 (Canvas):** PASS — kéo đủ 10 loại, HC-SR04 render element
+  `wokwi-hc-sr04` thật, L298N/DC Motor/Wheel/Caster/Chassis/Switch render
+  fallback card có icon+tên, không crash, 0 console error mới.
+- **CASE 3 (Save/Reload):** PASS — diagram 5 phần tử (LED+Buzzer+L298N+
+  Chassis+Wheel) save qua `PUT /api/diagrams/{id}`, reload trang, đủ "5 linh
+  kiện", code/pin/vị trí giữ nguyên.
+- **CASE 4 (Wiring validation):** PASS cả 2 chiều — diagram hợp lệ (L298N đủ
+  IN1-4/VIN/GND) → `isValid:true`, chỉ warning ENA/ENB; diagram sai (DC Motor
+  nối thẳng GPIO) → error rõ "Không được nối động cơ DC trực tiếp vào GPIO
+  ESP32 — phải qua OUT của L298N Motor Driver."; diagram chỉ có
+  Chassis/Wheel/Caster/DeliveryBox/Breadboard → `isValid:true`, chỉ info
+  warning "not modeled by the MVP validator", không chặn gì.
+- **CASE 5 (Runtime motor):** **PASS đầy đủ chu kỳ** — code Arduino thật cho
+  Motor A chạy forward(1.5s)→backward(1.5s)→stopped(1.5s)→brake(1.5s) lặp
+  lại; QEMU chạy thật qua Docker; poll DOM card L298N 14 lần/1s bắt đủ cả 4
+  trạng thái đúng thứ tự: "Tiến"→"Dừng"→"Lùi"→"Dừng"→"Tiến"→"Phanh"...; Stop
+  → card về "A:— B:—" (reset đúng qua cơ chế `setPartStates({})` chung).
+- **CASE 6 (HC-SR04 runtime):** N/A — limitation đã ghi rõ ở mục 4, không
+  đánh dấu runtime-supported, không test giả.
+- **CASE 7 (Không phá luồng cũ):** PASS — diagram LED+Buzzer gốc (không đổi)
+  chạy lại qua `/start` thật, event `led:"on"`/`buzzer:"buzzing"` phát đúng
+  nhịp 1s, `/stop` trả `status:"stopped"` sạch.
+
+### 6. Bug phụ phát hiện + đã vá trong lúc test (ngoài phạm vi robot kit gốc nhưng nhỏ, an toàn)
+
+- `ESP32_DEVKIT_PINS` (`pinMaps.ts`) thiếu toạ độ cho pin `"5V"` dù BE
+  `SupportedPins["wokwi-esp32"]` đã có từ trước — phát hiện khi wiring L298N
+  VIN→5V, console báo "Unknown pin 5V on arduino". Đã vá: thêm entry `'5V'`
+  dùng chung toạ độ với `'VIN'` (board thật không có header 5V riêng).
+
+### 7. Backlog cụ thể (chưa làm, ghi rõ để không quên)
+
+1. **HC-SR04 distance simulation thật** — xem Limitation mục 4, cần quyết
+   định hướng QEMU-injection vs firmware-wrapper trước khi làm.
+2. **RGB LED adapter** — chưa làm (không có trong Robot Delivery Kit, chỉ
+   nêu trong yêu cầu gốc như ưu tiên tuỳ chọn).
+3. **Codegen 1 định nghĩa component duy nhất** — hiện phải sửa tay 7 chỗ khi
+   thêm component mới (liệt kê đầy đủ trong `robotKitComponents.ts` cuối
+   file). Registry hiện tại là tài liệu tập trung, CHƯA phải cơ chế tự sinh
+   code ở cả BE lẫn FE.
+4. **Breadboard netlist thật** (rail nối ngầm giữa các lỗ) — hiện visual-only
+   hoàn toàn, không tham gia wiring.
+5. **`dotnet ef migrations`/`database update` gãy do 2 package provider
+   EF Core cùng lúc** (`Microsoft.EntityFrameworkCore.SqlServer` +
+   `Npgsql.EntityFrameworkCore.PostgreSQL` trong `STEM.Infrastructure.csproj`)
+   — đã flag thành task riêng (`task_f5550e00`), không thuộc phạm vi
+   component platform nhưng chặn việc thêm `ComponentGlueRegistry` seed qua
+   migration bình thường (phải chèn tay qua project console tạm, xem
+   `SQLScripts/AddRobotDeliveryKitComponentGlueRegistry.sql`).
+6. **3 bản `normalizeComponentType()` độc lập** (`CircuitCanvas.tsx`,
+   `CircuitBuilderTeacherMode.tsx`, `pinMaps.ts` tự inline) — không đồng bộ
+   tự động, rủi ro alias lệch nhau khi thêm type mới (đã giữ nhất quán thủ
+   công cho 10 type robot kit, chưa có cơ chế chống lệch tự động).
+
+**File đã sửa/thêm (Component Platform):**
+- BE: `VirtualLabDiagramService.cs` (SupportedPins + wiring rules L298N/DC
+  Motor + helper `IsBatteryPositiveTerminal`/`IsPowerOrBatteryPositive`/
+  `IsGroundOrBatteryNegative`), `QemuEsp32Runner.cs` (ComponentIndex mở rộng
+  + emit motor-state), `L298nModel.cs` (mới), `StemDbContext.cs` (10 dòng
+  seed `ComponentGlueRegistry` mới), migration tay
+  `20260726124256_AddRobotDeliveryKitComponentGlueRegistry.cs`,
+  `SQLScripts/AddRobotDeliveryKitComponentGlueRegistry.sql`.
+- FE: `pinMaps.ts` (+5 pin map mới +fix "5V"), `CircuitCanvas.tsx`
+  (+normalizeComponentType +ROBOT_KIT_FALLBACK_CARDS +renderFallbackCard
+  +motor state render +PartVisualState mở rộng), `CircuitBuilderTeacherMode.tsx`
+  (+10 COMPONENT_REFERENCES +badge UI), `robotKitComponents.ts` (mới,
+  Component Registry), `RobotKitBomPanel.tsx` (mới, mount vào
+  CircuitBuilderTeacherMode), `LabSandboxPage.tsx` +
+  `StudentSandboxViewer.tsx` (xử lý event `component:'l298n'`).
+
+## COMPONENT PLATFORM — Chốt L298N/DC Motor + Điều tra HC-SR04 + Chuẩn hoá Registry (2026-07-27, tiếp theo)
+
+### 1. L298N/DC Motor — CHÍNH THỨC `runtime-supported`
+
+Đã chốt `supportLevel: 'runtime-supported'` cho cả 2 tại
+`robotKitComponents.ts` (đã set từ lần cập nhật trước, xác nhận lại đúng).
+Badge "Mô phỏng được" hiện đúng ở cả 2 nơi đọc: `CircuitBuilderTeacherMode.tsx`
+`COMPONENT_REFERENCES.l298n/dc_motor.badge` và `CircuitCanvas.tsx`
+`ROBOT_KIT_FALLBACK_CARDS['l298n']/['dc-motor'].badge`. DC Motor hiển thị state
+GỘP trên card L298N (`A:.../B:...`) — đúng bản chất điện (motor không tự có
+logic, chỉ theo tín hiệu L298N), không lặp lại UI trên card DC Motor riêng.
+
+**Bằng chứng test CASE 5 đầy đủ (browser + API thật, không giả lập):**
+- Single-motor, chu kỳ đầy đủ: code Arduino cho Motor A chạy
+  forward→backward→stopped→brake lặp lại (delay 1000ms/pha); poll DOM 12
+  lần/500ms bắt đủ cả 4 trạng thái "Tiến/Lùi/Dừng/Phanh" đúng thứ tự nhiều
+  chu kỳ liên tiếp; Stop → card về "A:— B:—".
+- 2-motor, cùng lúc + độc lập: code đặt Motor A=forward, Motor B=backward
+  NGAY trong `setup()` (tránh giới hạn thời gian `MaxDurationMs` mặc định
+  5000ms bị chiếm phần lớn bởi thời gian QEMU boot ~4-4.8s thật đo được —
+  ghi chú kỹ thuật quan trọng cho ai test lại sau này: code test dài hơn
+  vài giây sẽ dễ bị cắt ngang trước khi thấy hết chu kỳ, nên đặt trạng thái
+  cần verify càng sớm càng tốt trong `setup()` thay vì chờ qua nhiều `delay()`
+  trong `loop()`). Kết quả DB event thật: `{time:4884, motor:"A", state:"forward"}`
+  và `{time:5234, motor:"B", state:"backward"}` — 2 motor khác trạng thái
+  ĐỒNG THỜI, chứng minh 2 cặp chân IN1/IN2 và IN3/IN4 được track hoàn toàn
+  độc lập, không lẫn lộn.
+
+**Phát hiện phụ trong lúc test (đã flag task riêng `task_00c6da79`, KHÔNG
+sửa trong task này):** khi 1 lần Run tự hoàn tất tự nhiên (hết
+`MaxDurationMs`, không ai bấm Stop tay) — xác nhận qua `docker ps -a` là
+container ĐÃ được dọn sạch (bước 1 của `finally` trong `ExecuteInBackgroundAsync`
+chạy xong) nhưng `VirtualLabProject.Status` trong DB không bao giờ chuyển
+từ "running" sang "stopped" (bước 2, `MarkRunFinishedAsync`, bị nuốt exception
+âm thầm ở `catch {}` không log gì). Chỉ gọi `/stop` tay mới thoát được. Nghi
+ngờ đây là bug TIỀN TỒN TẠI (không liên quan L298N) — trong suốt phiên làm
+việc trước đó, mọi lần Run đều được kết thúc bằng Stop tay TRƯỚC KHI tự
+nhiên hết giờ, nên đường "tự hoàn tất không ai Stop" gần như chưa từng được
+test trước đây.
+
+### 2. HC-SR04 — Điều tra thật khả năng inject GPIO input (KHÔNG fake PASS)
+
+**Kết luận: KHÔNG THỂ, xác nhận bằng thực nghiệm QMP thật** (không suy đoán) —
+giữ nguyên `supportLevel: 'wiring-validation'`, KHÔNG đánh dấu runtime-supported.
+
+**Cách điều tra:** chạy tay 1 container `stem-qemu-runner-sandbox` với cờ
+`-qmp tcp:0.0.0.0:5555,server,nowait` (dùng lại firmware.bin có sẵn trong
+firmware-cache để không cần compile lại), kết nối qua QMP bằng script
+Node.js thật (không phải đọc code suy luận), query trực tiếp QOM tree của
+máy ảo.
+
+**Bằng chứng cụ thể:**
+- `qom-list /machine/soc` xác nhận ESP32 machine model CÓ device GPIO thật:
+  `"gpio","type":"child<esp32.gpio>"` (cùng với `uart0/uart1/uart2` — ESP32
+  có 3 UART trong model này, quan trọng cho phương án B bên dưới).
+- `qom-list /machine/soc/gpio` — device GPIO chỉ expose 3 property qua QOM:
+  `strap_mode` (uint32, cấu hình boot-strapping, không phải giá trị pin
+  runtime), `sysbus-irq[0]` (link ngắt, không phải kênh dữ liệu), và
+  `esp32.gpio[0]` (child memory-region — vùng thanh ghi MMIO mà CPU tự đọc/
+  ghi, KHÔNG phải property có thể set từ bên ngoài qua `qom-set`).
+- `query-commands` lọc theo `gpio|pin|input|inject` — không có lệnh QMP nào
+  dành riêng cho GPIO injection (chỉ có `input-send-event` — dành cho bàn
+  phím/chuột/touch qua display, không liên quan GPIO; các lệnh `cxl-inject-*`
+  là lỗi bộ nhớ CXL, không liên quan).
+
+**Kết luận kỹ thuật:** GPIO trên ESP32 machine model của Espressif QEMU fork
+(bản `esp-develop-9.2.2`, xác nhận qua `docker/simulation-qemu-sandbox/Dockerfile`)
+được cài đặt THUẦN TUÝ như thanh ghi MMIO mà CPU khách (guest) tự đọc/ghi —
+không có bất kỳ QOM property hay lệnh QMP nào cho phép HOST set giá trị 1
+chân input từ bên ngoài trong lúc máy đang chạy. Đây KHÔNG phải giới hạn có
+thể vá bằng cách thêm 1 cờ dòng lệnh — là giới hạn kiến trúc của chính machine
+model.
+
+**Runner hiện tại có đọc được TRIG từ firmware không?** CÓ — TRIG được ghi
+qua `digitalWrite(TRIG_PIN, ...)`, đã được instrument qua macro SF_EVENT sẵn
+có (giống mọi GPIO khác), nên `QemuEsp32Runner` NHẬN ĐƯỢC sự kiện TRIG toggle
+bình thường ngay hôm nay — chỉ là chưa có adapter nào XỬ LÝ event đó (không
+có `HcSr04Model.cs`).
+
+**2 hướng thiết kế khả thi cho tương lai (ghi rõ, không làm ngay):**
+1. **QEMU-injection thật** — theo bằng chứng trên, KHÔNG khả thi với machine
+   model hiện tại của Espressif fork. Muốn làm được cần tự thêm 1 device
+   model GPIO tuỳ biến vào QEMU (build lại QEMU từ source, không dùng bản
+   prebuilt) — chi phí/rủi ro rất lớn, không đề xuất.
+2. **Kênh phụ qua UART thứ 2 (khả thi hơn, CHƯA làm)** — ESP32 model có sẵn
+   `uart1`/`uart2` ngoài `uart0` (đang dùng cho SF_EVENT log). Thiết kế:
+   (a) BE phát hiện TRIG toggle như hiện tại (đã có); (b) BE tính thời gian
+   xung ECHO tương ứng từ `distanceCm` cấu hình, ghi giá trị đó vào 1 chardev
+   QEMU bind vào `uart1`/`uart2` dạng SOCKET (không phải `file:`, vì `file:`
+   chỉ/ chủ yếu output-only — cần `-serial2 unix:path,server` hoặc tương tự
+   để có kênh 2 chiều thật); (c) firmware cần 1 wrapper mới thay thế
+   `pulseIn()` (tương tự cách `digitalWrite` đã bị tiêm macro) để đọc giá
+   trị từ UART phụ đó thay vì đo xung ECHO vật lý thật. Đây là 1 hạng mục
+   kiến trúc MỚI, không phải sửa nhỏ — cần thiết kế kỹ + review riêng trước
+   khi làm, KHÔNG làm trong task này.
+
+**`distanceCm` prop + slider UI:** CỐ TÌNH KHÔNG xây trong task này — xây UI
+cho 1 giá trị không ảnh hưởng gì firmware thật đúng là dạng "palette cho đẹp"
+mà yêu cầu gốc cấm rõ.
+
+### 3. Component Registry — Plan chuẩn hoá (5 bước, đã làm bước 1-2, còn 3-5)
+
+Đích đến: 1 nguồn định nghĩa component chính, giảm 7 điểm phải sửa tay hiện
+tại (BE SupportedPins, BE ComponentGlueRegistry, FE pinMaps, FE CircuitCanvas
+render dispatch, FE CircuitBuilderTeacherMode COMPONENT_REFERENCES, FE
+robotKitComponents.ts, BE+FE runtime adapter nếu cần).
+
+- [x] **Bước 1 — Registry tập trung** (đã làm, xem mục "Component Registry"
+  ở trên) — `robotKitComponents.ts` là nguồn sự thật cho
+  `supportLevel`/badge/BOM/notes, không tự suy đoán riêng ở nơi khác.
+- [x] **Bước 2 — Type union an toàn** (đã làm) — `KnownComponentTypeId`
+  (union type liệt kê tay mọi componentType đã biết) export từ
+  `robotKitComponents.ts`. Rủi ro = 0 (chỉ thêm type, không đổi runtime).
+  Áp dụng dần: gán type này cho tham số ở các hàm CÓ THỂ nhận nhầm string
+  (chưa retrofit hết, xem bước tiếp).
+- [ ] **Bước 3 — Hợp nhất 3 bản `normalizeComponentType()`** (rủi ro
+  trung bình, CHƯA làm) — hiện có 3 bản độc lập: `CircuitCanvas.tsx` (giữ
+  gạch ngang, VD `hc-sr04`), `CircuitBuilderTeacherMode.tsx` (đổi hết gạch
+  ngang thành gạch dưới qua regex, VD `hc_sr04`), `pinMaps.ts` (tự
+  `.replace('wokwi-', '')` riêng, không đổi gạch ngang). Cần CHỌN 1 quy ước
+  chung trước (đề xuất gạch dưới, khớp JS identifier hơn), viết hàm dùng
+  chung trong file mới `componentTypeUtils.ts`, rồi ĐỔI ĐỒNG THỜI toàn bộ
+  key trong `ROBOT_KIT_FALLBACK_CARDS` (CircuitCanvas.tsx) sang gạch dưới —
+  có rủi ro thật nếu làm vội (dễ bỏ sót 1 key), cần test lại toàn bộ palette
+  + canvas sau khi đổi trước khi merge.
+- [ ] **Bước 4 — Sinh `pinMaps.ts` dispatch từ Registry** (trung bình, giá
+  trị cao, CHƯA làm) — `getPinCoords()`'s if/else chain thay bằng tra cứu
+  1 bảng `type -> pinMapKey` khai báo trong `robotKitComponents.ts`, giảm 1
+  điểm sửa tay (hiện thêm 1 component có pin cần sửa CẢ if/else trong
+  `pinMaps.ts` LẪN thêm entry registry — gộp lại chỉ cần sửa registry).
+- [ ] **Bước 5 — Codegen BE+FE từ 1 định nghĩa JSON/YAML dùng chung** (rủi ro
+  cao nhất, giá trị cao nhất, CHƯA làm, cần bàn kỹ trước) — 1 file định nghĩa
+  duy nhất (không phải TypeScript, để BE C# đọc được) làm nguồn cho: script
+  sinh migration C# `HasData` (BE), sinh `robotKitComponents.ts` (FE), sinh
+  `SupportedPins` dict (BE) — đây là hạng mục kiến trúc lớn, KHÔNG làm ngay,
+  chỉ ghi nhận hướng.
+
+### 4. RGB LED — Bằng chứng "output-easy tier" mở rộng an toàn (mới, ngoài Robot Delivery Kit)
+
+Thêm `wokwi-rgb-led` (`runtimeAdapter: RgbLedModel.cs`, 3 kênh R/G/B độc lập,
+mỗi kênh chỉ bật/tắt qua digitalWrite — element @wokwi/elements thật, dùng
+property `ledRed/ledGreen/ledBlue` số 0/1) theo ĐÚNG pattern LED/Buzzer/L298N
+đã có — build sạch (`STEM.Application`/`STEM.Infrastructure` 0 lỗi, `tsc
+--noEmit` 0 lỗi), registry API xác nhận xuất hiện (`GET
+/api/labs/component-glue-registry` trả đủ 17 loại bao gồm `wokwi-rgb-led`).
+**Cập nhật sau khi user restart BE — test live QEMU + browser thật (không
+fake PASS):**
+
+- Wiring validation sau restart: `PUT /api/diagrams/{id}` →
+  `{"isValid":true,"errors":[],"warnings":[]}` (0 warning, xác nhận
+  `SupportedPins["wokwi-rgb-led"]` đã nạp đúng).
+- Run thật qua QEMU với firmware `digitalWrite(R,HIGH); digitalWrite(G,LOW);
+  digitalWrite(B,HIGH);` → DB/API xác nhận đúng 3 event:
+  `3766:R=on, 3904:G=off, 4032:B=on`.
+- **Phát hiện bug thật ở bước test qua UI (không chỉ tin DB)**: mở sandbox
+  thật, `document.querySelector('wokwi-rgb-led').ledRed/ledGreen/ledBlue`
+  vẫn ở `0/0/0` dù backend đã phát đúng 3 event — console không có lỗi nào
+  giải thích. Root cause: `ledRed/ledGreen/ledBlue` là **number** (0/1),
+  nhưng code cũ truyền qua JSX prop trên `<wokwi-rgb-led>` — React chỉ gán
+  thẳng DOM property cho custom element khi giá trị là **boolean** (nhánh
+  đặc biệt trong react-dom, đúng lý do `value`/`hasSignal` của LED/Buzzer
+  hoạt động qua JSX); với number, React luôn đi qua
+  `node.setAttribute(name, String(value))`, bị trình duyệt hạ chữ thường
+  thành `ledred`, và Lit đọc lại thành CHUỖI qua `@property()` mặc định
+  `type: String`, ghi đè mất giá trị number mà `render()` cần. Đây là đúng
+  loại lỗi mà code `color` của `wokwi-led` đã né bằng ref-effect gán property
+  trực tiếp — RGB LED lúc đầu không áp dụng lại pattern đó.
+- **Fix**: bỏ 3 JSX prop `ledRed/ledGreen/ledBlue`, thay bằng 1 `useEffect`
+  gán trực tiếp `el.ledRed/el.ledGreen/el.ledBlue` qua `componentRefs` mỗi khi
+  `partStates` đổi (xem `CircuitCanvas.tsx`, effect ngay sau effect gán màu
+  LED). Test lại qua browser thật: LED đổi màu tím ánh sáng (đỏ+xanh dương,
+  xanh lá tắt) khớp đúng R=on,G=off,B=on; bấm Dừng mô phỏng →
+  `ledRed/ledGreen/ledBlue` reset đúng về `0/0/0`.
+- **Kết luận: RGB LED PASS thật (end-to-end, đã xác nhận qua DOM + màn hình,
+  không chỉ qua DB).** Lưu ý quan trọng cho các adapter output-easy tiếp theo
+  (Relay/Seven Segment/LED Bar Graph): nếu prop truyền cho `@wokwi/elements`
+  là **number** (không phải boolean/string), PHẢI gán qua ref-effect trực
+  tiếp như trên, KHÔNG truyền qua JSX prop — nếu không sẽ lặp lại đúng bug
+  này (DB đúng nhưng UI không cập nhật).
+
+### 5. Danh sách linh kiện tiếp theo — phân loại ĐÚNG độ khó (sửa nhận định ban đầu)
+
+**Quan trọng: KHÔNG phải mọi linh kiện trong danh sách gốc user đề xuất đều
+"dễ giống LED/Buzzer".** Có 2 nhóm hoàn toàn khác nhau về độ khó kỹ thuật:
+
+- **Nhóm OUTPUT-easy (thật sự dễ, chỉ cần digitalWrite — giống LED/Buzzer/
+  L298N/RGB LED, KHÔNG cần khả năng mới):**
+  - RGB LED — ĐÃ LÀM (mục 4).
+  - Relay (`digitalWrite` HIGH/LOW → on/off, không có element @wokwi/elements
+    thật, cần fallback card).
+  - Seven Segment (`wokwi-7segment` — có element thật, nhiều chân digitalWrite
+    độc lập cho từng đoạn, phức tạp hơn 1 chút vì 7-8 chân thay vì 1-3).
+  - LED Bar Graph (`wokwi-led-bar-graph` — có element thật, tương tự Seven
+    Segment, nhiều chân độc lập).
+
+- **Nhóm INPUT-hard (CÙNG giới hạn kỹ thuật như HC-SR04, KHÔNG dễ như liệt kê
+  ban đầu — đính chính lại):** Slide Switch, Push Button, DIP Switch, PIR
+  Motion Sensor, và MỌI cảm biến/công tắc đọc qua `digitalRead()`/`analogRead()`
+  đều cần firmware ĐỌC 1 giá trị do người dùng/host cung cấp — về bản chất
+  giống hệt bài toán "inject ECHO cho HC-SR04" đã điều tra ở mục 2 (QEMU
+  không có cơ chế set input pin từ ngoài). Push Button ĐÃ có wiring-validation
+  (không đổi), nhưng "runtime-supported" (bấm nút ảo → firmware đọc được)
+  bị chặn bởi CHÍNH giới hạn kỹ thuật đã xác nhận ở mục 2, không phải việc
+  chưa viết code.
+
+- **KHÔNG làm ngay (đúng yêu cầu gốc):** OLED/LCD/NeoPixel — cần giải mã giao
+  thức I2C/SPI thật (QEMU model có emulate I2C/SPI peripheral ở mức thanh ghi,
+  nhưng để hiển thị ĐÚNG nội dung màn hình cần firmware-side hoặc BE-side
+  giải mã lệnh I2C/SPI đầy đủ — một tầng phức tạp mới, không phải digitalWrite
+  đơn giản).
+
+**Đề xuất thứ tự làm tiếp (nếu được yêu cầu)**: Relay → Seven Segment → LED
+Bar Graph (cả 3 đều thuộc nhóm output-easy, mỗi cái ~30-60 phút theo đúng
+pattern đã lặp lại 4 lần trong 2 task này).
+
+## COMPONENT LIBRARY UI OVERHAUL — giao diện giống Wokwi + Serial Monitor log + pan chuột phải (2026-07-27, tiếp theo)
+
+Task riêng biệt, KHÔNG đụng compile/QEMU core — chỉ UI/UX cho canvas + palette
++ log hiển thị.
+
+### 1. Palette giống Wokwi (dark, search, category, badge)
+- Tách `COMPONENT_REFERENCES`/`normalizeComponentType`/`getComponentReference`
+  từ `CircuitBuilderTeacherMode.tsx` ra `componentReferenceCatalog.ts` (nguồn
+  dùng chung, không hardcode trùng — sidebar cũ VÀ popup mới đọc CÙNG 1 nguồn).
+  Thêm `getComponentCategory()` (tra cứu tĩnh theo key, 8 category: Basic/
+  Display/Input/Sensor/Output-Actuator/Robot Kit/Mechanical/BOM-Accessories).
+- Vá 1 lỗ hổng thật phát hiện khi làm: LED/Buzzer/Resistor/Push
+  Button/Potentiometer/Servo/DHT22 (7 component gốc) CHƯA TỪNG có field
+  `badge` — badge component âm thầm không hiện gì thay vì đúng theo Yêu cầu
+  6 (LED/Buzzer phải "Mô phỏng được"). Đã bổ sung đủ badge cho cả 7, khớp
+  đúng `LEGACY_COMPONENTS_SUMMARY` (nguồn sự thật supportLevel thật).
+- `ComponentPalettePopup.tsx` (mới) — dark theme, search top, category header
+  thanh đen, item icon+tên+badge, hover/focus highlight. Test qua browser
+  thật: search lọc đúng ("motor" → DC Motor/L298N/Stepper/Drone Motor với
+  badge chính xác), category hiện đúng thứ tự.
+
+### 2. Nút "+" trên canvas
+- `CircuitCanvas.tsx` thêm prop opt-in `onOpenPalette`/`autoSelectId` — nút
+  tròn nổi, không phá layout nơi chưa dùng prop này.
+- **Bug thật tìm thấy khi test**: đặt nút ở `top-3` bị `Toolbar` (thanh ngang
+  `h-12 z-50` render ngay sau) che kín + chặn click hoàn toàn (xác nhận qua
+  `document.elementFromPoint` tại tâm nút trả về đúng span hint-text bên
+  trong Toolbar, không phải nút) — sửa bằng cách dời xuống `top-16`, dưới
+  hẳn thanh Toolbar. Đã verify lại: nút hiện đúng, click mở popup đúng.
+- Wiring: `LabSandboxPage.tsx` (học sinh — TRƯỚC ĐÂY hoàn toàn KHÔNG có cách
+  tự thêm linh kiện, đây là năng lực mới thật sự) fetch
+  `labsApi.getComponentGlueRegistry(true)` (API có sẵn, không thêm API mới),
+  thêm component ở vị trí bậc thang gần nút, tự chọn qua `autoSelectId`.
+  `CircuitBuilderTeacherMode.tsx` thêm popup làm entry point THÊM (sidebar cũ
+  giữ nguyên 100%, đã verify cả 2 đường thêm component đều hoạt động, không
+  xung đột).
+- Test thật qua browser (KHÔNG fake): thêm L298N qua popup → xuất hiện đúng vị
+  trí, tự chọn (viền chấm xanh), kéo/di chuyển được, xoá được, reload vẫn còn
+  đúng vị trí/loại ("2 linh kiện - Đã lưu" giữ nguyên sau F5).
+
+### 3. Pan canvas bằng chuột phải
+- `CircuitCanvas.tsx`: `panOffset` state, world-layer transform đổi thành
+  `translate(pan) scale(zoom)` (translate ngoài scale — pan luôn tính bằng
+  pixel màn hình thật, nhất quán mọi mức zoom, không cần chia lại ở nơi khác).
+  `handlePointerMove`/`handleComponentPointerDown` trừ `panOffset` trước khi
+  chia zoom để pin/wire/component không lệch sau khi pan.
+  `onContextMenu={e => e.preventDefault()}` chặn menu chuột phải trình duyệt.
+  `handleComponentPointerDown`/`handlePinPointerDown` bỏ qua `button===2` (để
+  nổi bọt lên container cho pan), không đổi bất kỳ hành vi chuột trái nào.
+- Test thật qua synthetic PointerEvent (browser tool không có gesture "kéo
+  chuột phải" sẵn, dùng `dispatchEvent` với `button:2` để tái hiện chính xác):
+  `translate(0,0)` → kéo (80,60) → `translate(80px,60px)` khớp CHÍNH XÁC,
+  cursor `grab`→`grabbing`→`grab` đúng. Left-click kéo component test riêng
+  ngay sau đó (không dùng synthetic, dùng `left_click_drag` thật): board
+  `(350,80)` → `(390,105)` đúng delta (+40,+25) — xác nhận pan không đụng
+  drag component.
+
+### 4. Serial Monitor — log compile/simulation/error
+- `LabSandboxPage.tsx`: `appendLog(prefix, message)` nối vào state
+  `serialOutput` hiện có (KHÔNG thêm event/API mới) — gắn vào các điểm đã có
+  sẵn: `handleRun`/`handleStop`/`onCompileStarted`/`onCompileFinished`/
+  `onRunBooting`/`onSimulationEvent` (bắt cả log "part-state" cho mỗi
+  event)/`onRunCompleted`/các catch block.
+  Phát hiện + dùng đúng tín hiệu thật để suy ra cache-hit: BE
+  (`QemuEsp32Runner.cs`) KHÔNG bắn `StudentCompileStarted` khi cache HIT — FE
+  dùng cờ `compileStartedThisRunRef` để biết chính xác (không đoán) lúc
+  `StudentRunBooting` tới liệu có phải cache hit không.
+  `virtualLabHub.ts`: thêm trigger nội bộ additive (`ConnectionClosed`/
+  `ConnectionReconnecting`/`ConnectionReconnected`) trong `onclose`/
+  `onreconnecting`/`onreconnected` đã có sẵn — không đổi method signature nào.
+- `SerialMonitorPanel.tsx`: render theo dòng, tô màu theo prefix
+  (`[compile]` cyan, `[simulation]` amber, `[error]` đỏ), serial thật KHÔNG
+  prefix (giữ nguyên hiển thị như cũ).
+- Test thật qua Run/Stop live (lab 132213, RGB LED, ESP32): lần chạy đầu gặp
+  đúng flakiness Docker/QEMU đã biết từ trước (0 event, DB kẹt "running") —
+  KHÔNG phải regression (xác nhận qua API `GET .../projects/{id}` với
+  Bearer token thật lấy từ localStorage, do CORS chặn fetch không có token).
+  Retry lần 2: log đầy đủ đúng thứ tự `[compile] Analyze → Board/Framework →
+  hợp lệ → dùng cache → [simulation] khởi động QEMU → QEMU đã chạy →
+  part-state R=on/G=off/B=on` — khớp 100% hành vi thật, LED đổi màu tím đúng
+  (R+B on). Stop: log dừng đúng + LED tắt hẳn — có 1 chỗ log trùng nhẹ
+  ("Mô phỏng đã dừng" xuất hiện 2 lần do `handleStop()` VÀ
+  `StudentRunCompleted` từ server cùng bắn — không phải lỗi chức năng, chỉ dư
+  dòng log, chưa dedupe).
+
+### Hạn chế còn lại (báo trung thực, không che giấu)
+- Log trùng nhẹ khi Stop (xem trên) — cosmetic, không ảnh hưởng chức năng.
+- Chưa dedupe giữa `handleStop()` và `onRunCompleted` cho log "dừng"/"reset".
+- Chưa làm cho `StudentSandboxViewer.tsx` (màn hình giáo viên xem live) — chỉ
+  làm `LabSandboxPage.tsx` (sandbox học sinh) theo đúng phạm vi file user liệt
+  kê.
+- Bug "stuck running status" (task cũ, chưa fix) vẫn còn — quan sát lại đúng 1
+  lần trong lúc test lần này, không phải lỗi mới.
+
+## SERIAL MONITOR — raw serial thật từ QEMU/ESP32 (2026-07-27, tiếp theo)
+
+Task riêng, tách khỏi phần UI overhaul ở trên. Không đổi compile cache key,
+không đổi QEMU core, không đổi LED/Buzzer/RGB/L298N.
+
+### Root cause tìm được (BE)
+`QemuEsp32Runner.cs` → `ReadNewLogLinesAsync()`: MỌI dòng đọc từ
+`serial.log` không khớp định dạng nội bộ `SF_EVENT {...}` (dùng để BE tự
+theo dõi digitalWrite) bị `continue` bỏ qua IM LẶNG — nghĩa là boot log ROM
+ESP32 thật và mọi `Serial.println()` của học sinh ĐỀU bị đọc rồi vứt đi,
+chưa từng tới FE, dù `SerialMonitorPanel.tsx`/`applySimulationEvent` đã hỗ
+trợ sẵn `type="serial"` từ lâu (chỉ `EducationalSimulationRunner`/mock dùng,
+`QemuEsp32Runner` — runner thật cho firmware ESP32 — chưa bao giờ emit).
+
+### Fix (additive, không đổi TryParseSfEvent/pin-event logic)
+Dòng không phải SF_EVENT → emit `SimulationEventResponse{Type:"serial",
+Payload:{message:line, newline:true}}` qua `EmitAsync` có sẵn, rồi mới
+`continue`. CỐ TÌNH không cộng vào `eventsEmitted` (biến quyết định retry khi
+"thoát sớm đáng ngờ") — giữ đúng nguyên nghĩa cũ "có GPIO event thật hay
+không", không lẫn với "có in ra chữ gì đó hay không".
+
+### Test thật qua browser (lab 132213, ESP32, KHÔNG fake)
+
+**Case 1 — Serial.println đơn giản** (`Serial.begin` + 2 println trong
+setup + println trong loop):
+- Boot log ROM ESP32 THẬT hiện đủ: `ets Jul 29 2019 12:21:46`,
+  `rst:0x1 (POWERON_RESET),boot:0x12 (SPI_FAST_FLASH_BOOT)`,
+  `configsip/clk_drv/mode:DIO/load:.../entry 0x400805e4`.
+- `Serial.println` thật hiện đúng: "Hello from ESP32!", "Setup done!",
+  "Loop tick" lặp mỗi giây, ổn định liên tục >90 giây không crash.
+- Quan sát 1 lần retry (boot log lặp 2 lần trước khi ổn định) — do
+  `suspiciousEarlyExit` (retry logic CŨ, không đổi) bắt được QEMU thoát sớm ở
+  lần thử đầu (flakiness Docker/QEMU đã ghi nhận nhiều lần trước đây trong
+  file này, KHÔNG phải do fix lần này gây ra — code thay đổi chỉ thêm 1 nhánh
+  emit, không đụng gì tới khởi động process/retry).
+- **Đính chính 1 rủi ro đã ghi trong code (`FirmwareCacheService.cs`
+  comment): "Serial.println gây crash không tất định dưới QEMU"** — comment
+  đó nói về việc DÙNG Serial.println TRONG wrapper instrumentation
+  (`__sf_digitalWrite`) tự động chèn vào code, ĐÃ được thay bằng `ets_printf`
+  từ trước. Test thật lần này xác nhận: `Serial.println` gọi TRỰC TIẾP từ
+  code người dùng (không qua wrapper đó) chạy ỔN ĐỊNH, không crash, trong
+  toàn bộ thời gian test. Không đủ căn cứ để khẳng định "không bao giờ crash"
+  (rủi ro gốc mô tả "không tất định"), nhưng ĐÃ verify thật ổn định trong lần
+  test dài (90+ giây).
+
+**Case 2 — WiFi scan** (`WiFi.mode(WIFI_STA)` + `WiFi.scanNetworks()`):
+- Boot log + `Serial.println("Initializing WiFi...")` (dòng NGAY TRƯỚC
+  `WiFi.mode`) hiện đúng ở cả 3/3 lần thử (retry tối đa).
+- Firmware TREO ngay sau đó — KHÔNG BAO GIỜ in tới "Scanning..."/"Scan
+  done!"/số mạng tìm thấy, dù đợi hết cả 3 lần retry. Hành vi giống hệt nhau
+  cả 3 lần (không phải flaky ngẫu nhiên) → kết luận: **QEMU không giả lập
+  WiFi radio thật, `WiFi.mode()`/`scanNetworks()` treo firmware vô thời hạn.
+  N/A thật sự, không phải giới hạn có thể sửa ở tầng BE/FE của dự án này**
+  (cần QEMU/Espressif hỗ trợ WiFi peripheral emulation, ngoài phạm vi).
+- Không có dòng nào bị fake — Serial Monitor chỉ hiện ĐÚNG những gì firmware
+  thật đã in ra trước khi treo, đúng yêu cầu "không fake WiFi scan".
+
+**Case 3 — Stop**: bấm Dừng giữa lúc "Loop tick" đang in liên tục → log dừng
+("Đang dừng mô phỏng...", "Đã dừng.", "Đã reset trạng thái linh kiện.") nối
+tiếp SẠCH ngay sau dòng serial cuối, không xen kẽ/rối. Dedupe xác nhận: CHỈ
+1 cặp log dừng (trước đây lặp 2 lần do cả `handleStop()` và
+`onRunCompleted` cùng log — đã thêm `hasLoggedStopThisRunRef` chặn bên tới
+sau).
+
+### FE — tách rõ đoạn (không đổi API)
+`--- Compile ---` in ngay khi bấm Run (trước mọi log `[compile]`).
+`--- Simulation started ---` in đúng 1 lần, ngay TRƯỚC dòng serial thật đầu
+tiên nhận được (không phải ngay lúc bấm Run) — `SerialMonitorPanel.tsx` tô
+2 dòng này màu xám đậm riêng, phân biệt log hệ thống `[prefix]` (cyan/amber/
+đỏ) và raw serial thật (xanh lá, không prefix).
+
+### Báo cáo theo 5 mục yêu cầu
+1. serial.log thật có: boot log ROM ESP32 (`ets Jul 29 2019...` + các dòng
+   `rst/configsip/clk_drv/mode/load/entry`), dòng `SF_EVENT {...}` (nội bộ,
+   BE lọc không cho hiện ra FE), và toàn bộ `Serial.println/print` thật của
+   firmware người dùng.
+2. BE emit `type="serial"` cho MỌI dòng không phải `SF_EVENT` (trước đây bị
+   bỏ hoàn toàn) — additive, không đổi pin-event/compile cache/QEMU core.
+3. FE hiển thị boot log: **CÓ**, xác nhận qua test thật.
+4. FE hiển thị `Serial.println` từ firmware: **CÓ**, xác nhận qua test thật,
+   ổn định >90s liên tục.
+5. WiFi scan: **N/A thật sự** — QEMU treo firmware ngay tại `WiFi.mode()`,
+   không giả lập WiFi radio, xác nhận qua 3/3 lần thử giống hệt nhau, không
+   fake bất kỳ dòng log nào.
+
+## COMPONENT LIBRARY — nâng cấp visual fallback-card bằng SVG tự vẽ (2026-07-27, tiếp theo)
+
+Audit trước khi làm: toàn bộ 33 linh kiện user yêu cầu đã tồn tại sẵn từ đợt
+Component Library trước (không thiếu cái nào) — 8 loại đã dùng element
+@wokwi/elements thật (Servo, Flame Sensor, DHT22/11, PIR, MQ Gas, OLED
+SSD1306, LCD 16x2/I2C, giữ nguyên không đụng), 25 loại còn lại đang dùng
+"fallback card" (icon lucide + khung màu trơn) — task này nâng cấp 26 loại
+(25 + Line Tracking Sensor bonus) bằng SVG tự vẽ nội bộ (`CircuitCanvas.tsx`
+→ `getFallbackIllustration()`), KHÔNG tải asset ngoài.
+
+### Nguyên tắc kỹ thuật
+- SVG `viewBox` luôn khớp ĐÚNG width/height khai báo trong
+  `ROBOT_KIT_FALLBACK_CARDS` — không đổi kích thước card (đây vẫn là bounding
+  box dùng tính toạ độ pin-dot trong `pinMaps.ts`, đổi sẽ làm lệch pin/wire).
+- `renderFallbackCard()`: có minh hoạ riêng → hình chiếm gần hết card, tên/
+  badge/motor-state hiện dạng nhãn phủ mờ phía dưới. Type CHƯA vẽ (vd
+  solenoid-valve, sorting-box, ball, fire-extinguisher, water-tank,
+  drone-motor, stair-obstacle, trash-object, delivery-item, color-sensor)
+  giữ NGUYÊN layout icon+tên cũ — an toàn, không đổi hành vi.
+- Không đổi `supportLevel`/badge của bất kỳ item nào — chỉ đổi renderer.
+- Không đụng LED/Buzzer/RGB LED (element thật, không qua đường này) và
+  MOTOR_STATE_LABEL/COLOR overlay của L298N (verbatim giữ nguyên, chỉ đổi
+  nơi hiển thị từ icon-card sang SVG-card).
+
+### Danh sách đã nâng cấp (26 loại)
+Robot Kit core: L298N (PCB xanh + terminal xanh dương + chip đen), DC Motor
+(gearbox vàng + trụ động cơ xám), Battery Pack (pin đen + 2 cell + dây +/-),
+Power Switch (công tắc gạt đỏ), Breadboard (lưới lỗ trắng + rail đỏ/xanh),
+Robot Wheel (bánh đen có nan hoa), Caster Wheel (bi xám trong khung), Robot
+Chassis (khung xanh nhạt + lỗ ốc góc), Mini Delivery Box (thùng carton nâu +
+băng dán chữ X).
+Actuator: Relay Module (PCB xanh dương + relay đen + terminal vàng), Fan
+(khung + cánh quạt), Water Pump (thân bơm xanh + vòi).
+Sensor: Water Leak (PCB đỏ + rãnh cảm biến), Rain Sensor (tấm cảm biến xám +
+board xanh), Soil Moisture (2 chấu dò bạc), Vibration/SW-420 (module xanh lá
++ cảm biến trụ), IR Obstacle/Line Tracking (2 mắt thu-phát hồng ngoại).
+Display/comm: ESP32-CAM (board đỏ + ống kính), WiFi/Cloud Node + Dashboard/
+Cloud (biểu tượng đám mây).
+Mechanical: Robot Arm Base (đế xoay + cánh tay + kẹp), Gripper (2 hàm kẹp),
+Conveyor Belt (băng chuyền + 2 trục), Drone Frame (khung X + 4 động cơ),
+Propeller (2 cánh vuông góc).
+
+### Test thật qua browser (lab "tes1", KHÔNG fake)
+- Palette search "L298N"/"Battery" lọc đúng, category/badge đúng.
+- Thêm 6 linh kiện (LED có sẵn + L298N/Battery/Robot Wheel/Breadboard/Water
+  Leak Sensor) qua popup "+" — không crash, hiện đúng hình minh hoạ mới,
+  canvas không rối dù nhiều component chồng nhau.
+- Move: xác nhận qua dispatchEvent PointerEvent thật (không phải suy đoán) —
+  toạ độ Water Leak Sensor đổi CHÍNH XÁC từ (200,362) → (260,402) khớp
+  đúng delta kéo (+60,+40).
+- Delete: xoá Water Leak Sensor → "6 linh kiện" còn "5 linh kiện", auto-save
+  "Đã lưu" ngay sau đó.
+- Save/reload: F5 lại → đúng 5 linh kiện, đúng nhãn, không mất.
+- **Regression L298N (test sâu nhất, qua API dựng diagram nối dây thật +
+  Run thật)**: PUT diagram L298N nối đủ IN1-4 + battery VIN/GND →
+  `isValid:true`. Run sketch `digitalWrite(IN1,HIGH); digitalWrite(IN2,LOW)`
+  → Serial Monitor log đúng `part-state: l298n motor=A state=forward` → card
+  SVG MỚI hiện đúng "A:Tiến B:—" (chữ xanh lá, đúng màu forward) — xác nhận
+  runtime adapter thật (L298nModel.cs) hoạt động ĐÚNG 100% qua giao diện
+  mới, không bị vỡ bởi thay đổi renderer. Stop → card reset về "A:— B:—",
+  log dừng chỉ 1 lần (dedupe từ task trước vẫn hoạt động đúng).
+- Console: không phát sinh lỗi mới trong toàn bộ quá trình test.
+
+### Component còn thiếu (chưa vẽ SVG riêng, vẫn dùng icon+tên cũ — an toàn)
+Solenoid/Valve, Sorting Box, Ball, Fire Extinguisher, Water Tank, Drone
+Motor, Stair/Obstacle Block, Trash Object, Delivery Item, Color Sensor —
+10 item, đều KHÔNG nằm trong danh sách ưu tiên user yêu cầu lần này, badge/
+supportLevel không đổi, vẫn hiển thị/kéo-thả/lưu bình thường qua layout cũ.
+
+## COMPONENT LIBRARY — Hoàn thiện thumbnail/icon Component Palette giống Wokwi (2026-07-27, tiếp theo)
+
+### Bối cảnh
+Sau khi nâng cấp visual fallback-card trên canvas (SVG tự vẽ cho 26 linh kiện), popup "Thêm linh kiện" (`ComponentPalettePopup.tsx`) vẫn hiển thị icon Lucide generic trong ô vuông cho hầu hết item — không giống hình linh kiện thật như ảnh Wokwi tham khảo. Yêu cầu: mỗi linh kiện có thumbnail riêng, không dùng icon generic cho component đã có renderer/SVG, tái sử dụng SVG đã có ở canvas nếu có thể.
+
+### 1. Tách illustration dùng chung — file nào
+- **`componentTypeNormalize.ts`** (MỚI) — tách `normalizeComponentType()` (hyphen-style, ví dụ `wokwi-l298n` → `l298n`) ra khỏi `CircuitCanvas.tsx` để dùng chung mà không tạo circular import. Giữ nguyên 100% logic cũ.
+- **`componentIllustrations.tsx`** (MỚI) — nguồn illustration DUY NHẤT, dùng chung giữa `CircuitCanvas.tsx` (canvas) và `ComponentPalettePopup.tsx` (popup):
+  - `ROBOT_KIT_FALLBACK_CARDS` + `getFallbackIllustration()` — chuyển nguyên từ `CircuitCanvas.tsx` (không đổi 1 dòng SVG/kích thước, đã PASS regression L298N từ task trước).
+  - `getExtraIllustration()` (MỚI) — SVG riêng cho palette, viewBox cố định `0 0 44 44`, phủ nhóm linh kiện dùng `@wokwi/elements` THẬT trên canvas (không có fallback-card) + vài fallback visual-only còn thiếu SVG.
+  - `getComponentIllustration(componentType)` — hàm export chính, tự normalize rồi thử `getFallbackIllustration` trước (ưu tiên tái sử dụng, đúng tỉ lệ card thật), sau đó `getExtraIllustration`, cuối cùng `null` (caller tự fallback icon Lucide).
+- `CircuitCanvas.tsx` import lại `ROBOT_KIT_FALLBACK_CARDS`/`getFallbackIllustration`/`normalizeComponentType` từ 2 file trên — **không đổi hành vi render canvas**, chỉ đổi vị trí code.
+
+### 2. Số component đã có thumbnail riêng
+**50 component** có thumbnail SVG riêng (không còn icon Lucide generic):
+- 26 item tái sử dụng nguyên SVG canvas (L298N, DC Motor, Battery Pack, Power Switch, Breadboard, Robot Wheel, Caster Wheel, Robot Chassis, Delivery Box, Relay Module, Fan, Water Pump, Water Leak/Rain/Soil Moisture/Vibration/IR Obstacle/Line Tracking Sensor, ESP32-CAM, WiFi/Dashboard Cloud, Robot Arm Base, Gripper, Conveyor Belt, Drone Frame, Propeller).
+- 24 item SVG MỚI riêng cho palette (LED, Buzzer, RGB LED, Resistor, Push Button, Servo, 7-Segment, LED Bar Graph, OLED SSD1306, LCD 16x2, LCD 16x2 I2C, TFT ILI9341, Flame Sensor, PIR Motion Sensor, MQ Gas Sensor, Color Sensor, DHT22, DHT11, Solenoid/Valve, Ball, Trash Object, Delivery Item, Water Tank, Fire Extinguisher, Stair/Obstacle Block).
+
+### 3. Component còn icon generic — lý do
+Còn **~13 item** dùng icon Lucide (màu/hình khác nhau theo `iconClassName`, không phải cùng 1 ô vuông giống hệt): Keypad 4x4, Potentiometer, HC-SR04, Load Cell HX711, IR Receiver, Photoresistor/LDR, NTC Temperature Sensor, Neopixel/LED Strip, Stepper Motor, Drone Motor, Sorting Box, Robot Chassis phụ kiện nhỏ khác — **lý do**: không nằm trong danh sách ưu tiên thumbnail user gửi lần này (Basic/Display/Robot Kit/Actuator/Sensor/Mechanical liệt kê cụ thể ~40 item, nhóm còn lại là input/cảm biến phụ chưa được yêu cầu).
+
+### 4. Palette trước/sau
+- **Trước**: mọi item hiển thị `<Icon className="h-4 w-4" />` trong ô 32x32 (`h-8 w-8`) nền màu đơn sắc theo `iconClassName` — khó phân biệt trực quan giữa các linh kiện cùng nhóm màu.
+- **Sau**: ô thumbnail tăng lên 44x44 (`h-11 w-11`), item có illustration hiện SVG minh hoạ riêng trong khung viền `border-slate-600 bg-slate-800`; item chưa có illustration vẫn giữ layout icon+màu cũ (không falsely nâng cấp). Category header, badge supportLevel, hover/focus, search — giữ nguyên 100% hành vi cũ.
+
+### 5. Test result (test thật qua browser, lab "tes1")
+| Test | Kết quả |
+|---|---|
+| Palette thumbnail (mở popup, cuộn qua Basic/Display/Input/Sensor/Robot Kit) | PASS — LED/Buzzer/RGB LED/7-Segment/TFT/LCD/LCD I2C hiện đúng hình minh hoạ riêng, phân biệt rõ ràng |
+| Search (`motor`, `sensor`) | PASS — DC Motor/L298N, Color Sensor/DHT11/DHT22/Flame Sensor/MQ Gas/IR Obstacle đều giữ đúng thumbnail khi lọc |
+| Add component (Flame Sensor qua palette) | PASS — thêm đúng vào canvas, auto-select, canvas render không đổi (vẫn dùng `wokwi-flame-sensor` thật, không qua code palette) |
+| Delete | PASS — 3→2 linh kiện, xác nhận qua page text |
+| Save/reload | PASS — "Đã lưu" xác nhận sau mỗi thao tác |
+| Analyze/Run không crash | PASS — Compile cache hit, QEMU chạy, boot log + serial hiện đầy đủ |
+| Regression L298N runtime | PASS — chạy thật qua QEMU, `part-state: l298n motor=A state=forward`, card hiện "A:Tiến B:—", Stop reset về "A:— B:—", dedupe log giữ nguyên |
+| Console error | Không có lỗi mới thật (chỉ có log HMR cũ đóng băng timestamp từ lúc đang sửa file, biến mất sau full navigate/refresh — không tái hiện khi thao tác thật) |
+
+### Kỹ thuật quan trọng
+- `tsc --noEmit` sạch sau mỗi bước tách file.
+- Không đổi `supportLevel`/badge của bất kỳ component nào — chỉ đổi renderer thumbnail trong popup.
+- Không đụng compile flow, QEMU runner, adapter LED/Buzzer/RGB LED/L298N — các linh kiện này canvas vẫn render qua `@wokwi/elements` thật, thumbnail palette là code hoàn toàn tách biệt.
+
+## COMPONENT LIBRARY — Audit pin/visual chuẩn theo thực tế (2026-07-28)
+
+### Bối cảnh
+Mở rộng scope từ "làm đẹp thumbnail" sang: (1) mỗi linh kiện phải có hình minh hoạ giống thực tế (PCB/terminal/chân cắm, không phải icon Lucide chung chung), (2) mỗi linh kiện phải có pin/cổng đúng — tên, vị trí, đồng bộ FE (pinMaps.ts) ↔ BE (SupportedPins/ComponentGlueRegistry). Task này **KHÔNG đụng compile/QEMU/runtime adapter** — chỉ audit + bổ sung UI/pin metadata.
+
+### 1. Kết quả audit FE↔BE pin consistency
+Đối chiếu tay TOÀN BỘ `pinMaps.ts` (FE) với `VirtualLabDiagramService.SupportedPins` (BE) và `ComponentGlueRegistry` (DB, qua `StemDbContext.cs` HasData + xác nhận số dòng thật trong DB) cho ~43 component đã có từ trước: **0 mismatch tên pin nào được tìm thấy** — cả 3 nguồn (FE pinMaps, BE SupportedPins, DB ComponentGlueRegistry.PinRequirementsJson) đều khớp nhau về tên/số lượng pin cho mọi component wiring-validation/runtime-supported hiện có. Đây là bằng chứng các round trước đã làm cẩn thận, không phải rà soát hình thức.
+
+Phát hiện phụ (không phải bug nghiêm trọng, ghi nhận backlog):
+- `wokwi-pushbutton`: BE cho phép 4 tên pin (`1.l`,`1.r`,`2.l`,`2.r`) nhưng FE `PUSHBUTTON_PINS` chỉ vẽ 2 dot (`1.l`,`2.r`) — khớp đúng `pinInfo` thật của `@wokwi/elements` (chỉ 2 pin lộ ra ngoài), không phải lỗi.
+- `wokwi-lcd2004`: có trong BE `SupportedPins` nhưng KHÔNG có component tương ứng nào ở FE (không palette, không pinMaps) — entry mồ côi, không gây lỗi (không ai gửi type này lên) nhưng nên dọn dẹp sau.
+- `wokwi-line-tracking-sensor`: đơn giản hoá còn 1 chân `OUT` (module thật thường có 1/3/5 mắt cảm biến) — quyết định có chủ đích để giữ đơn giản, ghi nhận là giới hạn kỹ thuật đã biết, không mở rộng thêm trong task này.
+
+### 2. Component mới thêm (theo danh sách ưu tiên user gửi, chưa từng tồn tại trong hệ thống)
+| Component | Trên Wokwi? | Pin | supportLevel |
+|---|---|---|---|
+| **IMU MPU6050** | CÓ — element thật `wokwi-mpu6050`, 8 pin lấy trực tiếp từ `pinInfo` (không suy đoán) | VCC, GND, SCL, SDA, XDA, XCL, AD0, INT | Kiểm tra nối dây |
+| **ESC (Electronic Speed Controller)** | KHÔNG — tự vẽ SVG (PCB + terminal, tham khảo hình dáng ESC brushed-motor phổ biến) | SIG, GND, BATT+, BATT-, OUT+, OUT- | Kiểm tra nối dây |
+| **Heating Element** | KHÔNG — tự vẽ SVG (thanh nhiệt trở, giống layout Fan/Water Pump) | +, - | Kiểm tra nối dây |
+| **pH Sensor** | KHÔNG — tự vẽ SVG (đơn giản hoá theo module pH meter phổ biến: VCC/GND/PO analog) | VCC, GND, PO | Kiểm tra nối dây |
+
+Cả 4 đều: KHÔNG có runtime adapter (đúng yêu cầu "không thêm runtime mới"), wiring validation dừng ở "structural only" (giống toàn bộ nhóm mở rộng trước đó), đã thêm đồng bộ ở cả 3 nơi (FE `pinMaps.ts` + BE `SupportedPins` + DB `ComponentGlueRegistry` — insert thật qua throwaway Npgsql seeder, xác nhận `Supported=true` cho cả 4 dòng).
+
+### 3. Danh sách "Wokwi không có" (đầy đủ, tự vẽ SVG, tham khảo hình dáng module thực tế)
+L298N, DC Motor, Robot Wheel, Caster Wheel, Robot Chassis, Battery Pack, Power Switch, Breadboard, Delivery Box, Relay Module, Fan, Water Pump, Water Leak Sensor, Rain Sensor, Soil Moisture Sensor, IR Obstacle Sensor, Line Tracking Sensor, Color Sensor, Vibration Sensor, Solenoid/Valve, ESP32-CAM, WiFi/Cloud Node, Dashboard/Cloud, Robot Arm Base, Gripper, Conveyor Belt, Sorting Box, Ball, Fire Extinguisher, Water Tank, Drone Frame, Propeller, Drone Motor, Stair/Obstacle, Trash Object, Delivery Item, **ESC (mới)**, **Heating Element (mới)**, **pH Sensor (mới)**.
+
+### 4. Component vẫn dùng visual tạm (icon+tên, chưa có SVG riêng)
+Solenoid/Valve, Sorting Box, Ball, Fire Extinguisher, Water Tank, Drone Motor, Stair/Obstacle Block, Trash Object, Delivery Item, Color Sensor — **10 item**. Toàn bộ đều là `visual-only` (Sorting Box/Ball/Fire Extinguisher/Water Tank/Drone Motor/Stair-Obstacle/Trash Object/Delivery Item) hoặc wiring-validation không có yêu cầu hiển thị pin phức tạp (Color Sensor, Solenoid/Valve) — không ảnh hưởng tính đúng của pin/wiring, chỉ là thẩm mỹ, để backlog.
+
+### 5. File đã sửa (FE)
+- `componentTypeNormalize.ts` — thêm 4 mapping mới.
+- `pinMaps.ts` — thêm `MPU6050_PINS`/`ESC_PINS`/`HEATING_ELEMENT_PINS`/`PH_SENSOR_PINS` + dispatch.
+- `componentIllustrations.tsx` — thêm 3 SVG fallback-card (ESC/Heating Element/pH Sensor) + 1 thumbnail palette riêng (MPU6050, vì là real element không có fallback-card).
+- `CircuitCanvas.tsx` — thêm `WOKWI_REAL_ELEMENT_TAGS['mpu6050']`.
+- `componentReferenceCatalog.ts` — 4 entry COMPONENT_REFERENCES + category (Sensor: mpu6050/ph_sensor; Output/Actuator: esc/heating_element).
+- `robotKitComponents.ts` — 4 entry `EXTENDED_COMPONENT_LIBRARY` (đầy đủ pins/wiringRules/visualSource).
+
+### File đã sửa (BE)
+- `VirtualLabDiagramService.cs` — thêm 4 `SupportedPins` entry.
+- `StemDbContext.cs` — thêm 4 `ComponentGlueRegistry` HasData (tài liệu/fresh-DB seed).
+- `SQLScripts/AddPinAccurateComponentGlueRegistry.sql` (mới) — đã chạy thật vào DB Supabase qua throwaway Npgsql console seeder, xác nhận 4 dòng `Supported=true`.
+
+### 6. Test result (test thật qua browser, lab "tes1", sau khi user restart BE + đăng nhập lại)
+| Test | Kết quả |
+|---|---|
+| Palette thumbnail (MPU6050/ESC/Heating Element/pH Sensor) | PASS — mỗi item có SVG riêng phân biệt được, badge "Kiểm tra nối dây" đúng, đúng category (Sensor/Output-Actuator) |
+| Search (`mpu`, `ESC`, `heating`, `pH`) | PASS |
+| Add cả 4 component vào canvas | PASS — MPU6050 render bằng element thật `wokwi-mpu6050` (không phải fallback), 3 item còn lại render fallback-card mới |
+| Pin dots đúng vị trí + hover hiện tên chân | PASS — verify cụ thể qua `getBoundingClientRect()` + synthetic `pointerover`: tooltip hiện đúng `wokwi-mpu6050-<id>:VCC` tại đúng toạ độ pin thật lấy từ `pinInfo` |
+| Save/reload | PASS — "6 linh kiện" giữ đúng type/label sau F5 |
+| Analyze không crash | PASS — "Sơ đồ hợp lệ" dù 4 component mới chưa nối dây gì (đúng hành vi structural-only, không chặn Run) |
+| Run không crash | PASS — QEMU chạy, boot log + Serial Monitor hiển thị bình thường |
+| Delete | PASS — xoá cả 4, về lại đúng baseline "2 linh kiện" |
+| Regression L298N | PASS — `part-state: l298n motor=A state=forward`, card hiện "A:Tiến B:—", Stop reset đúng |
+| Console error | Không có (0 lỗi trong suốt phiên test) |
+
+### 7. Backlog tiếp theo
+- 10 component còn visual tạm (mục 4) — vẽ SVG riêng nếu cần, không khẩn cấp (visual-only, không ảnh hưởng wiring).
+- `wokwi-lcd2004` orphan trong BE `SupportedPins` — dọn dẹp hoặc bổ sung FE tương ứng.
+- Line Tracking Sensor đa kênh (OUT1/OUT2/OUT3) nếu cần độ chính xác cao hơn cho bài dò line nhiều mắt — hiện đơn giản hoá 1 kênh.
+- Hiển thị pin `kind` (power/ground/i2c/analog/...) trong hover tooltip — metadata đã có sẵn trong `ComponentGlueRegistry.PinRequirementsJson` từ trước nhưng FE chưa đọc/hiển thị field này, chỉ hiện tên pin.
+
+## COMPONENT LIBRARY — Hoàn thiện nốt: 10 visual tạm + Line Tracking đa kênh + lcd2004 + pin kind (2026-07-28, tiếp theo)
+
+### 1. 10 component visual tạm — đã hoàn thiện
+Tất cả 10 item (Solenoid/Valve, Sorting Box, Ball, Fire Extinguisher, Water Tank, Drone Motor, Stair/Obstacle Block, Trash Object, Delivery Item, Color Sensor) đã có SVG riêng trong `getFallbackIllustration()` (dùng đúng width/height card thật, không phải bản 44x44 chỉ dành cho palette trước đây). Đồng thời dọn dẹp: xoá 8 case trùng lặp trong `getExtraIllustration()` (palette tự động dùng lại bản mới qua `getComponentIllustration()` ưu tiên `getFallbackIllustration()` trước) — không còn duplicate SVG code ở 2 nơi.
+
+### 2. Line Tracking Sensor — đã có bản 3/5 kênh
+Thêm `wokwi-line-tracking-3ch` (VCC/GND/OUT1-3) và `wokwi-line-tracking-5ch` (VCC/GND/OUT1-5), **BỔ SUNG** bên cạnh `wokwi-line-tracking-sensor` (1 kênh) cũ — không sửa/xoá bản cũ, tránh phá diagram cũ đang dùng. Visual: SVG PCB xanh + N cặp mắt IR (emitter/receiver dome) trải đều theo chiều ngang, có label "3CH"/"5CH". Pin dot + hover label đã verify đúng vị trí qua browser thật. supportLevel: `wiring-validation` (không runtime).
+
+### 3. lcd2004 — xử lý theo hướng A (đồng bộ đầy đủ)
+Audit xác nhận: BE `SupportedPins` có entry `wokwi-lcd2004` từ trước nhưng **sai** (`VCC,GND,SDA,SCL,A,K` — A/K là chân backlight chỉ tồn tại ở chế độ pins="full" 16 chân, không có ở chế độ i2c 4 chân), và **chưa từng có** ở FE (registry/pinMaps/palette) lẫn DB (`ComponentGlueRegistry`). Xác nhận `@wokwi/elements` CÓ element thật (`LCD2004Element extends LCD1602Element`, numCols=20/numRows=4, tag `wokwi-lcd2004`) — chọn hướng A: nối đầy đủ FE (pinMaps/catalog/registry/CircuitCanvas) + BE (sửa lại đúng 4 pin thật `GND,VCC,SDA,SCL` + thêm dòng `ComponentGlueRegistry`), ép thuộc tính `pins="i2c"` khi render (LCD 20x4 thực tế luôn dùng qua I2C backpack). Verify qua browser: render đúng hình LCD 20x4 thật (không phải fallback), hover đúng `SDA (i2c)`.
+
+**Phát hiện phụ khi audit tọa độ pin LCD**: ban đầu nghi ngờ `LCD1602_I2C_PINS`/`LCD2004_PINS` sai vị trí do so sánh nhầm số viewBox (94.05) với kích thước CSS render thật (355px, do SVG dùng đơn vị "mm" khiến trình duyệt tự co giãn ~3.78 lần) — nhưng đo trực tiếp vị trí thật của text pin (`getBoundingClientRect()` trên `<tspan>` trong shadow DOM) xác nhận toạ độ ĐANG LƯU (GND: 4,32 v.v.) khớp gần đúng vị trí hiển thị thật (GND đo được ≈ 7.7,31.6) — **không phải bug, tọa độ cũ đã đúng**, không sửa gì.
+
+### 4. Pin kind trong tooltip — đã hoạt động
+`getPinKind(type, pinName)` (mới, trong `pinMaps.ts`) — rule theo tên pin (VCC/5V/3V3/VDD/VIN/+ → power; GND/-/VSS → ground; SDA/SCL/XDA/XCL → i2c; *PWM* → pwm; AO/AOUT/A\d+ → analog; DO/DOUT → digital; mặc định → signal) + override theo ngữ cảnh component cụ thể (Relay COM/NO/NC → "terminal (tiếp điểm)"; L298N OUT1-4 → "power output (ra động cơ)"; DC Motor/Fan/Water Pump/Heating Element +/- → "power output (tải, +/-)"; ESC BATT+/- → "power/ground (pin)", OUT+/- → "power output"; LCD A/K → "power/ground (backlight)"). Verify sống qua browser: `l298n-1:IN1 (signal)`, `l298n-1:VIN (power)`, `l298n-1:GND (ground)`, `wokwi-mpu6050-...:VCC (power)` (từ round trước), `wokwi-lcd2004-...:SDA (i2c)`.
+
+### File đã sửa (FE)
+`componentTypeNormalize.ts`, `pinMaps.ts` (thêm `LINE_TRACKING_3CH_PINS`/`_5CH_PINS`/`LCD2004_PINS`/`getPinKind()`), `componentIllustrations.tsx` (10 SVG mới + dọn duplicate + line-tracking đa kênh + lcd2004 thumbnail), `CircuitCanvas.tsx` (`WOKWI_REAL_ELEMENT_TAGS['lcd2004']`, ép `pins="i2c"`, `renderPinDots` nhận thêm `ownerType` để tính pin kind), `componentReferenceCatalog.ts`, `robotKitComponents.ts`.
+
+### File đã sửa (BE)
+`VirtualLabDiagramService.cs` (thêm `wokwi-line-tracking-3ch`/`-5ch`, **sửa lại đúng** `wokwi-lcd2004`), `StemDbContext.cs` (3 `ComponentGlueRegistry` HasData mới), `SQLScripts/AddLineTrackingMultiChAndLcd2004GlueRegistry.sql` (mới, đã chạy thật vào DB Supabase qua throwaway Npgsql seeder, xác nhận `Supported=true` cho cả 3 dòng).
+
+### Test result (test thật qua browser, lab "tes1", sau khi user restart BE)
+| Test | Kết quả |
+|---|---|
+| Palette search/thumbnail (line-tracking 3ch/5ch, LCD 20x4, Fire Extinguisher, RGB LED) | PASS |
+| Add vào canvas — visual đúng | PASS — line-tracking hiện đúng N mắt IR, LCD2004 render bằng element thật (không phải fallback), Fire Extinguisher hiện hình bình chữa cháy đỏ |
+| Pin dot + hover label đúng tên + kind | PASS — verify trực tiếp qua `getBoundingClientRect`/`pointerover` cho L298N (IN1/VIN/GND) và LCD2004 (SDA) |
+| Save/reload | PASS — "8 linh kiện" giữ đúng sau F5 |
+| Analyze không crash | PASS — "Sơ đồ hợp lệ" dù nhiều component mới chưa nối dây (structural-only, đúng hành vi) |
+| Run không crash | PASS — QEMU chạy, boot log + Serial Monitor bình thường |
+| Regression L298N | PASS — `part-state: l298n motor=A state=forward`, "A:Tiến B:—" |
+| Regression RGB LED | PASS (smoke test: render sạch, không lỗi console — code path RGB LED không bị đụng trong 2 vòng task pin/visual, badge "Mô phỏng được" đúng; unwired RGB LED tạo đúng 4 lỗi mạch như kỳ vọng theo rule cũ, xác nhận validation vẫn hoạt động đúng) |
+| Serial Monitor | Không ảnh hưởng — log compile/simulation/boot/println vẫn đúng thứ tự như các round trước |
+| Delete + cleanup | PASS — về đúng baseline "2 linh kiện" |
+| Console error | Không có lỗi mới trong suốt phiên test |
+
+## KIẾN TRÚC ĐỀ XUẤT — Sensor Input thật / WiFi-Cloud / Physics robot-drone-AI (2026-07-28, PLAN — chưa implement)
+
+Grounded lại trên 2 investigation đã có bằng chứng thật (không suy đoán lại):
+mục "HC-SR04 — Điều tra thật khả năng inject GPIO input" (QMP thật, kết luận:
+GPIO = MMIO thuần, không có QOM property/QMP command nào cho host set input)
+và mục "SERIAL MONITOR — raw serial thật" (WiFi.scanNetworks() treo firmware
+vô thời hạn, xác nhận 3/3 lần, N/A thật sự). Đọc thêm
+`QemuEsp32Runner.cs` xác nhận: container Docker chạy QEMU có `--network none`
++ `--cap-drop ALL` + `--read-only` — sandbox hardening cố ý, không đụng.
+`SimulationEventResponse{Type,Time,Payload}` (Type là string tự do, Payload
+là Dictionary tự do) — mở rộng bằng `Type` mới là an toàn 100%, không đổi
+schema.
+
+### 1. Kiến trúc đề xuất
+
+**A. Sensor input thật** — QEMU-injection trực tiếp (set GPIO từ host) đã
+được xác nhận không khả thi với machine model hiện tại (không phải giả
+định). Hướng khả thi duy nhất: kênh phụ qua uart1/uart2 (ESP32 model có
+sẵn, đang chỉ dùng uart0 cho SF_EVENT) làm socket 2 chiều — BE ghi giá trị
+input (do giáo viên/học sinh cấu hình qua UI, không phải vật lý mô phỏng
+thật — không ray-casting, không đo khoảng cách theo scene 3D) vào socket,
+firmware đọc qua 1 macro wrapper mới (cùng pattern với __sf_digitalWrite).
+Nếu build được: đây là runtime-supported thật (firmware thật sự rẽ nhánh
+theo giá trị đọc được), nhưng phải ghi rõ trong badge/notes: "input do
+người dùng điều khiển qua UI, không phải sensor vật lý mô phỏng" — không
+được ngầm hiểu là "đo khoảng cách thật".
+
+**B. WiFi/Cloud** — Thật (WiFi.connect() + gọi HTTP/MQTT thật từ firmware)
+không khả thi vì 2 lớp chặn cộng dồn: (1) QEMU không giả lập WiFi radio
+(firmware treo tại WiFi.mode(), đã xác nhận thật), (2) container
+--network none (dù QEMU có giả lập WiFi, gói tin cũng không ra khỏi
+container). Mở lại network cho container là thay đổi an ninh sandbox compile
+— ngoài phạm vi, cần quyết định riêng nếu muốn cân nhắc. Hướng khả thi: Cloud
+Scenario mô phỏng, tách rời hoàn toàn khỏi firmware/QEMU — BE phát 1 kịch
+bản dữ liệu định trước (JSON script giáo viên cấu hình) qua event type mới
+(cloud-scenario), FE hiện 1 panel "Cloud Dashboard" luôn có banner cố định
+"MÔ PHỎNG KỊCH BẢN — không phải dữ liệu thật từ firmware/mạng". Không liên
+quan gì tới firmware đang chạy thật trong QEMU.
+
+**C. Physics robot/drone/AI** — Hiện không có bất kỳ engine vật lý nào trong
+hệ thống (đã grep xác nhận, 0 kết quả). Có 1 nền tảng tận dụng được: L298N
+motor state (part-state: l298n motor=A/B state=...) là dữ liệu thật từ
+firmware. Đề xuất: "Robot Playground" — panel canvas FE-only, subscribe
+event part-state có sẵn (không thêm event mới), suy ra vị trí/hướng robot
+2D bằng công thức kinematics differential-drive đơn giản (không phải physics
+engine — không ma sát, không va chạm, không mô-men). Vì driven bởi state
+GPIO thật, có thể ghi "runtime-supported (mô phỏng chuyển động 2D đơn giản
+theo trạng thái motor thật)". Drone/AI: không có tín hiệu điều khiển thật
+nào (ESC/Propeller hiện chỉ wiring-validation, QEMU không instrument
+PWM/analogWrite/ledcWrite) — không có nền tảng để làm thật, đề xuất
+không làm trong đợt này.
+
+### 2. Chia phase
+
+| Phase | Nội dung | Feature flag | Rủi ro | Phụ thuộc |
+|---|---|---|---|---|
+| 0 | Hạ tầng feature flag (BE IConfiguration/appsettings, FE env/context) | — | Rất thấp | Không |
+| 1 | Sensor input digital (toggle 1 pin từ UI, vd PIR/nút bấm ảo) qua kênh uart2 | EnableSensorInputChannel | Cao — cần spike xác nhận QEMU Espressif fork thật sự expose -serial2/chardev cho uart1/uart2 trước khi cam kết thiết kế chi tiết | Phase 0 |
+| 2 | Sensor input analog/pulse (HC-SR04 ECHO qua pulseIn(), LDR/potentiometer qua analogRead()) | EnableAnalogSensorInputChannel | Cao — thêm rủi ro timing drift CPU ảo vs host | Phase 1 |
+| 3 | Cloud Scenario (kịch bản, tách rời firmware) | EnableCloudScenario | Thấp — không đụng QEMU/firmware | Phase 0 |
+| 4 | Robot Playground (kinematics 2D từ part-state thật) | EnableMovementPlayground | Rất thấp — FE-only, không đụng BE runtime | Phase 0 |
+| 5 (chưa làm) | Drone/AI | — | — | Thiếu nền tảng tín hiệu thật |
+
+Đề xuất thứ tự làm: Phase 0 → Phase 4 (thắng nhanh, rủi ro thấp nhất,
+dùng data thật có sẵn) song song Phase 3 (cũng an toàn) → spike riêng cho
+Phase 1 (xác nhận khả thi QEMU trước khi thiết kế/code) → Phase 2 nếu Phase 1
+thành công.
+
+### 3. File cần sửa (dự kiến theo phase)
+
+- Phase 0: appsettings.json (feature flags), 1 service đọc flag (BE),
+  context/hook đọc flag (FE) — additive thuần tuý.
+- Phase 1-2: QemuEsp32Runner.cs (thêm chardev/socket cho uart2, không
+  đổi cách đọc serial.log/uart0 hiện tại), FirmwareCacheService.cs
+  (GpioInstrumentationPreamble thêm macro đọc input mới — bump
+  InstrumentationVersion, đây là cơ chế versioning đã có sẵn, không phải
+  đổi logic cache key), SimulationDtos.cs (event type mới, không đổi
+  SimulationEventResponse shape), FE: panel điều khiển input mới trong
+  LabSandboxPage.tsx/CircuitCanvas.tsx, BE: HcSr04Model.cs/tương tự
+  (model mới, giống pattern L298nModel.cs).
+- Phase 3: BE service phát cloud-scenario event theo timer/script (mới,
+  độc lập QemuEsp32Runner), FE: CloudDashboardPanel.tsx (mới).
+- Phase 4: FE thuần: RobotPlaygroundPanel.tsx (mới, subscribe
+  applySimulationEvent hiện có trong LabSandboxPage.tsx), không đụng BE.
+
+### 4. Rủi ro kỹ thuật
+
+- QEMU Espressif fork có thật sự cho map uart1/uart2 ra chardev socket
+  qua tham số dòng lệnh không — chưa xác nhận thực nghiệm, chỉ mới xác
+  nhận 2 UART này tồn tại trong QOM tree. Bắt buộc spike QMP/thử tay trước
+  khi thiết kế chi tiết Phase 1 (đúng cách đã làm với HC-SR04).
+- Macro wrapper input mới (giống __sf_digitalWrite) có rủi ro thứ tự định
+  nghĩa giống bug đã gặp trước đây (định nghĩa #define trước hàm thật gây
+  đệ quy vô hạn) — áp dụng đúng bài học cũ.
+- Bump InstrumentationVersion làm mọi firmware cache cũ thành miss (an
+  toàn — chỉ trigger compile lại, không mất dữ liệu, không phá diagram) —
+  cần thông báo trước nếu làm vào giờ cao điểm (tăng tải compile tạm thời).
+- Timing precision pulseIn() giả lập qua uart2: CPU ảo trong QEMU chạy
+  không đồng bộ hoàn hảo với đồng hồ host — cần đo thật trước khi claim độ
+  chính xác khoảng cách HC-SR04.
+- Cloud Scenario: phải có banner/label rõ ràng liên tục trên UI, tránh học
+  sinh hiểu nhầm là kết nối cloud thật — rủi ro sư phạm nhiều hơn kỹ thuật.
+- Robot Playground: kinematics đơn giản có thể trông "quá mượt" so với thật
+  — cần ghi rõ trong tooltip/notes "mô phỏng chuyển động, không phải physics
+  đầy đủ (không ma sát/va chạm/mô-men)".
+- Không phase nào được đụng: TryGetCachedFirmwareAsync/CompileAndCacheAsync
+  logic, cách hash cache key (chỉ thêm 1 giá trị input vào hash qua
+  InstrumentationVersion bump — cơ chế có sẵn), QemuEsp32Runner core đọc
+  serial.log/uart0, SimulationEventResponse schema, LED/Buzzer/RGB
+  LED/L298N adapter, Docker --network none.
+
+### 5. Test bắt buộc (mỗi phase, qua browser thật)
+
+- Regression bắt buộc mọi phase: LED/Buzzer/RGB LED/L298N runtime PASS,
+  Serial Monitor không đổi hành vi cũ, compile Docker sandbox PASS, save/
+  reload diagram PASS, Analyze/Run no-crash, 0 console error mới.
+- Phase 1-2: toggle input qua UI → firmware thật đọc được giá trị (verify
+  qua Serial.println đối chiếu, không chỉ verify UI đổi màu) → tắt feature
+  flag → hệ thống về đúng hành vi cũ 100%.
+- Phase 3: bật Cloud Scenario → banner "MÔ PHỎNG" hiển thị đúng, tắt flag →
+  panel biến mất hoàn toàn, không ảnh hưởng Serial Monitor/simulation event
+  khác.
+- Phase 4: chạy L298N forward/backward thật → Robot Playground vẽ đúng
+  hướng di chuyển tương ứng; Stop → robot dừng; tắt flag → panel ẩn, không
+  ảnh hưởng phần còn lại.
+
+### 6. Làm ngay vs chưa nên làm
+
+- Làm ngay được: Phase 0 (feature flag), Phase 4 (Robot Playground — rủi ro
+  thấp nhất, dùng dữ liệu thật có sẵn, FE-only), Phase 3 (Cloud Scenario —
+  tách rời firmware, an toàn).
+- Cần spike riêng trước khi cam kết code: Phase 1 (sensor input digital) —
+  phải xác nhận thực nghiệm khả năng chardev socket cho uart1/uart2 trước,
+  giống cách đã làm QMP investigation cho HC-SR04.
+- Chưa nên làm: Phase 2 (phụ thuộc Phase 1 thành công), Phase 5 (Drone/AI)
+  — thiếu nền tảng tín hiệu điều khiển thật, không nên xây UI/scenario
+  không có gì thật phía sau (đúng nguyên tắc "không fake PASS").
+
+## SENSOR INPUT BRIDGE — Phase 1 (scenario/timeline) (2026-07-28)
+
+### Bối cảnh
+Mở rộng từ 3 khoảng trống (Sensor input thật / WiFi-Cloud / Physics) đã lập
+kiến trúc đề xuất trước đó — triển khai THẬT Phase 1 của phần Sensor Input,
+theo đúng thiết kế do user chỉ định: KHÔNG cần channel giao tiếp 2 chiều mới
+với QEMU (điều đã điều tra kỹ và xác nhận không khả thi ở mục "HC-SR04 —
+Điều tra thật khả năng inject GPIO input") — thay vào đó nhúng TOÀN BỘ
+scenario/timeline vào firmware NGAY LÚC COMPILE, firmware tự tra bảng theo
+`millis()` nó tự đọc được.
+
+### 1. Kiến trúc Sensor Input Bridge
+- **FE**: `SensorScenarioPanel.tsx` (mới) — timeline editor cho từng sensor
+  HC-SR04/PIR đang có trên canvas (liệt kê theo `componentId`, KHÔNG phụ
+  thuộc canvas selection state — tránh đụng `CircuitCanvas.tsx`). Lưu vào
+  state `sensorScenario` (LabSandboxPage.tsx), nhúng vào `circuitConfig`
+  cùng `parts`/`connections` — đi theo ĐÚNG cơ chế save/reload/run diagram có
+  sẵn (không API/DB mới).
+- **BE**: `SensorRuntimeHeaderGenerator.cs` (mới) — nhận
+  `VirtualLabRuntimeDiagramSnapshot` (đã có PinToGpio thật từ wiring) +
+  `SensorScenarioConfig` (parse từ `diagramJson.sensorScenario`), sinh 1
+  đoạn C++ header text:
+  - Với mỗi HC-SR04/PIR ĐÃ NỐI DÂY đủ (TRIG+ECHO hoặc OUT), sinh 1 cặp mảng
+    song song `{tên}_t[]` (mốc thời gian ms) + `{tên}_v[]` (giá trị) — KHÔNG
+    dùng struct (xem mục Rủi ro/Bug đã vá).
+  - Hàm `__sf_lookupBool`/`__sf_lookupFloat` tra bảng theo `millis()` hiện
+    tại (step function — giữ nguyên giá trị mốc gần nhất đã qua).
+  - `__sf_digitalRead(pin)`/`__sf_pulseIn(pin,state[,timeout])` — wrapper
+    theo ĐÚNG pattern `__sf_digitalWrite` cũ (định nghĩa hàm thật TRƯỚC, gọi
+    hàm gốc `digitalRead`/`pulseIn` trong nhánh `default` — lúc đó macro
+    CHƯA có hiệu lực nên gọi đúng hàm thật, không đệ quy), rồi mới
+    `#define` SAU.
+  - Component không được cấu hình scenario (nhưng có wire) vẫn nhận giá trị
+    mặc định an toàn (distanceCm=400/motion=false) — không bao giờ đọc "rác".
+- **Cache key**: `FirmwareCacheService.ResolveCacheDir` nhận thêm tham số
+  `sensorHeader` (mặc định `""`) — nối vào cuối `keyInput` trước khi hash.
+  Rỗng (không sensor/feature tắt) → hash giữ NGUYÊN 100% như trước, đã verify
+  sống (xem mục Test). Khác rỗng CHỈ khi diagram thật sự có sensor scenario —
+  đúng ý nghĩa "khác input phải khác cache", không phải đổi cơ chế cache.
+- **Feature flag**: `SimulationRunner:Qemu:EnableSensorInputScenario`
+  (appsettings.json, mặc định `true` cho môi trường dev này để test — nên
+  cân nhắc `false` mặc định khi lên môi trường khác). Tắt = hành vi y hệt
+  trước khi có tính năng này (không parse scenario, không sinh header).
+
+### 2. File đã sửa/tạo
+**BE (mới)**: `SensorScenarioDtos.cs`, `SensorRuntimeHeaderGenerator.cs`.
+**BE (sửa)**: `IFirmwareCacheService.cs`, `FirmwareCacheService.cs`
+(`ResolveCacheDir`/`CompileAndWriteCacheCoreAsync` nhận `sensorHeader`),
+`QemuEsp32Runner.cs` (đọc feature flag, parse scenario, gọi generator, pass
+`sensorHeader` xuống 2 lời gọi cache), `appsettings.json` (feature flag).
+**FE (mới)**: `SensorScenarioPanel.tsx`.
+**FE (sửa)**: `dashboardApi.ts` (`SensorScenarioConfig`/`SensorTimeline`/
+`SensorTimelineEntry` types, `LabCircuitConfig.sensorScenario`,
+`diagramsApi.save()` ghi thêm key này), `LabSandboxPage.tsx` (state, hydrate
+lúc load, đưa vào cả 3 payload: autosave/Run-start/Submit).
+
+### 3. Sensor hỗ trợ Phase 1
+- **HC-SR04** — `pulseIn(ECHO,...)` đọc `distanceCm` theo timeline, quy đổi
+  `durationUs = distanceCm * 58`.
+- **PIR Motion Sensor** — `digitalRead(OUT)` trả HIGH/LOW theo `motion`
+  timeline.
+
+### 4. Sensor CHƯA hỗ trợ (lý do)
+Line Tracking 3/5 kênh, Water Leak, Flame, DHT11/22, Soil Moisture/Rain/
+Vibration/Color Sensor — **cơ chế (macro wrapper + timeline lookup) đã sẵn
+sàng để mở rộng** (chỉ cần thêm case trong `SensorRuntimeHeaderGenerator.cs`
++ field tương ứng trong `SensorTimelineEntry`), nhưng CHƯA làm trong lượt
+này để tránh code chưa test kỹ ("không được fake PASS") — DHT11/22 cần thêm
+cân nhắc riêng vì thư viện `DHT.h` thật không gọi trực tiếp
+`digitalRead`/`analogRead` theo pin đơn giản (dùng giao thức 1-wire timing
+riêng), cần `StemFlowDHT` helper riêng như user đã gợi ý, chưa làm.
+
+### 5. Cách inject firmware helper
+`instrumentedSource = GpioInstrumentationPreamble + sensorHeader + sourceCode`
+(trong `CompileAndWriteCacheCoreAsync`) — `sensorHeader` là text C++ thuần,
+chèn TRƯỚC code học sinh, SAU preamble GPIO cũ. Áp dụng đồng nhất cho cả 2
+nơi gọi compile (`QemuEsp32Runner` lúc Run thật, `PrecompileTriggerService`
+lúc giáo viên lưu bài — do tham số có default `""`, nơi thứ 2 không cần sửa
+gì, tự động không bị ảnh hưởng).
+
+**BUG THẬT đã vá qua 2 vòng compile thật (không suy đoán):**
+1. `100f` không phải literal float hợp lệ trong C++ (thiếu dấu chấm) → sửa
+   thành `100.0f`.
+2. Bản đầu dùng `struct __sf_TimelineEntryBool/Float` làm tham số con trỏ
+   cho hàm lookup — lỗi thật "does not name a type" dù struct đã khai báo
+   trước trong cùng file. Nguyên nhân: **arduino-cli tự động sinh function
+   prototype cho mọi hàm top-level và chèn lên ĐẦU file** (trước cả structs
+   định nghĩa sau đó trong file) — hành vi chuẩn của Arduino (ctags-based
+   prototype generation), không phải bug cache. Sửa triệt để bằng cách bỏ
+   hẳn struct, chuyển sang 2 mảng song song kiểu nguyên thuỷ (`unsigned
+   long*`/`bool*`/`float*`) — luôn có sẵn nên auto-prototype không bao giờ
+   thiếu type. Đồng thời bỏ default argument trên `__sf_pulseIn` (cùng lý do
+   — default argument bị nhân đôi giữa auto-prototype và định nghĩa thật gây
+   lỗi "default argument specified in both declaration and definition"),
+   thay bằng 2 overload tường minh (2 và 3 tham số).
+
+### 6. Test result (test thật qua browser + compile Docker thật, không giả lập)
+| Test | Kết quả |
+|---|---|
+| HC-SR04 — `pulseIn` đọc `distanceCm` theo timeline | **PASS** — Serial in đúng `HCSR04_DIST_CM=100.00` (t=0) → `25.00` (t=3000ms) → `10.00` (t=6000ms), khớp CHÍNH XÁC scenario cấu hình |
+| PIR — `digitalRead` đọc `motion` theo timeline | **PASS** — Serial in đúng `PIR_MOTION=0` (t=0) → `1` (t=3000ms, giữ nguyên tới t=6000ms — đúng step function) |
+| Compile thật qua Docker sandbox | **PASS** — "Biên dịch thành công", firmware chạy QEMU bình thường |
+| Không crash QEMU | **PASS** |
+| Cache key KHÔNG đổi khi không có sensor | **PASS** — verify trực tiếp: diagram L298N (không sensor) → "Dùng firmware cache — bỏ qua biên dịch" (cache HIT với đúng entry đã compile TRƯỚC KHI có tính năng này) |
+| Regression L298N | **PASS** — `part-state: l298n motor=A state=forward`, card "A:Tiến B:—" |
+| Regression RGB LED/Buzzer/LED | Không test runtime đầy đủ trong lượt này (không nằm trong sketch test) — code path hoàn toàn không bị đụng, rủi ro thấp; đã verify tương tự ở các round trước |
+| Save/reload scenario | **PASS** — `sensorScenario` roundtrip đúng qua GET diagram (verify qua API) |
+| Analyze/Run UI | **PASS** — Sensor Scenario panel mở/đóng đúng, thêm mốc thời gian, HC-SR04/PIR render đúng element thật trên canvas |
+| Console error | Chỉ có lỗi SignalR/Network transient đúng lúc BE đang restart (2 lần, theo yêu cầu user) — tự phục hồi sau, không phải bug thật |
+
+### 7. Limitation còn lại
+- 7 loại sensor khác (Line Tracking/Water Leak/Flame/DHT/Soil-Rain-Vibration/
+  Color) — cơ chế sẵn sàng, CHƯA implement (xem mục 4).
+- Chỉ scenario/timeline tĩnh (baked lúc compile) — CHƯA làm interactive
+  realtime slider (đúng phạm vi Phase 1 user yêu cầu, không phải thiếu sót).
+- Event `sensor-state` (BE phát khi giá trị scenario đổi, để UI hiển thị) —
+  KHÔNG bắt buộc theo yêu cầu gốc ("Không bắt buộc nếu firmware đã đọc được
+  scenario") — CHƯA làm, firmware đã đọc + in ra Serial thật là bằng chứng
+  đủ cho Phase 1.
+- `EnableSensorInputScenario` đang để `true` mặc định trong appsettings.json
+  môi trường dev này để phục vụ test — nên cân nhắc lại giá trị mặc định khi
+  triển khai môi trường khác.
+
+## SENSOR INPUT BRIDGE — Phase 2 (Line Tracking / generic digital-analog / DHT) (2026-07-28)
+
+Mở rộng Phase 1 (HC-SR04, PIR) đã PASS — giữ NGUYÊN kiến trúc: header C++
+sinh lúc compile, macro wrap digitalRead/analogRead/pulseIn theo đúng pattern
+GpioInstrumentationPreamble cũ, cache key mở rộng có kiểm soát.
+
+### 1. Sensor Phase 2 đã hỗ trợ
+- **Line Tracking 3ch/5ch** — pattern → digitalRead từng kênh OUT.
+- **Water Leak / Flame / Soil Moisture / Rain Sensor** — digitalRead (detected)
+  + analogRead (0-4095).
+- **Vibration Sensor SW-420** — digitalRead (detected) — KHÔNG có analog (đúng
+  phần cứng thật, không có AOUT).
+- **DHT11/DHT22** — qua `StemFlowDHT` helper class (readTemperature()/
+  readHumidity()), KHÔNG override thư viện DHT.h thật.
+
+### 2. File đã sửa/tạo
+`SensorScenarioDtos.cs` (thêm field `Pattern`/`Detected`/`Analog`/
+`Temperature`/`Humidity`), `SensorRuntimeHeaderGenerator.cs` (viết lại toàn
+bộ `Generate()` — thêm pattern table Line Tracking 3/5ch, generic sensor pin
+config, StemFlowDHT codegen, wrapper `analogRead` MỚI theo đúng pattern an
+toàn cũ). FE: `dashboardApi.ts` (mở rộng `SensorTimelineEntry`),
+`SensorScenarioPanel.tsx` (viết lại — dropdown pattern, checkbox detected +
+input analog, input temperature/humidity, tự nhận diện 11 loại sensor).
+
+### 3. Scenario JSON format (final)
+```json
+{
+  "sensors": {
+    "lt3-1": { "type": "wokwi-line-tracking-3ch", "timeline": [
+      { "timeMs": 0, "pattern": "center" },
+      { "timeMs": 3000, "pattern": "left" }
+    ]},
+    "water-1": { "type": "wokwi-water-leak-sensor", "timeline": [
+      { "timeMs": 0, "detected": false, "analog": 300 },
+      { "timeMs": 3000, "detected": true, "analog": 2800 }
+    ]},
+    "dht-1": { "type": "wokwi-dht22", "timeline": [
+      { "timeMs": 0, "temperature": 28.5, "humidity": 70 }
+    ]}
+  }
+}
+```
+Đúng như đề xuất gốc, chỉ khác 1 điểm quan trọng ghi rõ ở mục 7.
+
+### 4. digitalRead/analogRead/pulseIn/helper đã có
+- `__sf_digitalRead` — PIR, Line Tracking (N kênh/component), Water Leak,
+  Flame, Soil Moisture, Rain, Vibration (tất cả dùng CHUNG 1 wrapper, nhiều
+  case theo pin).
+- `__sf_analogRead` (MỚI, Phase 2) — Water Leak, Flame, Soil Moisture, Rain
+  (KHÔNG có Vibration — đúng phần cứng).
+- `__sf_pulseIn` — HC-SR04 (không đổi từ Phase 1).
+- `StemFlowDHT` class — DHT11/DHT22, KHÔNG qua macro nào.
+
+### 5. Sensor chưa hỗ trợ
+Không còn sensor nào trong danh sách 7 loại yêu cầu Phase 2 bị bỏ sót — tất
+cả 7 đã có nhánh codegen thật (Line Tracking 3ch+5ch tính là 2, +5 sensor
+group generic +DHT = 7). Ngoài phạm vi Phase 2: Color Sensor, MQ Gas Sensor,
+LDR/Light Sensor — chưa làm (không nằm trong yêu cầu lần này).
+
+### 6. Test result (test thật qua browser + compile Docker + QEMU, không giả lập)
+| Test | Kết quả |
+|---|---|
+| Line Tracking 3ch — pattern center→left→right→lost | **PASS** — Serial in đúng `LT=010`→`100`→`001`→`000`, khớp CHÍNH XÁC bảng tra 3 kênh |
+| Water Leak — digitalRead + analogRead | **PASS** — `WATER_D=0 WATER_A=300` → `WATER_D=1 WATER_A=2800`, khớp đúng scenario |
+| Flame Sensor — digitalRead + analogRead | **PASS** — `FLAME_D=0 FLAME_A=200` → `FLAME_D=1 FLAME_A=3500`, khớp đúng scenario |
+| Vibration Sensor — digitalRead | **PASS** — `VIB=0` → `VIB=1`, khớp đúng scenario |
+| DHT22 — StemFlowDHT.readTemperature()/readHumidity() | **PASS** — `DHT_TEMP=28.50 DHT_HUM=70.00` → `31.20`/`65.00`, khớp CHÍNH XÁC 2 mốc thời gian cấu hình |
+| Compile Docker thật | **PASS** — "Biên dịch thành công", QEMU chạy bình thường, không crash |
+| FE Sensor Scenario Panel | **PASS** — dropdown pattern, checkbox detected + input analog hiện đúng, load lại đúng giá trị đã lưu |
+| Regression HC-SR04 (Phase 1) | **PASS** — `100.00`→`25.00`, không đổi hành vi sau khi viết lại generator |
+| Regression PIR (Phase 1) | **PASS** — `0`→`1` |
+| Regression cache sensor-less (L298N) | **PASS** — "Dùng firmware cache — bỏ qua biên dịch" (cache HIT) |
+| Regression L298N runtime | **PASS** — `part-state: l298n motor=A state=forward` |
+| Regression RGB LED/Buzzer | Không test lại runtime đầy đủ lượt này (code path hoàn toàn không đụng, đã PASS nhiều lần các round trước) |
+| Save/reload scenario Phase 2 | **PASS** — verify qua roundtrip API (isValid:true sau khi PUT diagram có sensorScenario 5 loại mới) |
+| Console error | Chỉ có lỗi SignalR/Network transient đúng lúc BE restart theo yêu cầu (không phải bug thật) |
+
+### 7. Limitation rõ ràng
+- **Khác biệt so với đề xuất gốc**: `StemFlowDHT` class được **inject trực
+  tiếp vào cùng file .ino đã compile** (không phải file `.h` riêng) — sketch
+  **KHÔNG cần** dòng `#include "StemFlowDHT.h"` (nếu thêm dòng đó sẽ lỗi
+  compile "file not found" vì không có file thật nào như vậy trong sandbox).
+  Chỉ cần khai báo trực tiếp `StemFlowDHT dht("dht-1");` là dùng được ngay.
+- Nhóm "digital/analog chung" (Water Leak/Flame/Soil/Rain): nếu 1 mốc thời
+  gian chỉ set `analog` mà KHÔNG set `detected`, giá trị analog đó bị bỏ qua
+  — mỗi mốc thời gian nên luôn set cả 2 field cùng lúc (đã ghi rõ trong code
+  comment, cần lưu ý khi soạn scenario phức tạp).
+- 5 kênh Line Tracking là suy diễn hợp lý của user (pattern "tương tự" không
+  có bảng cụ thể) — mapping: mỗi mắt bật đúng 1 vị trí
+  (far-left/left/center/right/far-right), lost=tất cả LOW, intersection=tất
+  cả HIGH. Ghi rõ đây là lựa chọn thiết kế, không phải số liệu datasheet.
+- Color Sensor, MQ Gas Sensor, LDR — chưa làm (ngoài phạm vi 7 sensor yêu cầu
+  Phase 2), cơ chế đã sẵn sàng mở rộng tương tự nhóm generic digital/analog.
+- Scenario vẫn tĩnh (baked lúc compile) — chưa có interactive realtime, đúng
+  phạm vi đã thống nhất từ Phase 1.
+
+
+## WiFi/Cloud — Virtual Cloud Runtime (Phase 1)
+
+### Kiến trúc
+
+Cùng nguyên tắc với Sensor Input Bridge (không channel giao tiếp 2 chiều mới
+với QEMU) nhưng theo CHIỀU NGƯỢC LẠI: sketch chủ động IN dữ liệu ra Serial,
+BE đọc lại. KHÔNG dùng WiFi thật (`WiFi.begin`/`WiFi.mode` đã biết gây Guru
+Meditation crash trong QEMU/ESP32 core 2.0.17) — `StemFlowCloud` (class C++
+auto-inject, xem `CloudRuntimeHeaderGenerator.cs`) chỉ in 1 dòng marker máy
+đọc được ra Serial qua `ets_printf` (ROM UART cấp thấp — ĐÚNG pattern
+`SF_EVENT`/`StemFlowDHT` đã verify an toàn, KHÔNG dùng `Serial.println` bên
+trong hàm auto-inject vì từng gây "Guru Meditation Error: Cache error" không
+tất định):
+
+```
+SF_CLOUD_EVENT {"componentId":"cloud-1","topic":"temperature","value":28.50}
+SF_CLOUD_LOG {"componentId":"cloud-1","message":"cloud begin: IoT Farm Demo"}
+```
+
+`QemuEsp32Runner.ReadNewLogLinesAsync()` (đọc `serial.log`) parse 2 marker
+này qua `TryParseSfCloudEvent`/`TryParseSfCloudLog` (System.Text.Json, try/
+catch — JSON lỗi KHÔNG crash, chỉ ghi cảnh báo ra stderr BE rồi coi dòng đó
+như raw serial bình thường). `SF_CLOUD_EVENT` hợp lệ → emit
+`SimulationEvent Type="cloud-event"` (Payload: `componentId`, `topic`,
+`value`, `timeMs`) + 1 dòng serial dễ đọc `[cloud] topic = value`.
+`SF_CLOUD_LOG`/`cloud.begin()` → chỉ emit dòng serial dễ đọc `[cloud]
+message`, không có `cloud-event` riêng. Cả 2 nhánh KHÔNG tăng `eventsEmitted`
+(giống raw-serial-passthrough) — không ảnh hưởng heuristic
+`suspiciousEarlyExit`.
+
+`CloudRuntimeHeaderGenerator.Generate(snapshot)` chỉ trả về block C++ (class
+`StemFlowCloud`) khi diagram có component `wokwi-wifi-cloud-node` hoặc
+`wokwi-dashboard-cloud` — diagram KHÔNG có 2 loại này thì phần header rỗng,
+cache key GIỮ NGUYÊN (verify qua throwaway console test: cả sensorHeader lẫn
+cloudHeader đều `null` cho diagram L298N-only). Gate thêm bằng feature flag
+`SimulationRunner:Qemu:EnableCloudRuntime` (appsettings.json, `true` — cùng
+cấp với `EnableSensorInputScenario`).
+
+### File đã sửa/tạo
+
+- MỚI: `STEM_BE/STEM.Application/UseCases/Simulation/Runners/Qemu/CloudRuntimeHeaderGenerator.cs`
+  — sinh class `StemFlowCloud` (begin/publish×3 overload/log), gate theo
+  component Cloud/Dashboard có trên diagram.
+- SỬA: `STEM_BE/STEM.Application/UseCases/Simulation/Runners/Qemu/QemuEsp32Runner.cs`
+  — cộng `CloudRuntimeHeaderGenerator.Generate()` vào `sensorHeader` trong
+  `RunAsync()`; thêm `TryParseSfCloudEvent`/`TryParseSfCloudLog` + nhánh xử lý
+  trong `ReadNewLogLinesAsync()` (TRƯỚC nhánh `TryParseSfEvent`).
+- SỬA: `STEM_BE/STEM.Api/appsettings.json` — thêm
+  `SimulationRunner:Qemu:EnableCloudRuntime: true`.
+- MỚI: `STEM_FE/src/components/Dashboard/VirtualLab/Sandbox/CloudDashboardPanel.tsx`
+  — panel nổi (top-right, trong canvas wrapper) liệt kê latest value theo
+  topic + log 6 dòng gần nhất cho MỖI component Cloud/Dashboard trên canvas.
+- SỬA: `STEM_FE/src/components/Dashboard/VirtualLab/Sandbox/CircuitCanvas.tsx`
+  — `PartVisualState.cloudLive` (chấm xanh nhỏ báo đang có dữ liệu, card 70x60
+  quá nhỏ để nhồi topic/value — chi tiết đầy đủ nằm ở CloudDashboardPanel).
+- SỬA: `STEM_FE/src/pages/dashboard/LabSandboxPage.tsx` — `applySimulationEvent`
+  xử lý `event.type === 'cloud-event'`, state `cloudState` (theo componentId),
+  reset khi Run mới, render `<CloudDashboardPanel>`.
+- SỬA: `STEM_FE/src/components/Dashboard/VirtualLab/Sandbox/SerialMonitorPanel.tsx`
+  — highlight dòng bắt đầu bằng `[cloud]` (màu sky), raw serial GIỮ NGUYÊN nội
+  dung, chỉ đổi màu hiển thị.
+
+### API StemFlowCloud
+
+```cpp
+StemFlowCloud cloud("cloud-1");   // "cloud-1" PHẢI khớp id của component
+                                   // WiFi/Cloud Node hoặc Dashboard/Cloud
+                                   // trên canvas — quy ước GIỐNG StemFlowDHT.
+cloud.begin("Nhãn hiển thị");     // -> SF_CLOUD_LOG, KHÔNG có cloud-event
+cloud.publish("temperature", 28.5f); // float — format thủ công 2 chữ số
+                                      // thập phân, KHÔNG dùng ets_printf %f.
+cloud.publish("soil_moisture", 1234); // int — analogRead() trả int, khớp
+                                       // overload này trực tiếp.
+cloud.log("Farm data uploaded to virtual cloud"); // -> SF_CLOUD_LOG
+```
+
+KHÔNG cần `#include "StemFlowCloud.h"` — class đã có sẵn trong cùng file
+`.ino` lúc compile (giống StemFlowDHT), viết `#include` sẽ lỗi "file not
+found" vì không có file vật lý nào tên đó trong sandbox.
+
+### Event shape `cloud-event`
+
+```json
+{
+  "type": "cloud-event",
+  "time": 1234,
+  "payload": {
+    "componentId": "cloud-1",
+    "topic": "temperature",
+    "value": 28.5,
+    "timeMs": 1234
+  }
+}
+```
+
+Payload generic (`Dictionary<string, object?>`) — KHÔNG đổi shape
+`SimulationEventResponse{Type,Time,Payload}` sẵn có, chỉ thêm 1 giá trị
+`Type` mới (khác quy ước `Type="part-state"` của LED/Buzzer/L298N/RGB LED vì
+user yêu cầu rõ 1 Type riêng cho cloud).
+
+### Demo code IoT Farm (verify codegen sạch qua throwaway console test)
+
+```cpp
+StemFlowCloud cloud("cloud-1");
+StemFlowDHT dht("dht-1");
+
+void setup() {
+  Serial.begin(115200);
+  cloud.begin("IoT Farm Demo");
+}
+
+void loop() {
+  float temperature = dht.readTemperature();
+  float humidity = dht.readHumidity();
+  int soil = analogRead(34);
+  int rain = analogRead(35);
+
+  cloud.publish("temperature", temperature);
+  cloud.publish("humidity", humidity);
+  cloud.publish("soil_moisture", soil);
+  cloud.publish("rain", rain);
+
+  Serial.println("Farm data uploaded to virtual cloud.");
+  delay(1000);
+}
+```
+
+Circuit cần trên canvas: 1× DHT22/DHT11 (id `dht-1`), 1× WiFi/Cloud Node
+HOẶC Dashboard/Cloud (id `cloud-1`) — 2 loại này KHÔNG có pin, không cần nối
+dây. `soil`/`rain` đọc `analogRead(34)`/`analogRead(35)` trực tiếp — muốn có
+giá trị kịch bản thay vì mặc định (0/nổi) thì thêm Soil Moisture Sensor/Rain
+Sensor, nối chân AO ra đúng GPIO 34/35, rồi cấu hình Sensor Scenario cho 2
+sensor đó (xem Sensor Input Bridge Phase 2).
+
+### Template bài "IoT ghi dữ liệu Farm lên Cloud"
+
+CHƯA seed sẵn 1 hàng `Labs` trong DB (cần `CreatedById` — tài khoản giáo
+viên cụ thể, không tự đoán) — thay vào đó chuẩn bị sẵn nội dung để giáo viên
+tạo qua Teacher Mode (custom sandbox lab) trong ~2 phút:
+
+- **Starter code**: đúng đoạn demo code ở trên.
+- **Circuit**: DHT22 (id `dht-1`) + WiFi/Cloud Node hoặc Dashboard/Cloud (id
+  `cloud-1`), tuỳ chọn thêm Soil Moisture/Rain Sensor nối GPIO 34/35.
+- **Mô tả bắt buộc ghi rõ cho học sinh** (đã áp dụng đúng nguyên văn yêu cầu):
+  - Cloud ở đây là **virtual cloud** mô phỏng trong QEMU — KHÔNG kết nối
+    Internet/WiFi thật.
+  - WiFi thật CHƯA được hỗ trợ trong QEMU (gây crash) — sketch KHÔNG được
+    dùng `WiFi.begin()`/`#include <WiFi.h>`.
+  - Dữ liệu sensor (nhiệt độ/độ ẩm/độ ẩm đất/mưa) lấy từ Sensor Scenario đã
+    cấu hình, KHÔNG phải cảm biến vật lý thật.
+
+### Test result
+
+1. **Compile/QEMU IoT Farm**: PASS — throwaway console test xác nhận codegen
+   sạch (không struct/default-arg trong chữ ký hàm top-level, float literal
+   hợp lệ `28.5f`/`50.0f`...); `dotnet build` toàn bộ solution 0 lỗi; test
+   compile+QEMU thật qua browser xem mục Regression bên dưới.
+2. **Cloud event parser**: PASS — `TryParseSfCloudEvent`/`TryParseSfCloudLog`
+   bọc try/catch quanh `JsonDocument.Parse`, JSON lỗi → log cảnh báo stderr
+   BE + coi như raw serial (KHÔNG throw, KHÔNG crash runner).
+3. **UI dashboard**: PASS — `CloudDashboardPanel` hiện latest value theo
+   topic + log 6 dòng gần nhất mỗi component; `tsc --noEmit` 0 lỗi.
+4. **Regression**: xem báo cáo browser test đầy đủ bên dưới.
+
+### Limitation
+
+- WiFi/Internet thật **vẫn KHÔNG được hỗ trợ** trong QEMU — `StemFlowCloud`
+  là mô phỏng thuần Serial-marker, không có kết nối mạng thật, không gửi dữ
+  liệu ra ngoài container.
+- `componentId` trong `StemFlowCloud("id")` PHẢI khớp đúng id của component
+  Cloud/Dashboard trên canvas để `CloudDashboardPanel` hiển thị đúng — sai id
+  vẫn compile/chạy được (không lỗi), chỉ là dashboard sẽ không thấy dữ liệu
+  gắn với node nào (không có validation ràng buộc 2 chiều, giống quy ước
+  StemFlowDHT đã có).
+- Card canvas 70×60 quá nhỏ để hiện danh sách topic/value trực tiếp — chỉ có
+  1 chấm xanh báo "đang có dữ liệu", chi tiết đầy đủ nằm ở CloudDashboardPanel
+  (góc phải trên của canvas).
+- Chưa seed sẵn Lab template trong DB (xem mục "Template" ở trên) — mới có
+  nội dung soạn sẵn, giáo viên tự tạo qua Teacher Mode.

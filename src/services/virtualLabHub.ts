@@ -13,6 +13,16 @@ class VirtualLabHubService {
   // này thì ensureConnected() không có gì để await trong lúc state=Reconnecting.
   private reconnectingPromise: Promise<void> | null = null;
   private listeners: Map<string, Set<(...args: any[]) => void>> = new Map();
+  // Trạng thái "đang theo dõi" — SignalR group membership KHÔNG sống sót qua
+  // 1 lần reconnect (server coi là connection mới, Groups.AddToGroupAsync cũ
+  // không còn hiệu lực) dù connection object phía client được giữ nguyên
+  // (withAutomaticReconnect tái dùng cùng HubConnection, không tạo mới).
+  // Không track lại thì sau khi mạng chập chờn/reconnect, Teacher đang xem
+  // dashboard lớp/học sinh sẽ lặng lẽ ngừng nhận event dù UI trông như vẫn
+  // đang "theo dõi" — không có lỗi nào hiện ra để nhận biết.
+  private watchedClassIds: Set<number> = new Set();
+  private watchedProjectIds: Set<string> = new Set();
+  private joinedSessionProjectId: string | null = null;
 
   private getHubUrl() {
     return `${API_BASE_URL.replace(/\/api\/?$/i, '')}/hubs/virtual-lab`;
@@ -72,19 +82,60 @@ class VirtualLabHubService {
         resolveReconnect = resolve;
         rejectReconnect = reject;
       });
+      // Additive — không đổi hành vi reconnect thật, chỉ phát thêm 1 sự kiện
+      // nội bộ để UI (Serial Monitor) có thể log lại đúng thời điểm thật, thay
+      // vì phải tự đoán qua console.log không hiển thị cho người dùng.
+      this.trigger('ConnectionReconnecting', err);
     });
 
     this.connection.onreconnected(() => {
       console.log('[VirtualLabHub] Reconnected');
       resolveReconnect?.();
       this.reconnectingPromise = null;
+      void this.rejoinAfterReconnect();
+      this.trigger('ConnectionReconnected');
     });
 
     this.connection.onclose((err) => {
       console.warn('[VirtualLabHub] Connection closed', err);
       rejectReconnect?.(err ?? new Error('SignalR connection closed'));
       this.reconnectingPromise = null;
+      this.trigger('ConnectionClosed', err);
     });
+  }
+
+  // Gọi lại đúng những JoinSession/WatchClass/WatchStudent đang "active"
+  // TRƯỚC khi mất kết nối — best-effort, lỗi ở 1 mục không được chặn các
+  // mục còn lại (Promise.allSettled thay vì để 1 throw dừng cả vòng lặp).
+  private async rejoinAfterReconnect(): Promise<void> {
+    const tasks: Promise<unknown>[] = [];
+
+    if (this.joinedSessionProjectId) {
+      tasks.push(
+        this.connection!.invoke('JoinSession', this.joinedSessionProjectId).catch((err) =>
+          console.error('[VirtualLabHub] Rejoin JoinSession failed after reconnect', err)
+        )
+      );
+    }
+    for (const classId of this.watchedClassIds) {
+      tasks.push(
+        this.connection!.invoke('WatchClass', classId).catch((err) =>
+          console.error('[VirtualLabHub] Rejoin WatchClass failed after reconnect', classId, err)
+        )
+      );
+    }
+    for (const projectId of this.watchedProjectIds) {
+      tasks.push(
+        this.connection!.invoke('WatchStudent', projectId).catch((err) =>
+          console.error('[VirtualLabHub] Rejoin WatchStudent failed after reconnect', projectId, err)
+        )
+      );
+    }
+
+    if (tasks.length > 0) {
+      console.log(`[VirtualLabHub] Rejoining ${tasks.length} group(s) after reconnect...`);
+      await Promise.allSettled(tasks);
+    }
   }
 
   public async disconnect(): Promise<void> {
@@ -93,6 +144,9 @@ class VirtualLabHubService {
       this.connection = null;
       console.log('[VirtualLabHub] Disconnected');
     }
+    this.watchedClassIds.clear();
+    this.watchedProjectIds.clear();
+    this.joinedSessionProjectId = null;
   }
 
   // Helper for adding/removing listeners
@@ -203,6 +257,7 @@ class VirtualLabHubService {
     await this.ensureConnected();
     try {
       await this.connection!.invoke('JoinSession', projectId);
+      this.joinedSessionProjectId = projectId;
     } catch (err) {
       // Retry NGẦM đúng 1 lần nếu lỗi thật sự do connection chưa Connected
       // (race hiếm: state đổi đúng lúc giữa ensureConnected() resolve và
@@ -212,6 +267,7 @@ class VirtualLabHubService {
         console.warn('[VirtualLabHub] JoinSession failed (connection not ready), retrying once...', err);
         await this.ensureConnected();
         await this.connection!.invoke('JoinSession', projectId);
+        this.joinedSessionProjectId = projectId;
         return;
       }
       throw err;
@@ -263,9 +319,13 @@ class VirtualLabHubService {
   public async watchClass(classId: number) {
     await this.ensureConnected();
     await this.connection!.invoke('WatchClass', classId);
+    this.watchedClassIds.add(classId);
   }
 
   public async unwatchClass(classId: number) {
+    // Bỏ khỏi tracking TRƯỚC khi invoke — nếu invoke lỗi/timeout, vẫn không
+    // nên rejoin lại 1 group mà caller đã chủ động rời (vd component unmount).
+    this.watchedClassIds.delete(classId);
     await this.ensureConnected();
     await this.connection!.invoke('UnwatchClass', classId);
   }
@@ -273,9 +333,11 @@ class VirtualLabHubService {
   public async watchStudent(projectId: string) {
     await this.ensureConnected();
     await this.connection!.invoke('WatchStudent', projectId);
+    this.watchedProjectIds.add(projectId);
   }
 
   public async unwatchStudent(projectId: string) {
+    this.watchedProjectIds.delete(projectId);
     await this.ensureConnected();
     await this.connection!.invoke('UnwatchStudent', projectId);
   }

@@ -5,15 +5,32 @@ import { attachLed } from './glue/led';
 import { attachButton } from './glue/button';
 import type { LabCircuitComponent } from '@/services/dashboardApi';
 import { Toolbar, COMPONENT_COLOR_OPTIONS } from './Toolbar';
-import { getPinCoords } from './pinMaps';
-import { HelpCircle } from 'lucide-react';
+import { getPinCoords, getPinKind } from './pinMaps';
+import { HelpCircle, Plus } from 'lucide-react';
+import { normalizeComponentType } from './componentTypeNormalize';
+import { ROBOT_KIT_FALLBACK_CARDS, getFallbackIllustration } from './componentIllustrations';
 
 export type Waypoint = { x: number; y: number };
 export type Connection = [string, string, string, Waypoint[]?];
 
+export type MotorDriveState = 'forward' | 'backward' | 'stopped' | 'brake';
+
 export interface PartVisualState {
   value?: '0' | '1';
   buzzing?: boolean;
+  // L298N — suy ra thật từ cặp chân IN qua QEMU (xem L298nModel.cs), KHÔNG
+  // phải giá trị giả định. undefined nghĩa là chưa nhận event nào cho motor đó.
+  motorA?: MotorDriveState;
+  motorB?: MotorDriveState;
+  // RGB LED — mỗi kênh bật/tắt độc lập qua digitalWrite (xem RgbLedModel.cs).
+  rgbR?: boolean;
+  rgbG?: boolean;
+  rgbB?: boolean;
+  // WiFi/Cloud Node/Dashboard (Phase 1) — true khi đã nhận ít nhất 1
+  // cloud-event cho componentId này (xem CloudDashboardPanel.tsx — nơi hiển
+  // thị đầy đủ topic/value/log; ở đây chỉ 1 chấm nhỏ báo "đang có dữ liệu",
+  // card 70x60 quá nhỏ để nhồi thêm danh sách topic).
+  cloudLive?: boolean;
 }
 
 // wokwi-led/wokwi-buzzer (Lit) khai báo `value`/`hasSignal` là boolean nội
@@ -60,6 +77,19 @@ interface CircuitCanvasProps {
   onComponentDelete?: (id: string) => void;
   onComponentAttrChange?: (id: string, attrs: Record<string, string>) => void;
   onComponentRotate?: (id: string, rotate: number) => void;
+  // Nút "+" nổi trên canvas (Wokwi-style) — CHỈ hiện khi có callback này (opt-in,
+  // không phá layout của bất kỳ nơi nào đang dùng CircuitCanvas mà chưa muốn
+  // tính năng này). CircuitCanvas không tự biết registry/component options gì
+  // cả — mọi state popup/fetch dữ liệu do component cha (LabSandboxPage/
+  // CircuitBuilderTeacherMode) sở hữu, giữ đúng nguyên tắc cũ "cha truyền dữ
+  // liệu xuống qua props", không thêm phụ thuộc API mới vào CircuitCanvas.
+  onOpenPalette?: () => void;
+  // Sau khi cha thêm 1 component mới (qua popup), truyền id đó vào đây để tự
+  // động chọn nó trên canvas (yêu cầu "Sau khi thêm, component được selected")
+  // — đổi giá trị (kể cả cùng string cũ, xem key đi kèm ở nơi gọi) sẽ kích
+  // hoạt lại useEffect chọn lại, không cần biến CircuitCanvas thành fully
+  // controlled component cho toàn bộ selection state.
+  autoSelectId?: string | null;
 }
 
 function getBoardTagName(boardType: string) {
@@ -68,17 +98,143 @@ function getBoardTagName(boardType: string) {
   return 'wokwi-arduino-uno';
 }
 
-function normalizeComponentType(type: string) {
-  const normalized = type.toLowerCase();
-  if (normalized === 'push_button' || normalized === 'button' || normalized === 'pushbutton') return 'push_button';
-  if (normalized === 'wokwi-led') return 'led';
-  if (normalized === 'wokwi-pushbutton') return 'push_button';
-  if (normalized === 'wokwi-buzzer') return 'buzzer';
-  if (normalized === 'wokwi-servo') return 'servo';
-  if (normalized === 'wokwi-potentiometer') return 'potentiometer';
-  if (normalized === 'wokwi-resistor') return 'resistor';
-  if (normalized === 'wokwi-dht22') return 'dht22';
-  return normalized;
+// normalizeComponentType() tách ra componentTypeNormalize.ts (2026-07-27) —
+// dùng chung với componentIllustrations.tsx, không định nghĩa lại ở đây.
+
+// Lookup table cho mọi element THẬT trong @wokwi/elements thuộc "Component
+// Library" mở rộng (khác Robot Delivery Kit — nhóm đó vẫn giữ if/else tường
+// minh phía trên, không đổi để tránh rủi ro không cần thiết cho phần đã
+// PASS). Dùng 1 bảng tra cứu thay vì lặp lại ~16 nhánh if/else gần giống hệt
+// nhau — chỉ khác tag name, không có logic property đặc biệt nào (không
+// component nào trong nhóm này cần property number/boolean phải gán qua ref
+// như RGB LED — tất cả chỉ hiển thị tĩnh, không có part-state runtime).
+const WOKWI_REAL_ELEMENT_TAGS: Record<string, string> = {
+  'flame-sensor': 'wokwi-flame-sensor',
+  'gas-sensor': 'wokwi-gas-sensor',
+  'pir-motion-sensor': 'wokwi-pir-motion-sensor',
+  'photoresistor-sensor': 'wokwi-photoresistor-sensor',
+  'ntc-temperature-sensor': 'wokwi-ntc-temperature-sensor',
+  'hx711': 'wokwi-hx711',
+  'ir-receiver': 'wokwi-ir-receiver',
+  'membrane-keypad': 'wokwi-membrane-keypad',
+  'ssd1306': 'wokwi-ssd1306',
+  'lcd1602': 'wokwi-lcd1602',
+  'lcd1602-i2c': 'wokwi-lcd1602',
+  'neopixel': 'wokwi-neopixel',
+  'led-bar-graph': 'wokwi-led-bar-graph',
+  '7segment': 'wokwi-7segment',
+  'stepper-motor': 'wokwi-stepper-motor',
+  'ili9341': 'wokwi-ili9341',
+  'dht11': 'wokwi-dht22',
+  'mpu6050': 'wokwi-mpu6050',
+  'lcd2004': 'wokwi-lcd2004',
+};
+
+// Robot giao hàng mini — linh kiện KHÔNG có element thật trong @wokwi/elements
+// (đã kiểm tra: L298N/DC Motor/Robot Wheel/Caster Wheel/Chassis/Battery
+// Pack/Power Switch/Breadboard/Delivery Box không tồn tại trong package).
+// Thay vì rơi vào fallback gray-box vô danh cũ (chỉ hiện đúng chuỗi type),
+// dùng 1 card chung có icon + tên rõ ràng cho cả nhóm — kích thước PHẢI khớp
+// đúng pin coords tương ứng trong pinMaps.ts (card chính là bounding box thật
+// dùng để tính vị trí pin-dot). Linh kiện có pin (L298N/DC Motor/Battery
+// Pack/Power Switch) vẫn nhận pin-dot bình thường qua renderPinDots() ở nơi
+// gọi — không cần vẽ pin trong card này. Linh kiện cơ khí thuần (Wheel/Caster
+// Wheel/Chassis/Breadboard/Delivery Box) không có entry trong pinMaps nên tự
+// động không có pin-dot nào, đúng yêu cầu "visual-only không render pin-dot".
+
+const MOTOR_STATE_LABEL: Record<MotorDriveState, string> = {
+  forward: 'Tiến',
+  backward: 'Lùi',
+  stopped: 'Dừng',
+  brake: 'Phanh',
+};
+
+const MOTOR_STATE_COLOR: Record<MotorDriveState, string> = {
+  forward: 'text-emerald-400',
+  backward: 'text-amber-400',
+  stopped: 'text-slate-400',
+  brake: 'text-red-400',
+};
+
+function renderFallbackCard(type: string, rawType: string, partState: PartVisualState | undefined) {
+  const config = ROBOT_KIT_FALLBACK_CARDS[type];
+  if (!config) {
+    // Type hoàn toàn chưa biết (kể cả chưa nằm trong bộ robot kit) — giữ
+    // nguyên hành vi cũ 100% để không phá bất kỳ component nào khác đang
+    // dùng đường fallback này.
+    return (
+      <div className="rounded-lg border border-gray-600 bg-gray-800 px-3 py-2 text-xs text-gray-300 pointer-events-none">
+        {rawType}
+      </div>
+    );
+  }
+
+  const Icon = config.icon;
+  // L298N — trạng thái động cơ suy ra THẬT từ QEMU (L298nModel.cs), không
+  // phải giả lập UI. Chưa có event nào (undefined) hiện "—" thay vì bịa trạng
+  // thái mặc định.
+  const showMotorState = type === 'l298n';
+  // WiFi/Cloud Phase 1 — chấm nhỏ báo đang nhận dữ liệu cloud-event (chi tiết
+  // đầy đủ topic/value/log xem CloudDashboardPanel.tsx, KHÔNG nhồi vào đây).
+  const showCloudDot = (type === 'wifi-cloud-node' || type === 'dashboard-cloud') && partState?.cloudLive;
+  const illustration = getFallbackIllustration(type, config.width, config.height);
+
+  // Có minh hoạ SVG riêng — hình chiếm gần hết card, tên/badge/motor-state
+  // hiện dạng nhãn phủ mờ phía dưới (không đè lên chi tiết hình vẽ). Card
+  // KHÔNG có minh hoạ riêng giữ NGUYÊN layout icon+tên cũ (an toàn, không
+  // đổi hành vi cho những type chưa vẽ tới).
+  if (illustration) {
+    return (
+      <div
+        className="relative rounded-lg border border-slate-500 bg-slate-800 overflow-hidden pointer-events-none select-none"
+        style={{ width: config.width, height: config.height }}
+        title={`${config.label} — ${config.badge}`}
+      >
+        <div className="absolute inset-0">{illustration}</div>
+        {showCloudDot && (
+          <span className="absolute top-1 right-1 h-2 w-2 rounded-full bg-emerald-400 animate-pulse" title="Đang nhận dữ liệu cloud" />
+        )}
+        <div className="absolute bottom-0 left-0 right-0 bg-black/60 px-1 py-0.5">
+          <span className="block text-[9px] font-medium text-center leading-tight text-slate-100 truncate">
+            {config.label}
+          </span>
+          {showMotorState && (
+            <span className="block text-[8px] font-mono leading-tight text-center">
+              <span className={MOTOR_STATE_COLOR[partState?.motorA ?? 'stopped']}>
+                A:{partState?.motorA ? MOTOR_STATE_LABEL[partState.motorA] : '—'}
+              </span>
+              {' '}
+              <span className={MOTOR_STATE_COLOR[partState?.motorB ?? 'stopped']}>
+                B:{partState?.motorB ? MOTOR_STATE_LABEL[partState.motorB] : '—'}
+              </span>
+            </span>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div
+      className="rounded-lg border border-slate-500 bg-slate-700/90 flex flex-col items-center justify-center gap-1 pointer-events-none text-slate-100 select-none"
+      style={{ width: config.width, height: config.height }}
+      title={`${config.label} — ${config.badge}`}
+    >
+      <Icon className="w-5 h-5 opacity-90" />
+      <span className="text-[10px] font-medium text-center leading-tight px-1">{config.label}</span>
+      {showMotorState && (
+        <span className="text-[9px] font-mono leading-tight">
+          <span className={MOTOR_STATE_COLOR[partState?.motorA ?? 'stopped']}>
+            A:{partState?.motorA ? MOTOR_STATE_LABEL[partState.motorA] : '—'}
+          </span>
+          {' '}
+          <span className={MOTOR_STATE_COLOR[partState?.motorB ?? 'stopped']}>
+            B:{partState?.motorB ? MOTOR_STATE_LABEL[partState.motorB] : '—'}
+          </span>
+        </span>
+      )}
+    </div>
+  );
 }
 
 // Một số phần tử @wokwi/elements (board: wokwi-arduino-uno, wokwi-esp32-devkit-v1)
@@ -179,6 +335,8 @@ export const CircuitCanvas = ({
   onComponentDelete,
   onComponentAttrChange,
   onComponentRotate,
+  onOpenPalette,
+  autoSelectId,
 }: CircuitCanvasProps) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const boardRef = useRef<HTMLElement | null>(null);
@@ -193,6 +351,18 @@ export const CircuitCanvas = ({
   // Selection
   const [selectedPartId, setSelectedPartId] = useState<string | null>(null);
   const [selectedWireIndex, setSelectedWireIndex] = useState<number | null>(null);
+
+  // Tự chọn component vừa thêm qua popup "+" (yêu cầu "Sau khi thêm, component
+  // được selected") — chỉ phản ứng khi autoSelectId THẬT SỰ đổi (id mới), so
+  // sánh qua ref để tránh chọn lại vô ích mỗi lần cha re-render với cùng giá
+  // trị (vd gõ code làm component cha render lại nhưng autoSelectId không đổi).
+  const lastAutoSelectIdRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!autoSelectId || autoSelectId === lastAutoSelectIdRef.current) return;
+    lastAutoSelectIdRef.current = autoSelectId;
+    setSelectedPartId(autoSelectId);
+    setSelectedWireIndex(null);
+  }, [autoSelectId]);
 
   // Dragging
   const [draggingId, setDraggingId] = useState<string | null>(null);
@@ -216,6 +386,16 @@ export const CircuitCanvas = ({
   const MIN_ZOOM = 0.3;
   const MAX_ZOOM = 3;
 
+  // Pan bằng chuột phải — offset tính bằng PIXEL MÀN HÌNH (áp dụng SAU scale
+  // trong transform, xem world-layer bên dưới: `translate(pan) scale(zoom)`),
+  // nên kéo pan cảm giác nhất quán bất kể đang zoom mức nào. Chỉ là view
+  // state thuần tuý (giống zoom) — KHÔNG lưu vào diagram/DB, luôn reset về
+  // {0,0} khi tải lại trang, đúng hành vi canvas app thông thường (Wokwi cũng
+  // vậy — pan không phải 1 phần dữ liệu mạch).
+  const [panOffset, setPanOffset] = useState({ x: 0, y: 0 });
+  const [isPanning, setIsPanning] = useState(false);
+  const panStartRef = useRef<{ clientX: number; clientY: number; panX: number; panY: number } | null>(null);
+
   const setComponentRef = (id: string) => (element: Element | null) => {
     componentRefs.current.set(id, element as HTMLElement | null);
   };
@@ -233,6 +413,31 @@ export const CircuitCanvas = ({
       }
     });
   }, [components]);
+
+  // wokwi-rgb-led: ledRed/ledGreen/ledBlue là number (0/1), không phải
+  // boolean. React chỉ gán thẳng qua DOM property cho custom element khi
+  // value là boolean (nhánh đặc biệt trong react-dom cho phép value/hasSignal
+  // ở trên hoạt động đúng); với number, React luôn đi qua
+  // node.setAttribute(name, String(value)) — bị lowercase thành "ledred" và
+  // Lit đọc lại thành STRING qua @property() mặc định type:String, ghi đè
+  // luôn giá trị number nội bộ mà render() dùng. Verify thật: truyền
+  // ledRed={1} qua JSX -> DOM property ledRed vẫn ở 0, LED không sáng. Phải
+  // gán property trực tiếp qua ref, giống cách xử lý `color` ở trên.
+  useEffect(() => {
+    components.forEach((component) => {
+      const type = normalizeComponentType(component.type);
+      if (type !== 'rgb-led') return;
+      const el = componentRefs.current.get(component.id);
+      if (!el) return;
+      const state = partStates?.[component.id];
+      // @ts-ignore
+      el.ledRed = state?.rgbR ? 1 : 0;
+      // @ts-ignore
+      el.ledGreen = state?.rgbG ? 1 : 0;
+      // @ts-ignore
+      el.ledBlue = state?.rgbB ? 1 : 0;
+    });
+  }, [components, partStates]);
 
   // Đo kích thước thật của board + từng linh kiện đã render (web components
   // của @wokwi/elements có kích thước nội tại riêng, không set qua CSS), để
@@ -409,9 +614,21 @@ export const CircuitCanvas = ({
 
   const handlePointerMove = (e: React.PointerEvent) => {
     if (!containerRef.current) return;
+
+    // Pan chuột phải — cập nhật panOffset trực tiếp từ delta client, KHÔNG
+    // chạm gì tới draggingId/isDrawingWire/draggingWaypoint (early return),
+    // nên không có cách nào 1 thao tác kéo chuột trái đang dở (component/dây/
+    // waypoint) bị pan "cướp" giữa chừng — 2 chế độ tương tác loại trừ lẫn
+    // nhau hoàn toàn qua isPanning.
+    if (isPanning && panStartRef.current) {
+      const { clientX, clientY, panX, panY } = panStartRef.current;
+      setPanOffset({ x: panX + (e.clientX - clientX), y: panY + (e.clientY - clientY) });
+      return;
+    }
+
     const rect = containerRef.current.getBoundingClientRect();
-    const x = (e.clientX - rect.left) / zoom;
-    const y = (e.clientY - rect.top - 48) / zoom;
+    const x = (e.clientX - rect.left - panOffset.x) / zoom;
+    const y = (e.clientY - rect.top - 48 - panOffset.y) / zoom;
     setMousePos({ x, y });
 
     if (draggingId) {
@@ -443,6 +660,11 @@ export const CircuitCanvas = ({
   };
 
   const handlePointerUp = () => {
+    if (isPanning) {
+      setIsPanning(false);
+      panStartRef.current = null;
+      return;
+    }
     setDraggingId(null);
     setDraggingWaypoint(null);
     if (isDrawingWire) {
@@ -451,19 +673,37 @@ export const CircuitCanvas = ({
     }
   };
 
-  const handlePointerDownBackground = () => {
+  // Chỉ chuột phải (button === 2) mới pan — chuột trái (button === 0) giữ
+  // nguyên 100% hành vi cũ (bấm nền để bỏ chọn). preventDefault() ở đây CHƯA đủ để chặn context menu thật của
+  // trình duyệt (nó mở ra ở sự kiện "contextmenu" riêng, bắn SAU "pointerdown")
+  // — phải chặn thêm ở onContextMenu của container (xem JSX).
+  const handleCanvasPointerDown = (e: React.PointerEvent) => {
+    if (e.button === 2) {
+      e.preventDefault();
+      setSelectedPartId(null);
+      setSelectedWireIndex(null);
+      setIsPanning(true);
+      panStartRef.current = { clientX: e.clientX, clientY: e.clientY, panX: panOffset.x, panY: panOffset.y };
+      return;
+    }
     setSelectedPartId(null);
     setSelectedWireIndex(null);
   };
 
   const handleComponentPointerDown = (e: React.PointerEvent, compId: string) => {
+    // Chuột phải trên linh kiện: KHÔNG chọn/kéo component — để nguyên ý định
+    // "chuột phải = pan" nhất quán trên toàn canvas, không riêng vùng trống.
+    // Không stopPropagation() ở đây để pointerdown còn nổi bọt lên container,
+    // kích hoạt handleCanvasPointerDown xử lý pan như bình thường.
+    if (e.button === 2) return;
+
     e.stopPropagation();
     setSelectedPartId(compId === 'arduino' ? 'arduino' : compId);
     setSelectedWireIndex(null);
     if (!containerRef.current) return;
     const containerRect = containerRef.current.getBoundingClientRect();
-    const mx = (e.clientX - containerRect.left) / zoom;
-    const my = (e.clientY - containerRect.top - 48) / zoom;
+    const mx = (e.clientX - containerRect.left - panOffset.x) / zoom;
+    const my = (e.clientY - containerRect.top - 48 - panOffset.y) / zoom;
 
     if (compId === 'arduino') {
       setDragOffset({ x: mx - arduinoPos.x, y: my - arduinoPos.y });
@@ -477,6 +717,9 @@ export const CircuitCanvas = ({
   };
 
   const handlePinPointerDown = (e: React.PointerEvent, partId: string, pinName: string, absX: number, absY: number) => {
+    // Chuột phải trên pin: không bắt đầu vẽ dây — để nổi bọt lên container
+    // cho pan (giống handleComponentPointerDown).
+    if (e.button === 2) return;
     e.stopPropagation();
     setIsDrawingWire(true);
     setWireStart({ id: partId, pinName, x: absX, y: absY });
@@ -530,10 +773,12 @@ export const CircuitCanvas = ({
     ownerId: string,
     ownerX: number,
     ownerY: number,
-    rotateDeg: number
+    rotateDeg: number,
+    ownerType: string
   ) =>
     Object.entries(pins).map(([pinName, coord]) => {
       const rotated = getRotatedOwnerCoord(ownerId, coord, rotateDeg);
+      const kind = getPinKind(ownerType, pinName);
       return (
         <div
           key={`${ownerId}-pin-${pinName}`}
@@ -551,7 +796,7 @@ export const CircuitCanvas = ({
           }}
           onPointerDown={(e) => handlePinPointerDown(e, ownerId, pinName, ownerX + rotated.x, ownerY + rotated.y)}
           onPointerUp={(e) => handlePinPointerUp(e, ownerId, pinName)}
-          onPointerEnter={() => setHoveredPin({ id: ownerId, pinName, label: `${ownerId}:${pinName}` })}
+          onPointerEnter={() => setHoveredPin({ id: ownerId, pinName, label: `${ownerId}:${pinName} (${kind})` })}
           onPointerLeave={() => setHoveredPin(null)}
         />
       );
@@ -561,19 +806,43 @@ export const CircuitCanvas = ({
     <div
       ref={containerRef}
       className="relative w-full h-full bg-[#222222] overflow-hidden touch-none"
-      style={{ minHeight: '500px' }}
+      style={{ minHeight: '500px', cursor: isPanning ? 'grabbing' : 'grab' }}
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerUp}
       onPointerLeave={handlePointerUp}
-      onPointerDown={handlePointerDownBackground}
+      onPointerDown={handleCanvasPointerDown}
+      onContextMenu={(e) => e.preventDefault()}
     >
       <div
         className="absolute inset-0 pointer-events-none"
         style={{
           backgroundImage: 'radial-gradient(rgba(255,255,255,0.08) 1px, transparent 1px)',
           backgroundSize: `${20 * zoom}px ${20 * zoom}px`,
+          // Lưới chấm nền nằm NGOÀI world-layer (chỉ để tô nền, không phải
+          // linh kiện thật) — dịch cùng panOffset để cảm giác "gắn liền" với
+          // mạch khi pan, thay vì đứng yên trong lúc mọi thứ khác trôi qua.
+          backgroundPosition: `${panOffset.x}px ${panOffset.y}px`,
         }}
       />
+
+      {onOpenPalette && (
+        <button
+          type="button"
+          onClick={onOpenPalette}
+          title="Thêm linh kiện"
+          aria-label="Thêm linh kiện"
+          // top-16 (không phải top-3) — Toolbar render NGAY SAU đây là 1 thanh
+          // ngang cao 48px (h-12) phủ z-50 kín chiều rộng canvas (tô nền đặc
+          // bg-[#2d2d2d]), CAO HƠN z-30 của nút này — đặt trong vùng 0-48px
+          // khiến nút vừa bị che khuất vừa không nhận được click (xác nhận
+          // thật qua document.elementFromPoint: điểm giữa nút trả về đúng span
+          // hint-text bên trong Toolbar, không phải nút). Đặt hẳn xuống dưới
+          // thanh Toolbar để không tranh chấp layer với nó.
+          className="absolute left-3 top-16 z-30 flex h-9 w-9 items-center justify-center rounded-full border border-slate-600 bg-[#2a2a2a]/90 text-slate-100 shadow-lg backdrop-blur transition-colors hover:bg-teal-600 hover:border-teal-500"
+        >
+          <Plus className="h-5 w-5" />
+        </button>
+      )}
 
       <Toolbar
         selectedColorTarget={
@@ -623,7 +892,14 @@ export const CircuitCanvas = ({
       <div
         className="absolute inset-0 mt-12"
         style={{
-          transform: `scale(${zoom})`,
+          // translate() ĐỨNG TRƯỚC scale() trong chuỗi transform CSS — theo
+          // đúng thứ tự áp dụng transform (phải sang trái), scale() được áp
+          // cho nội dung TRƯỚC, translate() dịch kết quả đã scale đó đi 1
+          // khoảng CỐ ĐỊNH theo pixel màn hình SAU — nhờ vậy panOffset (tính
+          // bằng pixel màn hình thật từ handleCanvasPointerDown/handlePointerMove)
+          // luôn cho cảm giác kéo nhất quán dù đang zoom mức nào, không cần
+          // tự chia panOffset cho zoom ở bất kỳ đâu khác trong file.
+          transform: `translate(${panOffset.x}px, ${panOffset.y}px) scale(${zoom})`,
           transformOrigin: 'top left',
         }}
       >
@@ -736,7 +1012,7 @@ export const CircuitCanvas = ({
           onPointerDown={(e) => handleComponentPointerDown(e, 'arduino')}
         >
           {createWokwiElement(boardTagName, { ref: boardRef, style: { pointerEvents: 'none' } })}
-          {renderPinDots(boardPins, 'arduino', arduinoPos.x, arduinoPos.y, arduinoRotate)}
+          {renderPinDots(boardPins, 'arduino', arduinoPos.x, arduinoPos.y, arduinoRotate, boardTagName)}
 
           {selectedPartId === 'arduino' && (
             <div className="absolute inset-0 -m-2 border border-dashed border-[#22c55e] pointer-events-none" style={{ zIndex: 15 }} />
@@ -802,12 +1078,45 @@ export const CircuitCanvas = ({
               ref: setComponentRef(component.id),
               style: { pointerEvents: 'none' },
             });
+          } else if (type === 'hc-sr04') {
+            renderElement = createWokwiElement('wokwi-hc-sr04', {
+              ref: setComponentRef(component.id),
+              style: { pointerEvents: 'none' },
+            });
+          } else if (type === 'rgb-led') {
+            // ledRed/ledGreen/ledBlue là number nên KHÔNG truyền qua JSX prop
+            // (React chỉ gán thẳng DOM property cho boolean trên custom
+            // element — xem effect ở trên); property được gán trực tiếp qua
+            // ref sau khi mount.
+            renderElement = createWokwiElement('wokwi-rgb-led', {
+              ref: setComponentRef(component.id),
+              style: { pointerEvents: 'none' },
+            });
+          } else if (WOKWI_REAL_ELEMENT_TAGS[type]) {
+            // Thư viện linh kiện mở rộng — mọi component có element thật
+            // trong @wokwi/elements (không cần state runtime nào, chỉ hiển
+            // thị tĩnh) đi qua đây thay vì if/else riêng từng loại.
+            renderElement = createWokwiElement(WOKWI_REAL_ELEMENT_TAGS[type], {
+              ref: setComponentRef(component.id),
+              // LCD 16x2 I2C dùng LẠI element wokwi-lcd1602 thật nhưng đổi
+              // thuộc tính `pins` sang chế độ 'i2c' (string — an toàn qua
+              // JSX, không dính bug number/attribute như RGB LED) để hiển
+              // thị đúng 4 chân GND/VCC/SDA/SCL thay vì 16 chân song song.
+              // wokwi-lcd2004 (LCD 20x4) mặc định pins='full' (16 chân song
+              // song) — module 20x4 thực tế hầu như luôn dùng qua I2C
+              // backpack, ép 'i2c' để khớp đúng LCD2004_PINS (4 chân).
+              ...(type === 'lcd1602-i2c' || type === 'lcd2004' ? { pins: 'i2c' } : {}),
+              style: { pointerEvents: 'none' },
+            });
           } else {
-            renderElement = (
-              <div className="rounded-lg border border-gray-600 bg-gray-800 px-3 py-2 text-xs text-gray-300 pointer-events-none">
-                {component.type}
-              </div>
-            );
+            // Robot giao hàng mini (L298N/DC Motor/Battery Pack/Power Switch/
+            // Wheel/Caster Wheel/Chassis/Breadboard/Delivery Box), thư viện mở
+            // rộng không có element thật (Relay/Fan/cảm biến rời rạc/robot cơ
+            // khí/...), và bất kỳ type nào khác chưa có element @wokwi/elements
+            // thật đều rơi vào đây — renderFallbackCard() tự phân biệt card có
+            // icon+tên (đã đăng ký trong ROBOT_KIT_FALLBACK_CARDS) và type hoàn
+            // toàn lạ (gray box cũ, không đổi hành vi).
+            renderElement = renderFallbackCard(type, component.type, partState);
           }
 
           return (
@@ -822,7 +1131,7 @@ export const CircuitCanvas = ({
                 </div>
               )}
 
-              {renderPinDots(compPins, component.id, component.x, component.y, component.rotate ?? 0)}
+              {renderPinDots(compPins, component.id, component.x, component.y, component.rotate ?? 0, type)}
             </div>
           );
         })}

@@ -52,7 +52,13 @@ export const studentsApi = {
     search?: string;
     isActive?: boolean;
   }): Promise<StudentsListResponse> => {
-    const response = await api.get('/students', { params });
+    const response = await api.get('/students', { 
+      params: {
+        PageNumber: params?.pageNumber,
+        PageSize: params?.pageSize,
+        Search: params?.search,
+      }
+    });
     // Handle nested data structure: response.data.data.data or response.data.data.items
     const nestedData = response.data.data;
     const result = nestedData?.data || nestedData?.items || nestedData || response.data;
@@ -172,7 +178,13 @@ export const teachersApi = {
     search?: string;
     isActive?: boolean;
   }): Promise<TeachersListResponse> => {
-    const response = await api.get('/teachers', { params });
+    const response = await api.get('/teachers', { 
+      params: {
+        PageNumber: params?.pageNumber,
+        PageSize: params?.pageSize,
+        SearchTerm: params?.search,
+      }
+    });
     const nestedData = response.data.data;
     const result = nestedData?.data || nestedData?.items || nestedData || response.data;
     const items = Array.isArray(result) ? result : [];
@@ -189,9 +201,13 @@ export const teachersApi = {
   getById: async (id: number): Promise<TeacherProfile> => {
     const response = await api.get(`/teachers/${id}`);
     const data = response.data.data || response.data;
-    // Map userId to id if needed
+    // Map UserId to id if needed
     if (data.userId && !data.id) {
       data.id = data.userId;
+    }
+    // Map schoolName from response
+    if (data.schoolName !== undefined) {
+      data.schoolName = data.schoolName;
     }
     return data;
   },
@@ -266,23 +282,21 @@ export const loginHistoryApi = {
 export const schoolAuthApi = {
   createUser: async (data: {
     email: string;
-    password?: string;
-    fullName?: string;
+    fullName: string;
     roleId: number; // 3 = Teacher, 4 = Student
-    phone?: string;
-    gender?: string;
-    dateOfBirth?: string;
-    address?: string;
+    phone: string;
+    gender: string;
+    dateOfBirth: string;
+    address: string;
   }): Promise<void> => {
     await api.post('/auth/create-user', {
       Email: data.email,
-      Password: data.password || 'TempPassword123',
       RoleId: data.roleId,
-      FullName: data.fullName?.trim() || undefined,
-      Phone: data.phone?.trim() || undefined,
-      Gender: data.gender?.trim() || undefined,
-      DateOfBirth: data.dateOfBirth?.trim() || undefined,
-      Address: data.address?.trim() || undefined,
+      FullName: data.fullName.trim(),
+      Phone: data.phone.trim(),
+      Gender: data.gender.trim(),
+      DateOfBirth: data.dateOfBirth.trim(),
+      Address: data.address.trim(),
     });
   },
 };

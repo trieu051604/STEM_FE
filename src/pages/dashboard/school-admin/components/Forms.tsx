@@ -491,9 +491,10 @@ interface ClassFormProps {
   defaultValues?: Partial<ClassFormData>;
   courses: { id: number; title: string }[];
   teachers: { id: number; fullName: string }[];
+  error?: string | null;
 }
 
-export function ClassForm({ onSubmit, onCancel, loading, defaultValues, courses, teachers }: ClassFormProps) {
+export function ClassForm({ onSubmit, onCancel, loading, defaultValues, courses, teachers, error }: ClassFormProps) {
   const {
     register,
     handleSubmit,
@@ -552,6 +553,12 @@ export function ClassForm({ onSubmit, onCancel, loading, defaultValues, courses,
         </FormField>
       </div>
 
+      {error && (
+        <div className="p-3 rounded-lg bg-destructive/10 border border-destructive/20 text-sm text-destructive">
+          {error}
+        </div>
+      )}
+
       <FormActions onCancel={onCancel} loading={loading} />
     </form>
   );
@@ -580,6 +587,12 @@ export function TeacherForm({ onSubmit, onCancel, loading, defaultValues, hidePa
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+      {error && (
+        <div className="p-3 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-sm text-red-600 dark:text-red-400">
+          {error}
+        </div>
+      )}
+
       <FormField label="Họ và tên" required error={errors.fullName?.message}>
         <Input
           placeholder="Nguyễn Văn A"
@@ -648,7 +661,6 @@ export function TeacherForm({ onSubmit, onCancel, loading, defaultValues, hidePa
       </div>
 
       <FormActions onCancel={onCancel} loading={loading} />
-      {error && <p className="text-xs text-destructive mt-2">{error}</p>}
     </form>
   );
 }

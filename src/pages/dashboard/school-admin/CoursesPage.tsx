@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Icon } from '@/components/ui/Icon';
@@ -20,11 +21,28 @@ import { vi } from 'date-fns/locale';
 
 const ITEMS_PER_PAGE = 10;
 
+type ToastType = 'success' | 'error' | 'warning';
+interface Toast {
+  id: string;
+  message: string;
+  type: ToastType;
+}
+
 export const CoursesPage = () => {
   const queryClient = useQueryClient();
   const [searchTerm, setSearchTerm] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(ITEMS_PER_PAGE);
+  const [toasts, setToasts] = useState<Toast[]>([]);
+
+  // Toast notification
+  const showToast = (message: string, type: ToastType = 'success') => {
+    const id = Math.random().toString(36).substring(2, 9);
+    setToasts((prev) => [...prev, { id, message, type }]);
+    setTimeout(() => {
+      setToasts((prev) => prev.filter((t) => t.id !== id));
+    }, 4000);
+  };
 
   // Modal states
   const [createModalOpen, setCreateModalOpen] = useState(false);
@@ -34,13 +52,17 @@ export const CoursesPage = () => {
   const [selectedCourse, setSelectedCourse] = useState<Course | null>(null);
 
   // Fetch courses
-  const { data: coursesData, isLoading, refetch } = useQuery({
+  const { data: coursesData, isLoading, refetch, error: fetchError } = useQuery({
     queryKey: ['courses', currentPage, pageSize, searchTerm],
     queryFn: () => coursesApi.getAll({
       searchTerm: searchTerm,
       pageNumber: currentPage,
       pageSize: pageSize,
     }),
+    onError: (error: any) => {
+      const message = error?.response?.data?.message || error?.message || 'Lỗi khi tải danh sách khóa học';
+      showToast(message, 'error');
+    },
   });
 
   // Create course mutation
@@ -56,13 +78,19 @@ export const CoursesPage = () => {
       queryClient.invalidateQueries({ queryKey: ['courses'] });
       setCreateModalOpen(false);
       setCreateError(null);
+      showToast('Tạo khóa học thành công!', 'success');
     },
     onError: (error: any) => {
       const message = error?.response?.data?.message || error?.message || 'Lỗi khi tạo khóa học';
-      if (message.includes('duplicate') || message.includes('trùng')) {
-        setCreateError('Tên khóa học đã tồn tại. Vui lòng sử dụng tên khác.');
+      const isDuplicate = message.toLowerCase().includes('duplicate') || 
+                          message.toLowerCase().includes('trùng') ||
+                          message.toLowerCase().includes('exists') ||
+                          message.toLowerCase().includes('đã tồn tại');
+      if (isDuplicate) {
+        setCreateError('Mã khóa học đã tồn tại. Vui lòng sử dụng mã khác.');
       } else {
         setCreateError(message);
+        showToast(message, 'error');
       }
     },
   });
@@ -78,13 +106,19 @@ export const CoursesPage = () => {
       setEditModalOpen(false);
       setSelectedCourse(null);
       setUpdateError(null);
+      showToast('Cập nhật khóa học thành công!', 'success');
     },
     onError: (error: any) => {
       const message = error?.response?.data?.message || error?.message || 'Lỗi khi cập nhật khóa học';
-      if (message.includes('duplicate') || message.includes('trùng')) {
-        setUpdateError('Tên khóa học đã tồn tại. Vui lòng sử dụng tên khác.');
+      const isDuplicate = message.toLowerCase().includes('duplicate') || 
+                          message.toLowerCase().includes('trùng') ||
+                          message.toLowerCase().includes('exists') ||
+                          message.toLowerCase().includes('đã tồn tại');
+      if (isDuplicate) {
+        setUpdateError('Mã khóa học đã tồn tại. Vui lòng sử dụng mã khác.');
       } else {
         setUpdateError(message);
+        showToast(message, 'error');
       }
     },
   });
@@ -96,6 +130,12 @@ export const CoursesPage = () => {
       queryClient.invalidateQueries({ queryKey: ['courses'] });
       setDeleteConfirmOpen(false);
       setSelectedCourse(null);
+      showToast('Xóa khóa học thành công!', 'success');
+    },
+    onError: (error: any) => {
+      setDeleteConfirmOpen(false);
+      const message = error?.response?.data?.message || error?.message || 'Lỗi khi xóa khóa học';
+      showToast(message, 'error');
     },
   });
 
@@ -155,11 +195,11 @@ export const CoursesPage = () => {
       key: 'actions',
       header: '',
       render: (course) => (
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-1 opacity-100 group-hover:opacity-100">
           <Button
             variant="ghost"
             size="icon"
-            className="size-8"
+            className="size-8 text-muted-foreground hover:text-foreground hover:bg-accent"
             onClick={(e) => {
               e.stopPropagation();
               setSelectedCourse(course);
@@ -171,7 +211,7 @@ export const CoursesPage = () => {
           <Button
             variant="ghost"
             size="icon"
-            className="size-8"
+            className="size-8 text-muted-foreground hover:text-foreground hover:bg-accent"
             onClick={(e) => {
               e.stopPropagation();
               setSelectedCourse(course);
@@ -183,7 +223,7 @@ export const CoursesPage = () => {
           <Button
             variant="ghost"
             size="icon"
-            className="size-8 text-destructive hover:text-destructive"
+            className="size-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
             onClick={(e) => {
               e.stopPropagation();
               setSelectedCourse(course);
@@ -428,6 +468,30 @@ export const CoursesPage = () => {
         confirmText="Xóa"
         loading={deleteCourseMutation.isPending}
       />
+
+      {/* Toast Notification Container */}
+      <div className="fixed top-4 right-4 z-50 space-y-2">
+        <AnimatePresence>
+          {toasts.map((toast) => (
+            <motion.div
+              key={toast.id}
+              initial={{ opacity: 0, x: 20, scale: 0.95 }}
+              animate={{ opacity: 1, x: 0, scale: 1 }}
+              exit={{ opacity: 0, x: 20, scale: 0.95 }}
+              className={`flex items-center gap-3 px-4 py-3 rounded-lg shadow-lg border ${
+                toast.type === 'success' ? 'bg-green-50 dark:bg-green-900/30 border-green-200 dark:border-green-800 text-green-800 dark:text-green-200' :
+                toast.type === 'error' ? 'bg-red-50 dark:bg-red-900/30 border-red-200 dark:border-red-800 text-red-800 dark:text-red-200' :
+                'bg-yellow-50 dark:bg-yellow-900/30 border-yellow-200 dark:border-yellow-800 text-yellow-800 dark:text-yellow-200'
+              }`}
+            >
+              {toast.type === 'success' && <span className="text-green-500">✓</span>}
+              {toast.type === 'error' && <span className="text-red-500">✕</span>}
+              {toast.type === 'warning' && <span className="text-yellow-500">⚠</span>}
+              <span className="text-sm font-medium">{toast.message}</span>
+            </motion.div>
+          ))}
+        </AnimatePresence>
+      </div>
     </div>
   );
 };

@@ -1,8 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
-import { Icon } from '@/components/ui/Icon';
-import { Plus, RefreshCw, Edit, Trash2, Eye, User, Mail, Phone, MapPin, GraduationCap, BookOpen, History, Ban } from 'lucide-react';
+import { Plus, RefreshCw, Edit, Eye, User, Mail, Phone, MapPin, GraduationCap, BookOpen, Lock, Unlock, AlertCircle, CheckCircle2, XCircle } from 'lucide-react';
+import { AnimatePresence, motion } from 'framer-motion';
 import {
   DataTable,
   ColumnDef,
@@ -14,42 +14,69 @@ import {
 } from './components/DataTable';
 import { TeacherForm, TeacherFormData } from './components/Forms';
 import { teachersApi, schoolAuthApi, TeacherProfile } from '@/services/schoolAdminApi';
-import { useAuthStore } from '@/stores/authStore';
 import { format } from 'date-fns';
 import { vi } from 'date-fns/locale';
+
+// Toast notification types
+type ToastType = 'success' | 'error' | 'warning' | 'info';
+interface Toast {
+  id: string;
+  message: string;
+  type: ToastType;
+}
 
 const ITEMS_PER_PAGE = 10;
 
 export const TeachersPage = () => {
   const queryClient = useQueryClient();
-  const { user } = useAuthStore();
   const [searchTerm, setSearchTerm] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(ITEMS_PER_PAGE);
+  const [toasts, setToasts] = useState<Toast[]>([]);
+
+  // Toast notification
+  const showToast = (message: string, type: ToastType = 'success') => {
+    const id = Math.random().toString(36).substring(2, 9);
+    setToasts((prev) => [...prev, { id, message, type }]);
+    setTimeout(() => {
+      setToasts((prev) => prev.filter((t) => t.id !== id));
+    }, 4000);
+  };
+
+  // Debounce search term (500ms)
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(searchTerm);
+      setCurrentPage(1); // Reset to page 1 when searching
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
 
   // Modal states
   const [createModalOpen, setCreateModalOpen] = useState(false);
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [detailModalOpen, setDetailModalOpen] = useState(false);
-  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [lockConfirmOpen, setLockConfirmOpen] = useState(false);
   const [selectedTeacher, setSelectedTeacher] = useState<TeacherProfile | null>(null);
   const [teacherUpdateError, setTeacherUpdateError] = useState<string | null>(null);
+  const [teacherCreateError, setTeacherCreateError] = useState<string | null>(null);
 
-  // Fetch teachers
+  // Fetch teachers - sử dụng debounced search
   const { data: teachersData, isLoading, refetch } = useQuery({
-    queryKey: ['teachers', currentPage, pageSize, searchTerm],
+    queryKey: ['teachers', currentPage, pageSize, debouncedSearch],
     queryFn: () => teachersApi.getAll({
       pageNumber: currentPage,
       pageSize: pageSize,
-      search: searchTerm,
+      search: debouncedSearch,
     }),
   });
 
-  // Fetch teacher detail when editing
+  // Fetch teacher detail when editing or viewing
   const { data: teacherDetail, refetch: refetchTeacherDetail } = useQuery({
     queryKey: ['teacher', selectedTeacher?.id],
     queryFn: () => teachersApi.getById(selectedTeacher!.id),
-    enabled: !!selectedTeacher?.id && editModalOpen,
+    enabled: !!selectedTeacher?.id && (editModalOpen || detailModalOpen),
   });
 
   // Create teacher mutation (via usersApi with role=teacher)
@@ -57,19 +84,25 @@ export const TeachersPage = () => {
     mutationFn: async (data: TeacherFormData) => {
       return schoolAuthApi.createUser({
         email: data.email,
-        password: 'TempPassword123',
         fullName: data.fullName,
         roleId: 3, // Teacher
-        phone: data.phone,
-        gender: data.gender,
-        dateOfBirth: data.dateOfBirth,
-        address: data.address,
+        phone: data.phone || '',
+        gender: data.gender || '',
+        dateOfBirth: data.dateOfBirth || '',
+        address: data.address || '',
       });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['teachers'] });
       queryClient.invalidateQueries({ queryKey: ['users'] });
       setCreateModalOpen(false);
+      setTeacherCreateError(null);
+      showToast('Tạo giáo viên thành công!', 'success');
+    },
+    onError: (error: any) => {
+      const errorMessage = error?.response?.data?.message || error?.message || 'Tạo giáo viên thất bại!';
+      setTeacherCreateError(errorMessage);
+      showToast(errorMessage, 'error');
     },
   });
 
@@ -82,29 +115,27 @@ export const TeachersPage = () => {
       setEditModalOpen(false);
       setSelectedTeacher(null);
       setTeacherUpdateError(null);
+      showToast('Cập nhật giáo viên thành công!', 'success');
     },
     onError: (error: any) => {
-      setTeacherUpdateError(error?.response?.data?.message || 'Cập nhật giáo viên thất bại');
+      const errorMessage = error?.response?.data?.message || error?.message || 'Cập nhật giáo viên thất bại!';
+      setTeacherUpdateError(errorMessage);
+      showToast(errorMessage, 'error');
     },
   });
 
-  // Delete teacher mutation
-  const deleteTeacherMutation = useMutation({
-    mutationFn: (id: number) => teachersApi.delete(id),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['teachers'] });
-      setDeleteConfirmOpen(false);
-      setSelectedTeacher(null);
-    },
-  });
-
-  // Toggle teacher active status mutation
+  // Toggle teacher active status mutation (Khóa/Mở khóa tài khoản)
   const toggleTeacherStatusMutation = useMutation({
-    mutationFn: ({ id, isActive }: { id: number; isActive: boolean }) =>
-      teachersApi.update(id, { isActive: !isActive }),
+    mutationFn: ({ id, isActive, fullName }: { id: number; isActive: boolean; fullName: string }) =>
+      teachersApi.update(id, { isActive, fullName }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['teachers'] });
       setSelectedTeacher(null);
+      showToast('Cập nhật trạng thái tài khoản thành công!', 'success');
+    },
+    onError: (error: any) => {
+      const errorMessage = error?.response?.data?.message || error?.message || 'Cập nhật trạng thái thất bại!';
+      showToast(errorMessage, 'error');
     },
   });
 
@@ -184,56 +215,45 @@ export const TeachersPage = () => {
           <Button
             variant="ghost"
             size="icon"
-            className="size-8"
+            className="size-8 text-muted-foreground hover:text-foreground"
             onClick={(e) => {
               e.stopPropagation();
               setSelectedTeacher(teacher);
               setDetailModalOpen(true);
             }}
+            title="Xem chi tiết"
           >
             <Eye className="w-4 h-4" />
           </Button>
           <Button
             variant="ghost"
             size="icon"
-            className="size-8"
+            className="size-8 text-muted-foreground hover:text-foreground"
             onClick={(e) => {
               e.stopPropagation();
               setSelectedTeacher(teacher);
               setEditModalOpen(true);
             }}
+            title="Chỉnh sửa"
           >
             <Edit className="w-4 h-4" />
           </Button>
           <Button
             variant="ghost"
             size="icon"
-            className="size-8"
-            disabled={!!teacher.assignedClassesCount}
+            className={`size-8 ${teacher.isActive ? 'text-orange-500 hover:text-orange-600' : 'text-green-500 hover:text-green-600'}`}
             onClick={(e) => {
               e.stopPropagation();
               setSelectedTeacher(teacher);
-              toggleTeacherStatusMutation.mutate({ id: teacher.id, isActive: !teacher.isActive });
+              toggleTeacherStatusMutation.mutate({ id: teacher.id, isActive: !teacher.isActive, fullName: teacher.fullName });
             }}
-            title={teacher.assignedClassesCount ? `Giáo viên đang có ${teacher.assignedClassesCount} lớp, không thể thay đổi trạng thái` : teacher.isActive ? 'Vô hiệu hóa' : 'Kích hoạt'}
+            title={teacher.isActive ? 'Khóa tài khoản' : 'Mở khóa tài khoản'}
           >
-            <Ban className="w-4 h-4" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="size-8 text-destructive hover:text-destructive"
-            onClick={(e) => {
-              e.stopPropagation();
-              setSelectedTeacher(teacher);
-              setDeleteConfirmOpen(true);
-            }}
-          >
-            <Trash2 className="w-4 h-4" />
+            {teacher.isActive ? <Lock className="w-4 h-4" /> : <Unlock className="w-4 h-4" />}
           </Button>
         </div>
       ),
-      className: 'w-28',
+      className: 'w-24',
     },
   ];
 
@@ -255,12 +275,6 @@ export const TeachersPage = () => {
           isActive: data.isActive,
         }
       });
-    }
-  };
-
-  const handleDeleteTeacher = async () => {
-    if (selectedTeacher) {
-      await deleteTeacherMutation.mutateAsync(selectedTeacher.id);
     }
   };
 
@@ -376,6 +390,7 @@ export const TeachersPage = () => {
           onCancel={() => setCreateModalOpen(false)}
           loading={createTeacherMutation.isPending}
           hidePassword
+          error={teacherCreateError || undefined}
         />
       </Modal>
 
@@ -426,22 +441,22 @@ export const TeachersPage = () => {
         title="Chi tiết giáo viên"
         size="lg"
       >
-        {selectedTeacher && (
+        {(teacherDetail || selectedTeacher) && (
           <div className="space-y-4">
             <div className="flex items-center gap-4 pb-4 border-b border-border">
               <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center overflow-hidden">
-                {selectedTeacher.avatar ? (
-                  <img src={selectedTeacher.avatar} alt={selectedTeacher.fullName} className="w-full h-full object-cover" />
+                {(teacherDetail || selectedTeacher)!.avatar ? (
+                  <img src={(teacherDetail || selectedTeacher)!.avatar} alt={(teacherDetail || selectedTeacher)!.fullName} className="w-full h-full object-cover" />
                 ) : (
                   <User className="w-8 h-8 text-primary" />
                 )}
               </div>
               <div>
-                <h3 className="text-lg font-semibold">{selectedTeacher.fullName}</h3>
-                <p className="text-muted-foreground">ID: #{selectedTeacher.id}</p>
+                <h3 className="text-lg font-semibold">{(teacherDetail || selectedTeacher)!.fullName}</h3>
+                <p className="text-muted-foreground">ID: #{(teacherDetail || selectedTeacher)!.id}</p>
                 <StatusBadge 
-                  status={selectedTeacher.isActive ? 'Hoạt động' : 'Không hoạt động'} 
-                  variant={selectedTeacher.isActive ? 'success' : 'danger'} 
+                  status={(teacherDetail || selectedTeacher)!.isActive ? 'Hoạt động' : 'Không hoạt động'} 
+                  variant={(teacherDetail || selectedTeacher)!.isActive ? 'success' : 'danger'} 
                 />
               </div>
             </div>
@@ -451,25 +466,25 @@ export const TeachersPage = () => {
                   <Mail className="w-3.5 h-3.5" />
                   Email
                 </p>
-                <p className="font-medium">{selectedTeacher.email}</p>
+                <p className="font-medium">{(teacherDetail || selectedTeacher)!.email}</p>
               </div>
               <div className="space-y-1">
                 <p className="text-sm text-muted-foreground flex items-center gap-1.5">
                   <Phone className="w-3.5 h-3.5" />
                   Số điện thoại
                 </p>
-                <p className="font-medium">{selectedTeacher.phone || '—'}</p>
+                <p className="font-medium">{(teacherDetail || selectedTeacher)!.phone || '—'}</p>
               </div>
               <div className="space-y-1">
                 <p className="text-sm text-muted-foreground">Giới tính</p>
                 <p className="font-medium">
-                  {selectedTeacher.gender === 'Male' ? 'Nam' : selectedTeacher.gender === 'Female' ? 'Nữ' : selectedTeacher.gender || '—'}
+                  {(teacherDetail || selectedTeacher)!.gender === 'Male' ? 'Nam' : (teacherDetail || selectedTeacher)!.gender === 'Female' ? 'Nữ' : (teacherDetail || selectedTeacher)!.gender || '—'}
                 </p>
               </div>
               <div className="space-y-1">
                 <p className="text-sm text-muted-foreground">Ngày sinh</p>
                 <p className="font-medium">
-                  {selectedTeacher.dateOfBirth ? format(new Date(selectedTeacher.dateOfBirth), 'dd/MM/yyyy', { locale: vi }) : '—'}
+                  {(teacherDetail || selectedTeacher)!.dateOfBirth ? format(new Date((teacherDetail || selectedTeacher)!.dateOfBirth!), 'dd/MM/yyyy', { locale: vi }) : '—'}
                 </p>
               </div>
               <div className="space-y-1">
@@ -477,16 +492,16 @@ export const TeachersPage = () => {
                   <MapPin className="w-3.5 h-3.5" />
                   Địa chỉ
                 </p>
-                <p className="font-medium">{selectedTeacher.address || '—'}</p>
+                <p className="font-medium">{(teacherDetail || selectedTeacher)!.address || '—'}</p>
               </div>
               <div className="space-y-1">
                 <p className="text-sm text-muted-foreground">Trường học</p>
-                <p className="font-medium">{selectedTeacher.schoolName || '—'}</p>
+                <p className="font-medium">{(teacherDetail || selectedTeacher)!.schoolName || '—'}</p>
               </div>
               <div className="space-y-1">
                 <p className="text-sm text-muted-foreground">Email xác thực</p>
                 <p className="font-medium">
-                  {selectedTeacher.isEmailVerified ? (
+                  {(teacherDetail || selectedTeacher)!.isEmailVerified ? (
                     <span className="text-success">Đã xác thực</span>
                   ) : (
                     <span className="text-destructive">Chưa xác thực</span>
@@ -496,13 +511,13 @@ export const TeachersPage = () => {
               <div className="space-y-1">
                 <p className="text-sm text-muted-foreground">Ngày tạo</p>
                 <p className="font-medium">
-                  {format(new Date(selectedTeacher.createdAt), 'dd/MM/yyyy HH:mm', { locale: vi })}
+                  {format(new Date((teacherDetail || selectedTeacher)!.createdAt), 'dd/MM/yyyy HH:mm', { locale: vi })}
                 </p>
               </div>
               <div className="space-y-1">
                 <p className="text-sm text-muted-foreground">Cập nhật lần cuối</p>
                 <p className="font-medium">
-                  {selectedTeacher.updatedAt ? format(new Date(selectedTeacher.updatedAt), 'dd/MM/yyyy HH:mm', { locale: vi }) : '—'}
+                  {(teacherDetail || selectedTeacher)!.updatedAt ? format(new Date((teacherDetail || selectedTeacher)!.updatedAt!), 'dd/MM/yyyy HH:mm', { locale: vi }) : '—'}
                 </p>
               </div>
             </div>
@@ -510,19 +525,34 @@ export const TeachersPage = () => {
         )}
       </Modal>
 
-      {/* Delete Confirmation */}
-      <ConfirmDialog
-        isOpen={deleteConfirmOpen}
-        onClose={() => {
-          setDeleteConfirmOpen(false);
-          setSelectedTeacher(null);
-        }}
-        onConfirm={handleDeleteTeacher}
-        title="Xóa giáo viên"
-        message={`Bạn có chắc chắn muốn xóa giáo viên "${selectedTeacher?.fullName}"? Hành động này không thể hoàn tác.`}
-        confirmText="Xóa"
-        loading={deleteTeacherMutation.isPending}
-      />
+      {/* Toast Notification Container */}
+      <div className="fixed top-4 right-4 z-50 space-y-2">
+        <AnimatePresence>
+          {toasts.map((toast) => (
+            <motion.div
+              key={toast.id}
+              initial={{ opacity: 0, x: 20, scale: 0.95 }}
+              animate={{ opacity: 1, x: 0, scale: 1 }}
+              exit={{ opacity: 0, x: 20, scale: 0.95 }}
+              className={`flex items-center gap-3 px-4 py-3 rounded-lg shadow-lg border min-w-[300px] ${
+                toast.type === 'success'
+                  ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800'
+                  : toast.type === 'error'
+                  ? 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800'
+                  : toast.type === 'warning'
+                  ? 'bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-800'
+                  : 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800'
+              }`}
+            >
+              {toast.type === 'success' && <CheckCircle2 className="w-5 h-5 shrink-0 text-green-600 dark:text-green-400" />}
+              {toast.type === 'error' && <XCircle className="w-5 h-5 shrink-0 text-red-600 dark:text-red-400" />}
+              {toast.type === 'warning' && <AlertCircle className="w-5 h-5 shrink-0 text-yellow-600 dark:text-yellow-400" />}
+              {toast.type === 'info' && <CheckCircle2 className="w-5 h-5 shrink-0 text-blue-600 dark:text-blue-400" />}
+              <div className="flex-1 text-sm font-medium">{toast.message}</div>
+            </motion.div>
+          ))}
+        </AnimatePresence>
+      </div>
     </div>
   );
 };

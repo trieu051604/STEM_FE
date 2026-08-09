@@ -18,15 +18,71 @@ import { ScheduleCalendar } from '@/components/ScheduleCalendar';
 import { WeeklyScheduleGrid } from '@/components/WeeklyScheduleGrid';
 import { format } from 'date-fns';
 import { vi } from 'date-fns/locale';
+import { motion, AnimatePresence } from 'framer-motion';
 
 const ITEMS_PER_PAGE = 10;
+
+type ToastType = 'success' | 'error' | 'warning';
+interface Toast {
+  id: string;
+  message: string;
+  type: ToastType;
+}
+
+// Toast Component
+function ToastContainer({ toasts, onDismiss }: { toasts: Toast[]; onDismiss: (id: string) => void }) {
+  return (
+    <div className="fixed top-4 right-4 z-[100] space-y-2">
+      <AnimatePresence>
+        {toasts.map((toast) => (
+          <motion.div
+            key={toast.id}
+            initial={{ opacity: 0, x: 50, scale: 0.95 }}
+            animate={{ opacity: 1, x: 0, scale: 1 }}
+            exit={{ opacity: 0, x: 50, scale: 0.95 }}
+            className={`flex items-center gap-3 px-4 py-3 rounded-lg shadow-lg border ${
+              toast.type === 'success' ? 'bg-green-50 dark:bg-green-900/30 border-green-200 dark:border-green-700 text-green-800 dark:text-green-200' :
+              toast.type === 'error' ? 'bg-red-50 dark:bg-red-900/30 border-red-200 dark:border-red-700 text-red-800 dark:text-red-200' :
+              'bg-yellow-50 dark:bg-yellow-900/30 border-yellow-200 dark:border-yellow-700 text-yellow-800 dark:text-yellow-200'
+            }`}
+          >
+            {toast.type === 'success' && <Check className="w-5 h-5 shrink-0" />}
+            {toast.type === 'error' && <X className="w-5 h-5 shrink-0" />}
+            <p className="text-sm font-medium">{toast.message}</p>
+            <button
+              onClick={() => onDismiss(toast.id)}
+              className="ml-2 p-1 hover:opacity-70 transition-opacity"
+            >
+              <Icon name="X" className="w-4 h-4" />
+            </button>
+          </motion.div>
+        ))}
+      </AnimatePresence>
+    </div>
+  );
+}
 
 export const ClassesPage = () => {
   const queryClient = useQueryClient();
   const [searchTerm, setSearchTerm] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(ITEMS_PER_PAGE);
-  const [courseFilter, setCourseFilter] = useState<string>('');
+  const [toasts, setToasts] = useState<Toast[]>([]);
+  const [createError, setCreateError] = useState<string | null>(null);
+  const [updateError, setUpdateError] = useState<string | null>(null);
+
+  // Toast notification
+  const showToast = (message: string, type: ToastType = 'success') => {
+    const id = Math.random().toString(36).substring(2, 9);
+    setToasts((prev) => [...prev, { id, message, type }]);
+    setTimeout(() => {
+      setToasts((prev) => prev.filter((t) => t.id !== id));
+    }, 4000);
+  };
+
+  const dismissToast = (id: string) => {
+    setToasts((prev) => prev.filter((t) => t.id !== id));
+  };
 
   // Modal states
   const [createModalOpen, setCreateModalOpen] = useState(false);
@@ -38,9 +94,10 @@ export const ClassesPage = () => {
   const [schedulesMap, setSchedulesMap] = useState<Record<number, ScheduleResponse[]>>({});
   const [schedulesLoading, setSchedulesLoading] = useState(false);
   const [availableTeachersForEdit, setAvailableTeachersForEdit] = useState<{ id: number; fullName: string }[]>([]);
+  const [courseFilter, setCourseFilter] = useState<string>('');
 
   // Fetch classes
-  const { data: classesData, isLoading, refetch } = useQuery({
+  const { data: classesData, isLoading, refetch, error: fetchError } = useQuery({
     queryKey: ['classes', currentPage, pageSize, searchTerm, courseFilter],
     queryFn: () => classesApi.getAll({
       pageNumber: currentPage,
@@ -48,6 +105,10 @@ export const ClassesPage = () => {
       searchTerm: searchTerm,
       courseId: courseFilter ? Number(courseFilter) : undefined,
     }),
+    onError: (error: any) => {
+      const message = error?.response?.data?.message || error?.message || 'Lỗi khi tải danh sách lớp học';
+      showToast(message, 'error');
+    },
   });
 
   // Fetch courses for filter and form
@@ -65,34 +126,55 @@ export const ClassesPage = () => {
   // Create class mutation
   const createClassMutation = useMutation({
     mutationFn: async (data: ClassFormData) => {
-      // Check for duplicate class code
-      const existingClasses = classesData?.items || [];
-      const isDuplicate = existingClasses.some(cls => 
-        cls.classCode.toLowerCase() === data.classCode.toLowerCase()
-      );
-      if (isDuplicate) {
-        throw new Error('Mã lớp đã tồn tại. Vui lòng sử dụng mã lớp khác.');
-      }
+      setCreateError(null);
       return classesApi.create(data as any);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['classes'] });
       setCreateModalOpen(false);
-      // TODO: Add toast notification
+      setCreateError(null);
+      showToast('Tạo lớp học thành công!', 'success');
     },
     onError: (error: any) => {
-      // Error is handled by the form
-      console.error('Create class error:', error.message);
+      const message = error?.response?.data?.message || error?.message || 'Lỗi khi tạo lớp học';
+      const isDuplicate = message.toLowerCase().includes('duplicate') ||
+                          message.toLowerCase().includes('trùng') ||
+                          message.toLowerCase().includes('exists') ||
+                          message.toLowerCase().includes('đã tồn tại');
+      if (isDuplicate) {
+        setCreateError('Mã lớp đã tồn tại. Vui lòng sử dụng mã lớp khác.');
+      } else {
+        setCreateError(message);
+        showToast(message, 'error');
+      }
     },
   });
 
   // Update class mutation
   const updateClassMutation = useMutation({
-    mutationFn: ({ id, data }: { id: number; data: ClassFormData }) => classesApi.update(id, data as any),
+    mutationFn: ({ id, data }: { id: number; data: ClassFormData }) => {
+      setUpdateError(null);
+      return classesApi.update(id, data as any);
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['classes'] });
       setEditModalOpen(false);
       setSelectedClass(null);
+      setUpdateError(null);
+      showToast('Cập nhật lớp học thành công!', 'success');
+    },
+    onError: (error: any) => {
+      const message = error?.response?.data?.message || error?.message || 'Lỗi khi cập nhật lớp học';
+      const isDuplicate = message.toLowerCase().includes('duplicate') ||
+                          message.toLowerCase().includes('trùng') ||
+                          message.toLowerCase().includes('exists') ||
+                          message.toLowerCase().includes('đã tồn tại');
+      if (isDuplicate) {
+        setUpdateError('Mã lớp đã tồn tại. Vui lòng sử dụng mã lớp khác.');
+      } else {
+        setUpdateError(message);
+        showToast(message, 'error');
+      }
     },
   });
 
@@ -103,6 +185,12 @@ export const ClassesPage = () => {
       queryClient.invalidateQueries({ queryKey: ['classes'] });
       setDeleteConfirmOpen(false);
       setSelectedClass(null);
+      showToast('Xóa lớp học thành công!', 'success');
+    },
+    onError: (error: any) => {
+      const message = error?.response?.data?.message || error?.message || 'Lỗi khi xóa lớp học';
+      setDeleteConfirmOpen(false);
+      showToast(message, 'error');
     },
   });
 
@@ -320,11 +408,14 @@ export const ClassesPage = () => {
   const formatDateTime = (value?: string) => {
     if (!value) return '—';
     try {
-      // Parse directly from ISO string to avoid timezone issues
-      const datePart = value.split('T')[0];
-      const timePart = value.split('T')[1]?.substring(0, 5) || '';
-      const [year, month, day] = datePart.split('-');
-      return `${timePart} ${day}/${month}/${year}`;
+      // Parse the ISO string and format to dd/MM/yyyy HH:mm
+      const date = new Date(value);
+      const day = String(date.getDate()).padStart(2, '0');
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const year = date.getFullYear();
+      const hours = String(date.getHours()).padStart(2, '0');
+      const minutes = String(date.getMinutes()).padStart(2, '0');
+      return `${hours}:${minutes} ${day}/${month}/${year}`;
     } catch {
       return value;
     }
@@ -495,16 +586,23 @@ export const ClassesPage = () => {
       {/* Create Class Modal */}
       <Modal
         isOpen={createModalOpen}
-        onClose={() => setCreateModalOpen(false)}
+        onClose={() => {
+          setCreateModalOpen(false);
+          setCreateError(null);
+        }}
         title="Thêm lớp học mới"
         size="lg"
       >
         <ClassForm
           onSubmit={handleCreateClass}
-          onCancel={() => setCreateModalOpen(false)}
+          onCancel={() => {
+            setCreateModalOpen(false);
+            setCreateError(null);
+          }}
           loading={createClassMutation.isPending}
           courses={courses}
           teachers={teachers}
+          error={createError}
         />
       </Modal>
 
@@ -514,6 +612,7 @@ export const ClassesPage = () => {
         onClose={() => {
           setEditModalOpen(false);
           setSelectedClass(null);
+          setUpdateError(null);
         }}
         title="Chỉnh sửa lớp học"
         size="lg"
@@ -524,6 +623,7 @@ export const ClassesPage = () => {
             onCancel={() => {
               setEditModalOpen(false);
               setSelectedClass(null);
+              setUpdateError(null);
             }}
             loading={updateClassMutation.isPending}
             defaultValues={{
@@ -535,6 +635,7 @@ export const ClassesPage = () => {
             }}
             courses={courses}
             teachers={availableTeachersForEdit.length > 0 ? availableTeachersForEdit : teachers}
+            error={updateError}
           />
         )}
       </Modal>
@@ -570,6 +671,9 @@ export const ClassesPage = () => {
         confirmText="Xóa"
         loading={deleteClassMutation.isPending}
       />
+
+      {/* Toast Notifications */}
+      <ToastContainer toasts={toasts} onDismiss={dismissToast} />
     </div>
   );
 };

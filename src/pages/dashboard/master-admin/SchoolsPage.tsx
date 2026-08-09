@@ -346,22 +346,22 @@ export function SchoolsPage({ defaultTab = 'list' }: SchoolsPageProps) {
   return (
     <div className={`min-h-screen space-y-6 relative pb-20 font-sans`}>
       {/* Toast Notification Container */}
-      <div className="fixed top-6 right-6 z-50 flex flex-col gap-2 w-96 max-w-full">
+      <div className="fixed top-4 right-4 z-50 space-y-2">
         <AnimatePresence>
           {toasts.map((toast) => (
             <motion.div
               key={toast.id}
-              initial={{ opacity: 0, y: -20, scale: 0.9 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: 20, scale: 0.9 }}
-              className={`p-4 rounded-xl shadow-lg border flex items-start gap-3 backdrop-blur-md ${
+              initial={{ opacity: 0, x: 20, scale: 0.95 }}
+              animate={{ opacity: 1, x: 0, scale: 1 }}
+              exit={{ opacity: 0, x: 20, scale: 0.95 }}
+              className={`flex items-center gap-3 px-4 py-3 rounded-lg shadow-lg border min-w-[300px] ${
                 toast.type === 'success'
-                  ? 'bg-green-50 border-border text-green-700 dark:bg-green-900/30 dark:text-green-400 dark:border-green-800'
+                  ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800'
                   : toast.type === 'error'
-                  ? 'bg-red-50 border-border text-red-700 dark:bg-red-900/30 dark:text-red-400 dark:border-red-800'
+                  ? 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800'
                   : toast.type === 'warning'
-                  ? 'bg-yellow-50 border-border text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400 dark:border-yellow-800'
-                  : 'bg-blue-50 border-border text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 dark:border-blue-800'
+                  ? 'bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-800'
+                  : 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800'
               }`}
             >
               {toast.type === 'success' && <CheckCircle2 className="w-5 h-5 shrink-0 text-green-600 dark:text-green-400" />}

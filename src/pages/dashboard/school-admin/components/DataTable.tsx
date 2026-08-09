@@ -96,8 +96,8 @@ export function DataTable<T>({
               <tr
                 key={getRowKey(row)}
                 onClick={() => onRowClick?.(row)}
-                className={`transition-colors ${
-                  onRowClick ? 'cursor-pointer hover:bg-accent' : ''
+                className={`transition-colors group ${
+                  onRowClick ? 'cursor-pointer hover:bg-accent' : 'hover:bg-accent/50'
                 }`}
               >
                 {columns.map((col) => (

@@ -5,6 +5,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/Switch';
+import { TeacherCard } from '@/components/Dashboard/teacher/TeacherCard';
+import { TeacherPageHeader } from '@/components/Dashboard/teacher/TeacherPageHeader';
 import { api, usersApi, authApi } from '@/services';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
@@ -155,12 +157,10 @@ export function ProfilePage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold">Hồ sơ cá nhân</h1>
-        <p className="text-muted-foreground">
-          Quản lý thông tin tài khoản và cài đặt bảo mật
-        </p>
-      </div>
+      <TeacherPageHeader
+        title="Hồ sơ cá nhân"
+        description="Quản lý thông tin tài khoản và cài đặt bảo mật"
+      />
 
       {/* Tabs */}
       <div className="flex border-b border-border">
@@ -168,7 +168,7 @@ export function ProfilePage() {
           onClick={() => setActiveTab('profile')}
           className={`flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
             activeTab === 'profile'
-              ? 'border-primary text-primary'
+              ? 'border-indigo-500 text-indigo-500'
               : 'border-transparent text-muted-foreground hover:text-foreground'
           }`}
         >
@@ -179,7 +179,7 @@ export function ProfilePage() {
           onClick={() => setActiveTab('security')}
           className={`flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
             activeTab === 'security'
-              ? 'border-primary text-primary'
+              ? 'border-indigo-500 text-indigo-500'
               : 'border-transparent text-muted-foreground hover:text-foreground'
           }`}
         >
@@ -190,7 +190,7 @@ export function ProfilePage() {
           onClick={() => setActiveTab('notifications')}
           className={`flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
             activeTab === 'notifications'
-              ? 'border-primary text-primary'
+              ? 'border-indigo-500 text-indigo-500'
               : 'border-transparent text-muted-foreground hover:text-foreground'
           }`}
         >
@@ -204,8 +204,7 @@ export function ProfilePage() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Avatar & Basic Info */}
           <div className="lg:col-span-2 space-y-6">
-            <div className="bg-card rounded-xl border border-border p-6">
-              <h3 className="font-semibold mb-4">Thông tin cá nhân</h3>
+            <TeacherCard title="Thông tin cá nhân">
               
               <form onSubmit={profileForm.handleSubmit((data) => updateProfileMutation.mutate(data))} className="space-y-4">
                 {profileError && (
@@ -215,7 +214,7 @@ export function ProfilePage() {
                 )}
                 
                 {profileSuccess && (
-                  <div className="p-3 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 rounded-lg text-sm flex items-center gap-2">
+                  <div className="p-3 bg-green-500/10 text-green-500 rounded-lg text-sm flex items-center gap-2">
                     <Check className="w-4 h-4" />
                     Cập nhật thông tin thành công!
                   </div>
@@ -275,8 +274,12 @@ export function ProfilePage() {
                   />
                 </div>
 
-                <div className="flex justify-end">
-                  <Button type="submit" disabled={updateProfileMutation.isPending}>
+                <div className="flex justify-end mt-6">
+                  <Button 
+                    type="submit" 
+                    disabled={updateProfileMutation.isPending}
+                    className="bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 hover:from-indigo-600 hover:via-purple-600 hover:to-pink-600 text-white border-0 shadow-md"
+                  >
                     {updateProfileMutation.isPending ? (
                       <>
                         <Loader2 className="w-4 h-4 animate-spin mr-2" />
@@ -291,17 +294,16 @@ export function ProfilePage() {
                   </Button>
                 </div>
               </form>
-            </div>
+            </TeacherCard>
           </div>
 
           {/* Sidebar */}
           <div className="space-y-6">
             {/* Avatar Card */}
-            <div className="bg-card rounded-xl border border-border p-6">
-              <h3 className="font-semibold mb-4">Ảnh đại diện</h3>
+            <TeacherCard title="Ảnh đại diện">
               <div className="flex flex-col items-center">
                 <div className="relative mb-4">
-                  <div className="w-32 h-32 rounded-full bg-primary/10 flex items-center justify-center overflow-hidden">
+                  <div className="w-32 h-32 rounded-full flex items-center justify-center overflow-hidden bg-[#785b46] text-white">
                     {avatarPreview || profile?.avatar || user?.avatar ? (
                       <img
                         src={avatarPreview || profile?.avatar || user?.avatar}
@@ -309,12 +311,12 @@ export function ProfilePage() {
                         className="w-full h-full object-cover"
                       />
                     ) : (
-                      <span className="text-4xl font-bold text-primary">
+                      <span className="text-5xl font-normal">
                         {user?.fullName?.charAt(0).toUpperCase()}
                       </span>
                     )}
                   </div>
-                  <label className="absolute bottom-0 right-0 w-8 h-8 bg-primary rounded-full flex items-center justify-center cursor-pointer hover:bg-primary/90 transition-colors">
+                  <label className="absolute bottom-0 right-0 w-8 h-8 bg-indigo-500 rounded-full flex items-center justify-center cursor-pointer hover:bg-indigo-600 transition-colors shadow-sm ring-2 ring-background">
                     <Camera className="w-4 h-4 text-white" />
                     <input
                       type="file"
@@ -330,11 +332,10 @@ export function ProfilePage() {
                   </Button>
                 )}
               </div>
-            </div>
+            </TeacherCard>
 
             {/* Account Info Card */}
-            <div className="bg-card rounded-xl border border-border p-6">
-              <h3 className="font-semibold mb-4">Thông tin tài khoản</h3>
+            <TeacherCard title="Thông tin tài khoản">
               <div className="space-y-3 text-sm">
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Email</span>
@@ -353,15 +354,14 @@ export function ProfilePage() {
                   </span>
                 </div>
               </div>
-            </div>
+            </TeacherCard>
           </div>
         </div>
       )}
 
       {activeTab === 'security' && (
         <div className="max-w-xl">
-          <div className="bg-card rounded-xl border border-border p-6">
-            <h3 className="font-semibold mb-4">Đổi mật khẩu</h3>
+          <TeacherCard title="Đổi mật khẩu">
             
             {passwordError && (
               <div className="p-3 bg-destructive/10 text-destructive rounded-lg text-sm mb-4">
@@ -370,7 +370,7 @@ export function ProfilePage() {
             )}
             
             {passwordSuccess && (
-              <div className="p-3 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 rounded-lg text-sm mb-4 flex items-center gap-2">
+              <div className="p-3 bg-green-500/10 text-green-500 rounded-lg text-sm mb-4 flex items-center gap-2">
                 <Check className="w-4 h-4" />
                 Đổi mật khẩu thành công!
               </div>
@@ -420,7 +420,7 @@ export function ProfilePage() {
               </div>
 
               <div className="flex justify-end pt-2">
-                <Button type="submit" disabled={changePasswordMutation.isPending}>
+                <Button type="submit" disabled={changePasswordMutation.isPending} className="bg-indigo-500 hover:bg-indigo-600 text-white">
                   {changePasswordMutation.isPending ? (
                     <>
                       <Loader2 className="w-4 h-4 animate-spin mr-2" />
@@ -435,14 +435,13 @@ export function ProfilePage() {
                 </Button>
               </div>
             </form>
-          </div>
+          </TeacherCard>
         </div>
       )}
 
       {activeTab === 'notifications' && (
         <div className="max-w-xl">
-          <div className="bg-card rounded-xl border border-border p-6">
-            <h3 className="font-semibold mb-4">Cài đặt thông báo</h3>
+          <TeacherCard title="Cài đặt thông báo">
             <div className="space-y-4">
               <div className="flex items-center justify-between py-3 border-b border-border">
                 <div>
@@ -473,7 +472,7 @@ export function ProfilePage() {
                 <Switch defaultChecked />
               </div>
             </div>
-          </div>
+          </TeacherCard>
         </div>
       )}
     </div>

@@ -52,16 +52,16 @@ export const WokwiEmbedFrame = ({
 
   if (hasError) {
     return (
-      <div className="w-full h-[600px] bg-slate-50 border border-border rounded-2xl flex flex-col items-center justify-center p-6 text-center">
-        <div className="w-16 h-16 bg-red-50 text-red-500 rounded-full flex items-center justify-center mb-4">
+      <div className="w-full h-[600px] bg-card border border-border rounded-xl flex flex-col items-center justify-center p-6 text-center">
+        <div className="w-16 h-16 bg-destructive/10 text-destructive rounded-full flex items-center justify-center mb-4">
           <AlertCircle className="w-8 h-8" />
         </div>
-        <h3 className="text-xl font-bold text-slate-800 mb-2">Không thể tải mô phỏng</h3>
-        <p className="text-slate-500 mb-6 max-w-md">
+        <h3 className="text-xl font-bold text-foreground mb-2">Không thể tải mô phỏng</h3>
+        <p className="text-muted-foreground mb-6 max-w-md">
           Có vẻ như dự án Wokwi không phản hồi hoặc link không còn khả dụng. Vui lòng thử lại hoặc liên hệ giáo viên.
         </p>
         <div className="flex flex-wrap items-center justify-center gap-3">
-          <Button onClick={handleRetry} className="bg-[#0f4c5c] hover:bg-[#0a3540] text-white">
+          <Button onClick={handleRetry} className="bg-indigo-500 hover:bg-indigo-600 text-white border-0">
             <RefreshCw className="w-4 h-4 mr-2" />
             Thử tải lại
           </Button>
@@ -80,11 +80,11 @@ export const WokwiEmbedFrame = ({
   }
 
   return (
-    <div className="relative w-full h-[600px] bg-white border border-border rounded-2xl overflow-hidden shadow-sm">
+    <div className="relative w-full h-[600px] bg-card border border-border rounded-xl overflow-hidden">
       {isLoading && (
-        <div className="absolute inset-0 z-10 bg-slate-50 flex flex-col items-center justify-center">
-          <div className="w-10 h-10 border-4 border-slate-200 border-t-[#0f4c5c] rounded-full animate-spin mb-4" />
-          <p className="text-sm font-medium text-slate-500">Đang khởi tạo phòng thí nghiệm ảo...</p>
+        <div className="absolute inset-0 z-10 bg-card flex flex-col items-center justify-center">
+          <div className="w-10 h-10 border-4 border-border border-t-indigo-500 rounded-full animate-spin mb-4" />
+          <p className="text-sm font-medium text-muted-foreground">Đang khởi tạo phòng thí nghiệm ảo...</p>
         </div>
       )}
       <iframe

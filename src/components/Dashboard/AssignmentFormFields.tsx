@@ -1,5 +1,8 @@
 import { RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Switch } from '@/components/ui/Switch';
 import type { AssignmentStatus } from '@/services/dashboardApi';
 
 export interface AssignmentClassOption {
@@ -27,8 +30,12 @@ interface AssignmentFormFieldsProps {
   onRetryClasses?: () => void;
   descriptionLabel?: string;
   descriptionPlaceholder?: string;
-  accentClassName?: string;
 }
+
+// Native <select> chưa có primitive Radix tương đương đơn giản để đổi hoàn toàn mà không
+// đổi hành vi; style thủ công theo đúng token của Input để đồng bộ hình ảnh.
+const nativeFieldClassName =
+  'flex h-10 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground outline-none transition-colors focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-input/30 dark:border-input';
 
 export function toAssignmentDueDate(value: string) {
   return value ? new Date(value).toISOString() : null;
@@ -56,7 +63,6 @@ export const AssignmentFormFields = ({
   onRetryClasses,
   descriptionLabel = 'Mô tả / yêu cầu chung',
   descriptionPlaceholder = 'Nhập mô tả bài tập...',
-  accentClassName = 'focus:border-blue-500 focus:ring-blue-500/20',
 }: AssignmentFormFieldsProps) => {
   const update = <K extends keyof AssignmentBasicsValue>(
     key: K,
@@ -69,12 +75,12 @@ export const AssignmentFormFields = ({
     <div className="space-y-5">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <label className="block">
-          <span className="text-sm font-semibold text-slate-700">Lớp học</span>
+          <span className="text-sm font-medium text-foreground">Lớp học</span>
           <select
             value={value.classId}
             onChange={(event) => update('classId', event.target.value)}
             disabled={isClassesLoading || classOptions.length === 0}
-            className={`mt-2 w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none transition-all focus:ring-2 disabled:cursor-not-allowed disabled:opacity-60 ${accentClassName}`}
+            className={`mt-2 ${nativeFieldClassName}`}
           >
             <option value="">
               {isClassesLoading
@@ -92,19 +98,19 @@ export const AssignmentFormFields = ({
         </label>
 
         <label className="block">
-          <span className="text-sm font-semibold text-slate-700">Tiêu đề</span>
-          <input
+          <span className="text-sm font-medium text-foreground">Tiêu đề</span>
+          <Input
             type="text"
             value={value.title}
             onChange={(event) => update('title', event.target.value)}
-            className={`mt-2 w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none transition-all focus:ring-2 ${accentClassName}`}
+            className="mt-2"
             placeholder="Tên bài tập"
           />
         </label>
       </div>
 
       {classesError && (
-        <div className="rounded-xl bg-amber-50 px-4 py-3 text-sm text-amber-700">
+        <div className="rounded-lg bg-amber-500/10 border border-amber-500/20 px-4 py-3 text-sm text-amber-500">
           <p>{classesError}</p>
           {onRetryClasses && (
             <Button
@@ -112,7 +118,7 @@ export const AssignmentFormFields = ({
               variant="outline"
               size="sm"
               onClick={onRetryClasses}
-              className="mt-3 border-amber-200 bg-white text-amber-700 hover:bg-amber-100"
+              className="mt-3"
             >
               <RefreshCw className="w-4 h-4" />
               Tải lại danh sách lớp
@@ -122,43 +128,43 @@ export const AssignmentFormFields = ({
       )}
 
       <label className="block">
-        <span className="text-sm font-semibold text-slate-700">{descriptionLabel}</span>
-        <textarea
+        <span className="text-sm font-medium text-foreground">{descriptionLabel}</span>
+        <Textarea
           value={value.description}
           onChange={(event) => update('description', event.target.value)}
           placeholder={descriptionPlaceholder}
-          className={`mt-2 w-full min-h-[110px] rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none transition-all focus:bg-white focus:ring-2 ${accentClassName}`}
+          className="mt-2 min-h-[110px]"
         />
       </label>
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <label className="block md:col-span-2">
-          <span className="text-sm font-semibold text-slate-700">Hạn nộp</span>
-          <input
+          <span className="text-sm font-medium text-foreground">Hạn nộp</span>
+          <Input
             type="datetime-local"
             value={value.dueDate}
             onChange={(event) => update('dueDate', event.target.value)}
-            className={`mt-2 w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none transition-all focus:ring-2 ${accentClassName}`}
+            className="mt-2"
           />
         </label>
 
         <label className="block">
-          <span className="text-sm font-semibold text-slate-700">Điểm tối đa</span>
-          <input
+          <span className="text-sm font-medium text-foreground">Điểm tối đa</span>
+          <Input
             type="number"
             min="1"
             value={value.maxScore}
             onChange={(event) => update('maxScore', Number(event.target.value))}
-            className={`mt-2 w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none transition-all focus:ring-2 ${accentClassName}`}
+            className="mt-2"
           />
         </label>
 
         <label className="block">
-          <span className="text-sm font-semibold text-slate-700">Trạng thái</span>
+          <span className="text-sm font-medium text-foreground">Trạng thái</span>
           <select
             value={value.status}
             onChange={(event) => update('status', event.target.value as AssignmentStatus)}
-            className={`mt-2 w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none transition-all focus:ring-2 ${accentClassName}`}
+            className={`mt-2 ${nativeFieldClassName}`}
           >
             <option value="draft">Bản nháp</option>
             <option value="published">Xuất bản</option>
@@ -167,26 +173,24 @@ export const AssignmentFormFields = ({
         </label>
       </div>
 
-      <div className="flex flex-col md:flex-row md:items-center gap-3 rounded-xl border border-slate-100 bg-slate-50 px-4 py-3">
+      <div className="flex flex-col md:flex-row md:items-center gap-3 rounded-lg border border-border bg-muted/30 px-4 py-3">
         <label className="flex items-center gap-3">
-          <input
-            type="checkbox"
+          <Switch
             checked={value.allowResubmit}
-            onChange={(event) => update('allowResubmit', event.target.checked)}
-            className="w-4 h-4 rounded border-slate-300"
+            onCheckedChange={(checked) => update('allowResubmit', checked)}
           />
-          <span className="text-sm font-semibold text-slate-700">Cho phép nộp lại</span>
+          <span className="text-sm font-medium text-foreground">Cho phép nộp lại</span>
         </label>
 
         {value.allowResubmit && (
-          <label className="flex items-center gap-2 text-sm text-slate-600">
+          <label className="flex items-center gap-2 text-sm text-muted-foreground">
             <span>Giới hạn</span>
-            <input
+            <Input
               type="number"
               min="1"
               value={value.resubmitLimit}
               onChange={(event) => update('resubmitLimit', event.target.value)}
-              className={`w-24 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm outline-none transition-all focus:ring-2 ${accentClassName}`}
+              className="w-24"
             />
             <span>lần</span>
           </label>

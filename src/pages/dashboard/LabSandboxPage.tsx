@@ -13,6 +13,8 @@ import { ComponentPalettePopup } from '@/components/Dashboard/VirtualLab/Sandbox
 import { SensorScenarioPanel } from '@/components/Dashboard/VirtualLab/Sandbox/SensorScenarioPanel';
 import { CloudDashboardPanel, type CloudComponentState } from '@/components/Dashboard/VirtualLab/Sandbox/CloudDashboardPanel';
 import { getSandboxProjectId } from '@/components/Dashboard/VirtualLab/Sandbox/projectId';
+import { AiAssistantPanel } from '@/components/Dashboard/VirtualLab/Sandbox/AiAssistantPanel';
+import type { ProposedChange } from '@/services/aiAssistantApi';
 
 const DIAGRAM_SAVE_DEBOUNCE_MS = 1500;
 // Riêng biệt với debounce lưu diagram (1.5s) — dài hơn 1 chút vì đây chỉ là
@@ -101,6 +103,12 @@ export const LabSandboxPage = () => {
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [autoCheck, setAutoCheck] = useState<AutoGradeResultEntity | null>(null);
   const [guidance, setGuidance] = useState<{ message: string, teacherName?: string, timestamp: number } | null>(null);
+  const [isAiPanelOpen, setIsAiPanelOpen] = useState(false);
+  const [canUndoAiChange, setCanUndoAiChange] = useState(false);
+  // Snapshot 1 bước TRƯỚC lần Apply gần nhất — dùng cho nút "Hoàn tác" trong
+  // AiAssistantPanel. Dùng ref (không phải state) vì chỉ cần đọc lúc Undo,
+  // không cần re-render khi snapshot thay đổi.
+  const aiUndoSnapshotRef = useRef<{ code: string; components: LabCircuitComponent[]; connections: any[] } | null>(null);
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const precompileTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const hasHydratedRef = useRef(false);
@@ -186,7 +194,10 @@ export const LabSandboxPage = () => {
           resolvedSensorScenario = project.circuitConfig.sensorScenario ?? resolvedSensorScenario;
           // Board/Language của compile phải theo đúng VirtualLabProject (nguồn
           // sự thật duy nhất từ giờ), không còn hardcode Uno như luồng cũ.
-          setProjectBoard(project.board || 'esp32');
+          // Fallback về boardType của Lab (thay vì hardcode 'esp32' trần —
+          // xem bug đã vá ở nhánh auto-create bên dưới) cho project cũ lỡ
+          // chưa có board lưu sẵn.
+          setProjectBoard(project.board || labResponse.boardType || 'esp32_devkit_v1');
           setProjectLanguage(project.language || 'arduino');
         } catch (projectError) {
           const status = (projectError as { response?: { status?: number } })?.response?.status;
@@ -195,9 +206,21 @@ export const LabSandboxPage = () => {
             // bằng nội dung starter của Lab, đúng hành vi auto-create của
             // PUT api/diagrams/{id} đã xác nhận ở BE (không chờ tới lần sửa
             // đầu tiên của học sinh).
+            // BUG THẬT vừa vá: nhánh auto-create này không gửi "board" trong
+            // circuitConfig, nên VirtualLabProject mới luôn rơi về mặc định
+            // 'esp32' (khác setProjectBoard bên dưới cũng bị bỏ qua ở nhánh
+            // này) — BE map chuỗi "esp32" trần sang FQBN
+            // "esp32:esp32:esp32:FlashMode=dio", KHÔNG nằm trong danh sách
+            // board hỗ trợ thật (compile fail ngay "Unsupported board", xác
+            // nhận qua test Run thật). Gửi đúng boardType của Lab (VD:
+            // "esp32_devkit_v1", nằm trong danh sách hỗ trợ) để tránh lỗi này.
             try {
               const created = await diagramsApi.save(pid, {
-                circuitConfig: { parts: starterComponents, connections: starterConnections },
+                circuitConfig: {
+                  board: labResponse.boardType,
+                  parts: starterComponents,
+                  connections: starterConnections,
+                },
                 sourceCode: resolvedCode,
                 labId: labResponse.id,
               });
@@ -205,6 +228,7 @@ export const LabSandboxPage = () => {
             } catch (createError) {
               console.error('[LabSandboxPage] Failed to create initial VirtualLabProject', createError);
             }
+            setProjectBoard(labResponse.boardType || 'esp32_devkit_v1');
           } else {
             throw projectError;
           }
@@ -759,11 +783,96 @@ export const LabSandboxPage = () => {
     });
   };
 
+  // Áp dụng 1 proposedChange từ AI Assistant — CHỈ được gọi sau khi người dùng
+  // tự bấm "Áp dụng" trên AiAssistantPanel (không bao giờ tự động). Tái dùng
+  // đúng các setter/handler đã có (setCode/setSandboxComponents/handleWireConnect-
+  // style) để autosave debounce hiện tại tự bắt được thay đổi, không cần gọi
+  // diagramsApi.save() riêng ở đây.
+  const handleApplyAiChange = useCallback((change: ProposedChange) => {
+    aiUndoSnapshotRef.current = { code, components: sandboxComponents, connections: sandboxConnections };
+    setCanUndoAiChange(true);
+
+    switch (change.type) {
+      case 'replace_file': {
+        if (typeof change.after === 'string') setCode(change.after);
+        break;
+      }
+      case 'replace_range': {
+        if (typeof change.after === 'string' && change.startLine && change.endLine) {
+          const lines = code.split('\n');
+          const head = lines.slice(0, Math.max(change.startLine - 1, 0));
+          const tail = lines.slice(change.endLine);
+          setCode([...head, change.after, ...tail].join('\n'));
+        } else if (typeof change.after === 'string') {
+          setCode(change.after);
+        }
+        break;
+      }
+      case 'insert_code': {
+        if (typeof change.after === 'string') {
+          const lines = code.split('\n');
+          const at = change.insertAtLine
+            ? Math.min(Math.max(change.insertAtLine - 1, 0), lines.length)
+            : lines.length;
+          lines.splice(at, 0, change.after);
+          setCode(lines.join('\n'));
+        }
+        break;
+      }
+      case 'add_component': {
+        if (change.component?.type) {
+          const newPart: LabCircuitComponent = {
+            id: change.component.id || `${change.component.type}-${Date.now()}`,
+            type: change.component.type,
+            x: change.component.x ?? 60,
+            y: change.component.y ?? 220,
+            attrs: {},
+            pinMapping: {},
+          };
+          setSandboxComponents((prev) => [...prev, newPart]);
+          setAutoSelectPartId(newPart.id);
+        }
+        break;
+      }
+      case 'update_wire': {
+        if (change.wire?.from && change.wire?.to) {
+          const newConnection = [change.wire.from, change.wire.to, change.wire.color || '#00ff00', []];
+          setSandboxConnections((prev) => [...prev, newConnection]);
+        }
+        break;
+      }
+      case 'update_diagram_json': {
+        if (change.diagramJson) {
+          try {
+            const parsed = JSON.parse(change.diagramJson);
+            if (Array.isArray(parsed.parts)) setSandboxComponents(parsed.parts);
+            if (Array.isArray(parsed.connections)) setSandboxConnections(parsed.connections);
+          } catch (error) {
+            console.error('[LabSandboxPage] AI đề xuất diagramJson không hợp lệ', error);
+          }
+        }
+        break;
+      }
+      default:
+        break;
+    }
+  }, [code, sandboxComponents, sandboxConnections]);
+
+  const handleUndoAiChange = useCallback(() => {
+    const snapshot = aiUndoSnapshotRef.current;
+    if (!snapshot) return;
+    setCode(snapshot.code);
+    setSandboxComponents(snapshot.components);
+    setSandboxConnections(snapshot.connections);
+    aiUndoSnapshotRef.current = null;
+    setCanUndoAiChange(false);
+  }, []);
+
   if (isLoading) {
     return (
       <div className="space-y-4">
-        <div className="h-20 rounded-2xl border border-border bg-white animate-pulse" />
-        <div className="h-[calc(100vh-8rem)] rounded-2xl border border-border bg-white animate-pulse" />
+        <div className="h-20 rounded-xl border border-border bg-card animate-pulse" />
+        <div className="h-[calc(100vh-8rem)] rounded-xl border border-border bg-card animate-pulse" />
       </div>
     );
   }
@@ -774,20 +883,20 @@ export const LabSandboxPage = () => {
         <button
           type="button"
           onClick={() => navigate('/dashboard/virtual-lab')}
-          className="inline-flex items-center gap-2 text-sm font-semibold text-slate-500 hover:text-[#0f4c5c]"
+          className="inline-flex items-center gap-2 text-sm font-semibold text-muted-foreground hover:text-foreground transition-colors"
         >
           <ArrowLeft className="w-4 h-4" />
           Quay lại danh sách lab
         </button>
-        <div className="rounded-2xl border border-red-200 bg-red-50 p-6 text-red-700">
+        <div className="rounded-xl border border-destructive/20 bg-destructive/10 p-6 text-destructive">
           <div className="flex items-start gap-3">
             <AlertCircle className="w-6 h-6 mt-0.5 shrink-0" />
             <div>
-              <h1 className="text-xl font-bold">Không mở được Sandbox</h1>
-              <p className="text-sm mt-1">{loadError || 'Phòng lab không tồn tại.'}</p>
+              <h1 className="text-xl font-bold text-foreground">Không mở được Sandbox</h1>
+              <p className="text-sm mt-1 text-destructive">{loadError || 'Phòng lab không tồn tại.'}</p>
               <Button
                 onClick={() => void loadLab()}
-                className="mt-4 bg-red-600 hover:bg-red-700 text-white"
+                className="mt-4 bg-destructive text-white hover:bg-destructive/90"
               >
                 <RefreshCw className="w-4 h-4 mr-2" />
                 Tải lại
@@ -805,12 +914,12 @@ export const LabSandboxPage = () => {
         <button
           type="button"
           onClick={() => navigate(`/dashboard/virtual-lab/${lab.id}`)}
-          className="inline-flex items-center gap-2 text-sm font-semibold text-slate-500 hover:text-[#0f4c5c]"
+          className="inline-flex items-center gap-2 text-sm font-semibold text-muted-foreground hover:text-foreground transition-colors"
         >
           <ArrowLeft className="w-4 h-4" />
           Quay lại chi tiết lab
         </button>
-        <div className="rounded-2xl border border-amber-200 bg-amber-50 p-6 text-amber-800">
+        <div className="rounded-xl border border-amber-500/20 bg-amber-500/10 p-6 text-amber-500">
           Lab này không dùng Sandbox nội bộ. Vui lòng mở bằng màn hình Wokwi iframe.
         </div>
       </div>
@@ -821,33 +930,33 @@ export const LabSandboxPage = () => {
     <div className="flex flex-col h-[calc(100vh-2rem)] space-y-4 relative">
       {guidance && (
         <div className="absolute top-4 right-4 z-50 animate-in slide-in-from-top-2 fade-in duration-300">
-          <div className="bg-[#0f4c5c] text-white p-4 rounded-xl shadow-lg border border-[#0a3540] max-w-sm flex gap-3 items-start">
-            <AlertCircle className="w-5 h-5 shrink-0 text-cyan-400 mt-0.5" />
+          <div className="bg-indigo-500 text-white p-4 rounded-xl shadow-lg border border-indigo-600 max-w-sm flex gap-3 items-start">
+            <AlertCircle className="w-5 h-5 shrink-0 text-indigo-200 mt-0.5" />
             <div>
-              <p className="text-xs text-cyan-400 font-bold uppercase mb-1">
+              <p className="text-xs text-indigo-200 font-bold uppercase mb-1">
                 Giáo viên {guidance.teacherName || ''} nhắc nhở
               </p>
               <p className="text-sm font-medium">{guidance.message}</p>
             </div>
-            <button onClick={() => setGuidance(null)} className="text-slate-400 hover:text-white shrink-0">
+            <button onClick={() => setGuidance(null)} aria-label="Đóng thông báo" className="text-indigo-200 hover:text-white shrink-0">
               <XCircle className="w-4 h-4" />
             </button>
           </div>
         </div>
       )}
 
-      <div className="flex items-center justify-between bg-white p-4 rounded-2xl border border-border shadow-sm shrink-0">
+      <div className="flex items-center justify-between bg-card p-4 rounded-xl border border-border shrink-0">
         <div className="flex items-center gap-4 min-w-0">
           <button
             type="button"
             onClick={() => navigate(`/dashboard/virtual-lab/${lab.id}`)}
-            className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-slate-100 text-slate-500 transition-colors shrink-0"
-            aria-label="Quay lại"
+            className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-accent text-muted-foreground hover:text-foreground transition-colors shrink-0"
+            aria-label="Quay lại chi tiết lab"
           >
             <ArrowLeft className="w-5 h-5" />
           </button>
           <div className="min-w-0">
-            <h1 className="text-xl font-bold text-[#0f4c5c] truncate">{lab.title}</h1>
+            <h1 className="text-xl font-bold text-foreground truncate">{lab.title}</h1>
             <p className="text-xs text-muted-foreground">
               Sandbox nội bộ - {getBoardDisplayName(lab.boardType)} - {sandboxComponents.length} linh kiện
               {saveStatus === 'saving' && ' - Đang lưu...'}
@@ -863,8 +972,17 @@ export const LabSandboxPage = () => {
           <Button
             type="button"
             variant="outline"
+            onClick={() => setIsAiPanelOpen(true)}
+            className="border-indigo-500/30 text-indigo-400 hover:bg-indigo-500/10 hover:text-indigo-300"
+            title="AI Assistant — đề xuất thay đổi code/sơ đồ, cần bạn xác nhận mới áp dụng"
+          >
+            AI Assistant
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
             onClick={() => setIsSensorPanelOpen(true)}
-            className="rounded-full border-cyan-300 text-cyan-700 hover:bg-cyan-50"
+            className="border-indigo-500/30 text-indigo-400 hover:bg-indigo-500/10 hover:text-indigo-300"
             title="Cấu hình kịch bản sensor (Phase 1 — scenario/timeline)"
           >
             Sensor Scenario
@@ -874,7 +992,7 @@ export const LabSandboxPage = () => {
             type="button"
             disabled={isSubmitting}
             onClick={() => void handleSubmit()}
-            className="bg-[#b45309] hover:bg-[#92400e] text-white rounded-full font-bold shadow-sm px-6 disabled:opacity-60"
+            className="bg-amber-500 hover:bg-amber-600 text-white border-0 font-semibold px-6 disabled:opacity-60"
           >
             {isSubmitting ? (
               <Loader2 className="w-4 h-4 mr-2 animate-spin" />
@@ -892,28 +1010,28 @@ export const LabSandboxPage = () => {
       </div>
 
       {submitMessage && (
-        <div className="rounded-2xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm font-medium text-blue-800">
+        <div className="rounded-xl border border-blue-500/20 bg-blue-500/10 px-4 py-3 text-sm font-medium text-blue-300">
           {submitMessage}
         </div>
       )}
 
       {submitError && (
-        <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-700">
+        <div className="rounded-xl border border-destructive/20 bg-destructive/10 px-4 py-3 text-sm font-medium text-destructive">
           {submitError}
         </div>
       )}
 
       {autoCheck && (
-        <div className="rounded-2xl border border-border bg-white p-4 shrink-0 space-y-2">
-          <p className="text-sm font-bold text-[#0f4c5c]">
+        <div className="rounded-xl border border-border bg-card p-4 shrink-0 space-y-2">
+          <p className="text-sm font-bold text-foreground">
             Kết quả chấm tự động — {autoCheck.passedChecks}/{autoCheck.totalChecks} tiêu chí
           </p>
           {autoCheck.checks.map((check) => (
             <div key={check.name} className="flex items-start gap-2 text-sm">
               {check.passed ? (
-                <CheckCircle2 className="w-4 h-4 mt-0.5 shrink-0 text-emerald-600" />
+                <CheckCircle2 className="w-4 h-4 mt-0.5 shrink-0 text-emerald-400" />
               ) : (
-                <XCircle className="w-4 h-4 mt-0.5 shrink-0 text-red-600" />
+                <XCircle className="w-4 h-4 mt-0.5 shrink-0 text-destructive" />
               )}
               <div>
                 <span className="font-semibold capitalize">{check.name}</span>
@@ -923,6 +1041,22 @@ export const LabSandboxPage = () => {
           ))}
         </div>
       )}
+
+      <AiAssistantPanel
+        open={isAiPanelOpen}
+        onClose={() => setIsAiPanelOpen(false)}
+        projectId={projectId}
+        currentCode={code}
+        currentDiagramJson={JSON.stringify({
+          board: lab?.boardType,
+          parts: sandboxComponents,
+          connections: sandboxConnections,
+          sensorScenario,
+        })}
+        onApplyChange={handleApplyAiChange}
+        onUndo={handleUndoAiChange}
+        canUndo={canUndoAiChange}
+      />
 
       <div className="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-4 min-h-0">
         <div className="col-span-1 lg:col-span-5 flex flex-col h-full min-h-0">

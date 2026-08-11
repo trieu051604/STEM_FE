@@ -3,6 +3,7 @@ import { Link, useLocation, Outlet, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuthStore } from '@/stores/authStore';
 import { getSidebarItems } from './SidebarItems';
+import { TeacherLayout } from './teacher/TeacherLayout';
 import { Icon } from '@/components/ui/Icon';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
 import { cn } from '@/lib/utils';
@@ -21,7 +22,7 @@ import {
 } from 'lucide-react';
 import { useSidebarStore } from '@/stores/sidebarStore';
 
-export const DashboardLayout = () => {
+export const StandardDashboardLayout = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const { user, logout } = useAuthStore();
@@ -339,4 +340,12 @@ export const DashboardLayout = () => {
       </div>
     </div>
   );
+};
+
+export const DashboardLayout = () => {
+  const { user } = useAuthStore();
+  if (user?.role === 'teacher') {
+    return <TeacherLayout />;
+  }
+  return <StandardDashboardLayout />;
 };

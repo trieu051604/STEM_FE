@@ -1,8 +1,12 @@
 import axios from 'axios';
 import { useAuthStore } from '@/stores/authStore';
 
-// Get API base URL from environment or fallback to localhost
-export const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://localhost:55458/api';
+// Get API base URL from environment or fallback to local BE dev server
+export const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+
+// Host-only base URL (no /api suffix) — dùng cho asset URL, SignalR fallback, v.v.
+export const API_BASE_HOST =
+  import.meta.env.VITE_API_BASE_URL || API_BASE_URL.replace(/\/api\/?$/i, '');
 
 // Rate limiting - simple in-memory limiter
 const requestLog: Map<string, number[]> = new Map();

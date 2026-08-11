@@ -11,11 +11,13 @@ interface LabCardProps {
   onDelete?: (lab: LabEntity) => void;
 }
 
+// Badge này đè lên ảnh thumbnail thật (độ sáng/màu bất định), không phải trên bg-card —
+// nền phải gần như đặc (không dùng opacity thấp kiểu /10) để luôn đọc được bất kể ảnh nền.
 const categoryMeta: Record<string, { label: string; color: string }> = {
-  physics: { label: 'VẬT LÝ', color: 'bg-blue-100 text-blue-700' },
-  chemistry: { label: 'HÓA HỌC', color: 'bg-emerald-100 text-emerald-700' },
-  biology: { label: 'SINH HỌC', color: 'bg-teal-100 text-teal-700' },
-  robotics: { label: 'ROBOT', color: 'bg-orange-100 text-orange-700' },
+  physics: { label: 'Vật lý', color: 'bg-slate-950/80 backdrop-blur-sm text-blue-300 border border-blue-400/30' },
+  chemistry: { label: 'Hóa học', color: 'bg-slate-950/80 backdrop-blur-sm text-emerald-300 border border-emerald-400/30' },
+  biology: { label: 'Sinh học', color: 'bg-slate-950/80 backdrop-blur-sm text-teal-300 border border-teal-400/30' },
+  robotics: { label: 'Robot', color: 'bg-slate-950/80 backdrop-blur-sm text-orange-300 border border-orange-400/30' },
 };
 
 const fallbackImage =
@@ -24,7 +26,7 @@ const fallbackImage =
 function getCategoryMeta(category: string) {
   return categoryMeta[category] ?? {
     label: category || 'LAB',
-    color: 'bg-slate-100 text-slate-700',
+    color: 'bg-slate-950/80 backdrop-blur-sm text-slate-200 border border-white/20',
   };
 }
 
@@ -36,8 +38,8 @@ export const LabCard = ({ lab, canManage, onEdit, onDelete }: LabCardProps) => {
   const extraClasses = Math.max(0, lab.classes.length - visibleClasses.length);
 
   return (
-    <div className="bg-white rounded-3xl overflow-hidden border border-border shadow-sm flex flex-col relative group">
-      <div className="h-48 relative overflow-hidden bg-slate-100">
+    <div className="bg-card rounded-xl overflow-hidden border border-border flex flex-col relative group hover:border-indigo-500/40 transition-colors">
+      <div className="h-48 relative overflow-hidden bg-muted">
         <img
           src={lab.thumbnailUrl || fallbackImage}
           alt={lab.title}
@@ -46,15 +48,15 @@ export const LabCard = ({ lab, canManage, onEdit, onDelete }: LabCardProps) => {
         <div className="absolute top-4 left-4 flex flex-col gap-2">
           <span
             className={cn(
-              'text-[10px] font-bold px-3 py-1 rounded-full shadow-sm inline-block w-max',
+              'text-xs font-semibold px-3 py-1 rounded-full inline-block w-max',
               meta.color
             )}
           >
             {meta.label}
           </span>
           {lab.status === 'draft' && (
-            <span className="text-[10px] font-bold px-3 py-1 rounded-full bg-white/90 text-slate-600 shadow-sm inline-block w-max">
-              BẢN NHÁP
+            <span className="text-xs font-semibold px-3 py-1 rounded-full bg-slate-950/80 backdrop-blur-sm text-amber-300 border border-amber-400/30 inline-block w-max">
+              Bản nháp
             </span>
           )}
         </div>
@@ -62,24 +64,24 @@ export const LabCard = ({ lab, canManage, onEdit, onDelete }: LabCardProps) => {
 
       <div className="p-6 flex-1 flex flex-col">
         {lab.isWokwiBroken && (
-          <div className="mb-3 bg-red-50 text-red-700 border border-red-200 rounded-lg p-2.5 flex items-start gap-2 text-xs font-medium">
-            <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5 text-red-500" />
+          <div className="mb-3 bg-destructive/10 text-destructive border border-destructive/20 rounded-lg p-2.5 flex items-start gap-2 text-xs font-medium">
+            <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
             <p>Link Wokwi không khả dụng — cần cập nhật lại.</p>
           </div>
         )}
 
-        <h3 className="text-xl font-bold text-[#0f4c5c] mb-2">{lab.title}</h3>
+        <h3 className="text-lg font-bold text-foreground mb-2 line-clamp-2">{lab.title}</h3>
         <p className="text-sm text-muted-foreground line-clamp-2 leading-relaxed mb-6">
           {lab.description || 'Chưa có mô tả cho phòng lab này.'}
         </p>
 
         <div className="mt-auto flex items-center justify-between">
           <div className="flex flex-col">
-            <div className="flex items-center gap-2 mb-2 text-sm font-semibold text-[#0f4c5c]">
-              <Icon name="User" className="w-4 h-4 text-orange-500" />
+            <div className="flex items-center gap-2 mb-2 text-sm font-semibold text-foreground">
+              <Icon name="User" className="w-4 h-4 text-amber-500" />
               {studentCount} Học sinh
             </div>
-            <p className="text-xs text-slate-500">
+            <p className="text-xs text-muted-foreground">
               {lab.classes.length
                 ? lab.classes.map((item) => item.classCode || `Lớp #${item.id}`).join(', ')
                 : 'Chưa gán lớp'}
@@ -89,14 +91,14 @@ export const LabCard = ({ lab, canManage, onEdit, onDelete }: LabCardProps) => {
             {visibleClasses.map((classItem) => (
               <div
                 key={classItem.id}
-                className="w-6 h-6 rounded-full border-2 border-white bg-cyan-100 flex items-center justify-center text-[8px] font-bold text-cyan-700"
+                className="w-6 h-6 rounded-full border-2 border-card bg-indigo-500/20 flex items-center justify-center text-[8px] font-bold text-indigo-300"
                 title={classItem.classCode}
               >
                 {(classItem.classCode || 'L').slice(0, 2)}
               </div>
             ))}
             {extraClasses > 0 && (
-              <div className="w-6 h-6 rounded-full border-2 border-white bg-slate-100 flex items-center justify-center text-[8px] font-bold text-slate-600">
+              <div className="w-6 h-6 rounded-full border-2 border-card bg-muted flex items-center justify-center text-[8px] font-bold text-muted-foreground">
                 +{extraClasses}
               </div>
             )}
@@ -109,7 +111,7 @@ export const LabCard = ({ lab, canManage, onEdit, onDelete }: LabCardProps) => {
           <button
             type="button"
             onClick={() => navigate(`/dashboard/virtual-lab/${lab.id}`)}
-            className="flex-1 bg-[#0f4c5c] hover:bg-[#0a3540] text-white py-2.5 rounded-full text-sm font-bold transition-colors"
+            className="flex-1 bg-indigo-500 hover:bg-indigo-600 text-white py-2.5 rounded-lg text-sm font-semibold transition-colors"
           >
             Xem Lab
           </button>
@@ -118,7 +120,7 @@ export const LabCard = ({ lab, canManage, onEdit, onDelete }: LabCardProps) => {
               <button
                 type="button"
                 onClick={() => onEdit?.(lab)}
-                className="w-10 h-10 rounded-full border border-border flex items-center justify-center text-slate-500 hover:bg-slate-50 hover:text-[#0f4c5c] transition-colors"
+                className="w-10 h-10 rounded-lg border border-border flex items-center justify-center text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
                 aria-label="Sửa phòng lab"
                 title="Sửa phòng lab"
               >
@@ -127,7 +129,7 @@ export const LabCard = ({ lab, canManage, onEdit, onDelete }: LabCardProps) => {
               <button
                 type="button"
                 onClick={() => onDelete?.(lab)}
-                className="w-10 h-10 rounded-full border border-border flex items-center justify-center text-red-500 hover:bg-red-50 transition-colors"
+                className="w-10 h-10 rounded-lg border border-border flex items-center justify-center text-destructive hover:bg-destructive/10 transition-colors"
                 aria-label="Xóa phòng lab"
                 title="Xóa phòng lab"
               >

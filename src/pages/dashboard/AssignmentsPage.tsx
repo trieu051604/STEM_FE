@@ -28,6 +28,7 @@ import {
   Users,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 import { AssignmentCard } from '@/components/Dashboard/AssignmentCard';
 import { AssignmentTypeSelector } from '@/components/Dashboard/AssignmentTypeSelector';
@@ -348,7 +349,7 @@ export const AssignmentsPage = () => {
       const response =
         user?.role === 'teacher'
           ? await classesApi.getMyClasses(await resolveUserId())
-          : await classesApi.getAll({ page: 1, pageSize: 100 });
+          : await classesApi.getAll({ pageNumber: 1, pageSize: 100 });
 
       setManagedClasses((response.items ?? []).map(toClassOption));
     } catch (err) {
@@ -590,29 +591,30 @@ export const AssignmentsPage = () => {
   // AssignmentCard was extracted
 
   return (
-    <div className="max-w-7xl mx-auto space-y-8 pb-12">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6 bg-white p-6 md:p-8 rounded-3xl border border-border shadow-sm">
-        <div>
-          <div className="w-12 h-12 bg-cyan-50 rounded-2xl flex items-center justify-center mb-4">
-            <ClipboardList className="w-6 h-6 text-cyan-600" />
+    <div className="max-w-7xl mx-auto space-y-6 pb-12">
+      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+        <div className="flex items-start gap-3">
+          <div className="w-10 h-10 rounded-lg bg-indigo-500/10 text-indigo-400 flex items-center justify-center shrink-0">
+            <ClipboardList className="w-5 h-5" />
           </div>
-          <h1 className="text-2xl md:text-3xl font-bold text-[#0f4c5c] mb-2">
-            {canManageAssignments ? 'Quản lý bài tập' : 'Bài tập của tôi'}
-          </h1>
-          <p className="text-muted-foreground">
-            {canManageAssignments
-              ? 'Theo dõi bài tập đã giao, bài nộp và tiêu chí đánh giá.'
-              : 'Theo dõi các bài tập được giao trong lớp học của bạn.'}
-          </p>
+          <div>
+            <h1 className="text-2xl font-bold text-foreground">
+              {canManageAssignments ? 'Quản lý bài tập' : 'Bài tập của tôi'}
+            </h1>
+            <p className="text-muted-foreground text-sm mt-1">
+              {canManageAssignments
+                ? 'Theo dõi bài tập đã giao, bài nộp và tiêu chí đánh giá.'
+                : 'Theo dõi các bài tập được giao trong lớp học của bạn.'}
+            </p>
+          </div>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto">
           <Button
             type="button"
             variant="outline"
             onClick={() => fetchAssignments(searchQuery)}
             disabled={isLoading}
-            className="rounded-2xl"
           >
             <RefreshCw className={cn('w-4 h-4', isLoading && 'animate-spin')} />
             Làm mới
@@ -621,49 +623,49 @@ export const AssignmentsPage = () => {
             <Button
               type="button"
               onClick={openCreateForm}
-              className="bg-gradient-to-r from-[#0f4c5c] to-[#1a667b] hover:from-[#0a3540] hover:to-[#0f4c5c] text-white px-6 py-3 rounded-2xl font-bold transition-all shadow-md hover:shadow-lg flex items-center gap-2 transform hover:-translate-y-0.5 h-auto"
+              className="bg-indigo-500 hover:bg-indigo-600 text-white border-0"
             >
-              <Plus className="w-5 h-5" />
+              <Plus className="w-4 h-4" />
               Tạo bài tập mới
             </Button>
           )}
         </div>
       </div>
 
-      <div className="flex flex-col md:flex-row justify-between items-center gap-4 bg-white p-2 rounded-2xl border border-border shadow-sm">
-        <div className="flex w-full md:w-auto p-1 bg-slate-50 rounded-xl overflow-x-auto hide-scrollbar">
+      <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+        <div className="flex w-full md:w-auto gap-1 overflow-x-auto no-scrollbar">
           {filterOptions.map((option) => (
-            <button
+            <Button
               key={option.id}
               type="button"
+              variant={filter === option.id ? 'outline' : 'ghost'}
+              size="sm"
               onClick={() => setFilter(option.id)}
               className={cn(
-                'px-5 py-2.5 rounded-lg text-sm font-semibold transition-all whitespace-nowrap',
+                'shrink-0',
                 filter === option.id
-                  ? 'bg-white text-[#0f4c5c] shadow-sm'
-                  : 'text-slate-500 hover:text-slate-700 hover:bg-slate-100/50'
+                  ? 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20 hover:bg-indigo-500/10 hover:text-indigo-400'
+                  : 'text-muted-foreground hover:text-foreground'
               )}
             >
               {option.label}
-            </button>
+            </Button>
           ))}
         </div>
 
         <div className="flex w-full md:w-auto items-center gap-3">
-          <div className="text-sm font-medium text-slate-500 hidden md:flex items-center gap-2">
+          <div className="text-sm font-medium text-muted-foreground hidden md:flex items-center gap-2 shrink-0">
             <BarChart3 className="w-4 h-4" />
             {filteredAssignments.length}/{totalCount} bài tập
           </div>
-          <div className="w-full md:w-72 relative group">
-            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <Search className="w-4 h-4 text-slate-400 group-focus-within:text-[#0f4c5c] transition-colors" />
-            </div>
-            <input
+          <div className="w-full md:w-72 relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
+            <Input
               type="text"
               placeholder="Tìm kiếm bài tập..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-4 py-3 border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-[#0f4c5c]/20 focus:border-[#0f4c5c] transition-all bg-slate-50 focus:bg-white text-sm"
+              className="pl-10"
             />
           </div>
         </div>
@@ -674,14 +676,14 @@ export const AssignmentsPage = () => {
           {[1, 2, 3].map((item) => (
             <div
               key={item}
-              className="bg-white rounded-3xl border border-border shadow-sm p-6 animate-pulse"
+              className="bg-card rounded-xl border border-border p-6 animate-pulse"
             >
-              <div className="h-6 w-28 bg-slate-100 rounded-full mb-5" />
-              <div className="h-5 w-4/5 bg-slate-100 rounded mb-3" />
-              <div className="h-4 w-2/3 bg-slate-100 rounded mb-8" />
+              <div className="h-6 w-28 bg-muted rounded-full mb-5" />
+              <div className="h-5 w-4/5 bg-muted rounded mb-3" />
+              <div className="h-4 w-2/3 bg-muted rounded mb-8" />
               <div className="grid grid-cols-2 gap-3">
-                <div className="h-20 bg-slate-100 rounded-2xl" />
-                <div className="h-20 bg-slate-100 rounded-2xl" />
+                <div className="h-20 bg-muted rounded-lg" />
+                <div className="h-20 bg-muted rounded-lg" />
               </div>
             </div>
           ))}
@@ -689,13 +691,13 @@ export const AssignmentsPage = () => {
       )}
 
       {!isLoading && error && (
-        <div className="bg-white rounded-3xl border border-red-100 p-8 shadow-sm text-center">
-          <div className="w-12 h-12 rounded-2xl bg-red-50 text-red-600 flex items-center justify-center mx-auto mb-4">
+        <div className="bg-card rounded-xl border border-border p-8 text-center">
+          <div className="w-12 h-12 rounded-lg bg-destructive/10 text-destructive flex items-center justify-center mx-auto mb-4">
             <AlertCircle className="w-6 h-6" />
           </div>
-          <p className="font-semibold text-[#0f4c5c] mb-2">Không tải được bài tập</p>
-          <p className="text-sm text-slate-500 mb-5">{error}</p>
-          <Button type="button" onClick={() => fetchAssignments(searchQuery)}>
+          <p className="font-semibold text-foreground mb-2">Không tải được bài tập</p>
+          <p className="text-sm text-muted-foreground mb-5">{error}</p>
+          <Button type="button" variant="outline" onClick={() => fetchAssignments(searchQuery)}>
             <RefreshCw className="w-4 h-4" />
             Thử lại
           </Button>
@@ -703,12 +705,12 @@ export const AssignmentsPage = () => {
       )}
 
       {!isLoading && !error && filteredAssignments.length === 0 && (
-        <div className="bg-white rounded-3xl border border-border p-10 shadow-sm text-center">
-          <div className="w-12 h-12 rounded-2xl bg-cyan-50 text-cyan-600 flex items-center justify-center mx-auto mb-4">
+        <div className="bg-card rounded-xl border border-border p-10 text-center">
+          <div className="w-12 h-12 rounded-lg bg-indigo-500/10 text-indigo-400 flex items-center justify-center mx-auto mb-4">
             <BookOpen className="w-6 h-6" />
           </div>
-          <p className="font-semibold text-[#0f4c5c] mb-2">Chưa có bài tập phù hợp</p>
-          <p className="text-sm text-slate-500">
+          <p className="font-semibold text-foreground mb-2">Chưa có bài tập phù hợp</p>
+          <p className="text-sm text-muted-foreground">
             Thay đổi bộ lọc hoặc từ khóa tìm kiếm để xem thêm kết quả.
           </p>
         </div>
@@ -735,7 +737,20 @@ export const AssignmentsPage = () => {
         </motion.div>
       )}
 
-      {formMode && (
+      {formMode === 'create_quiz' && (
+        <QuizBuilder
+          classOptions={assignmentClassOptions}
+          isClassesLoading={isClassesLoading}
+          classesError={classesError}
+          onRetryClasses={fetchManageableClasses}
+          isSaving={isSaving}
+          error={formError}
+          onCancel={closeForm}
+          onSave={handleCreateAssignment}
+        />
+      )}
+
+      {formMode && formMode !== 'create_quiz' && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 p-4 overflow-y-auto overflow-x-hidden pt-20 pb-10 custom-scrollbar">
           <div className="relative w-full max-w-4xl max-h-full">
             {formMode === 'create' && (
@@ -746,21 +761,6 @@ export const AssignmentsPage = () => {
                   else if (type === 'text_report') setFormMode('create_report');
                   else if (type === 'practical_simulation') setFormMode('create_simulation');
                 }} />
-              </div>
-            )}
-            
-            {formMode === 'create_quiz' && (
-              <div className="bg-white p-8 rounded-3xl relative">
-                <QuizBuilder
-                  classOptions={assignmentClassOptions}
-                  isClassesLoading={isClassesLoading}
-                  classesError={classesError}
-                  onRetryClasses={fetchManageableClasses}
-                  isSaving={isSaving}
-                  error={formError}
-                  onCancel={closeForm}
-                  onSave={handleCreateAssignment}
-                />
               </div>
             )}
 

@@ -351,3 +351,38 @@
 .dark .fc-theme-standard .fc-scrollgrid {
   border-color: hsl(var(--border));
 }
+
+/* ============ TEACHER THEME (SCOPED DARK THEME) ============ */
+.teacher-theme {
+  --border: 240, 4%, 24%;
+  --input: 240, 4%, 24%;
+  --ring: 235, 86%, 65%;
+
+  --background: 240, 2%, 11%;
+  --foreground: 220, 12%, 94%;
+
+  --primary: 235, 86%, 65%;
+  --primary-foreground: 0, 0%, 100%;
+
+  --secondary: 240, 4%, 17%;
+  --secondary-foreground: 220, 12%, 94%;
+
+  --muted: 240, 4%, 17%;
+  --muted-foreground: 220, 8%, 66%;
+
+  --accent: 240, 4%, 21%;
+  --accent-foreground: 220, 12%, 94%;
+
+  --popover: 240, 2%, 13%;
+  --popover-foreground: 220, 12%, 94%;
+
+  --card: 240, 4%, 16%;
+  --card-foreground: 220, 12%, 94%;
+
+  --destructive: 0, 72%, 48%;
+  --destructive-foreground: 0, 0%, 100%;
+}
+
+.teacher-theme * {
+  border-color: hsl(var(--border));
+}

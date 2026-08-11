@@ -11,13 +11,14 @@ import { LabSandboxPage } from '@/pages/dashboard/LabSandboxPage';
 import { ClassMonitorPage } from '@/pages/dashboard/ClassMonitorPage';
 import { AttendancePage } from '@/pages/dashboard/AttendancePage';
 import { NotificationsPage } from '@/pages/dashboard/NotificationsPage';
-import { TeacherDashboard } from '@/pages/dashboard/teacher/TeacherDashboard';
 import { StudentDashboard } from '@/pages/dashboard/student/StudentDashboard';
 import TeacherClassesPage from '@/pages/dashboard/teacher/TeacherClassesPage';
 import TeacherAssignmentsPage from '@/pages/dashboard/teacher/TeacherAssignmentsPage';
 import TeacherSubmissionsPage from '@/pages/dashboard/teacher/TeacherSubmissionsPage';
 import StudentClassesPage from '@/pages/dashboard/student/StudentClassesPage';
 import StudentAssignmentsPage from '@/pages/dashboard/student/StudentAssignmentsPage';
+import { TeacherSchedulePage } from '@/pages/dashboard/teacher/TeacherSchedulePage';
+import { TeacherSessionAttendance } from '@/pages/dashboard/teacher/TeacherSessionAttendance';
 import {
   StudentsPage,
   CoursesPage,
@@ -129,6 +130,8 @@ export const dashboardRoutes = [
       { path: 'teacher/assignments', element: <TeacherAssignmentsPage /> },
       { path: 'teacher/assignments/:id', element: <TeacherAssignmentsPage /> },
       { path: 'teacher/submissions', element: <TeacherSubmissionsPage /> },
+      { path: 'teacher/schedule', element: <TeacherSchedulePage /> },
+      { path: 'teacher/schedule/attendance', element: <TeacherSessionAttendance /> },
       { path: 'student/classes', element: <StudentClassesPage /> },
       { path: 'student/classes/:id', element: <StudentClassesPage /> },
       { path: 'student/assignments', element: <StudentAssignmentsPage /> },

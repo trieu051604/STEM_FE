@@ -9,6 +9,8 @@ import {
   AttendanceRecord,
   AttendanceStatus,
 } from '@/services/dashboardApi';
+import { TeacherPageHeader } from '@/components/Dashboard/teacher/TeacherPageHeader';
+import { TeacherCard } from '@/components/Dashboard/teacher/TeacherCard';
 
 const STATUS_OPTIONS: { value: AttendanceStatus; label: string; activeClass: string }[] = [
   { value: 'Present', label: 'Có mặt', activeClass: 'bg-emerald-500 text-white border-emerald-500' },
@@ -165,20 +167,20 @@ export const AttendancePage = () => {
   };
 
   return (
-    <div className="p-4 md:p-6 bg-white min-h-[calc(100vh-4rem)]">
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-[#0f4c5c] mb-1">Điểm danh học sinh</h1>
-        <p className="text-muted-foreground text-sm">Chọn lớp và ngày để điểm danh hoặc xem lại kết quả.</p>
-      </div>
+    <div className="space-y-6">
+      <TeacherPageHeader
+        title="Điểm danh học sinh"
+        description="Chọn lớp và ngày để điểm danh hoặc xem lại kết quả."
+      />
 
       <div className="flex flex-wrap items-end gap-4 mb-6">
         <div>
-          <label className="block text-xs font-medium text-slate-500 mb-1">Lớp học</label>
+          <label className="block text-xs font-medium text-muted-foreground mb-1">Lớp học</label>
           <select
             value={selectedClassId ?? ''}
             onChange={(e) => setSelectedClassId(Number(e.target.value))}
             disabled={isLoadingClasses || classes.length === 0}
-            className="border border-border rounded-md px-3 py-2 text-sm min-w-[220px]"
+            className="border border-border rounded-md px-3 py-2 text-sm min-w-[220px] bg-background text-foreground"
           >
             {classes.length === 0 && <option value="">Không có lớp</option>}
             {classes.map((c) => (
@@ -189,12 +191,12 @@ export const AttendancePage = () => {
           </select>
         </div>
         <div>
-          <label className="block text-xs font-medium text-slate-500 mb-1">Ngày</label>
+          <label className="block text-xs font-medium text-muted-foreground mb-1">Ngày</label>
           <input
             type="date"
             value={selectedDate}
             onChange={(e) => setSelectedDate(e.target.value)}
-            className="border border-border rounded-md px-3 py-2 text-sm"
+            className="border border-border rounded-md px-3 py-2 text-sm bg-background text-foreground"
           />
         </div>
       </div>
@@ -228,22 +230,22 @@ export const AttendancePage = () => {
       )}
 
       {isLoadingRoster ? (
-        <div className="flex items-center justify-center gap-2 py-16 text-slate-400">
+        <div className="flex items-center justify-center gap-2 py-16 text-muted-foreground">
           <Loader2 className="w-5 h-5 animate-spin" />
           Đang tải danh sách học sinh...
         </div>
       ) : roster.length === 0 ? (
-        <div className="text-center py-16 text-slate-400 text-sm">
+        <div className="text-center py-16 text-muted-foreground text-sm">
           Lớp này chưa có học sinh nào.
         </div>
       ) : (
-        <div className="border border-border rounded-lg overflow-hidden">
+        <TeacherCard noPadding>
           <table className="w-full text-sm text-left">
-            <thead className="bg-slate-50 text-slate-600">
+            <thead className="bg-muted text-muted-foreground">
               <tr>
-                <th className="px-4 py-2 font-medium">Học sinh</th>
-                <th className="px-4 py-2 font-medium">Email</th>
-                <th className="px-4 py-2 font-medium">Trạng thái</th>
+                <th className="px-4 py-3 font-medium">Học sinh</th>
+                <th className="px-4 py-3 font-medium">Email</th>
+                <th className="px-4 py-3 font-medium">Trạng thái</th>
               </tr>
             </thead>
             <tbody>
@@ -251,8 +253,8 @@ export const AttendancePage = () => {
                 const existing = recordByStudentId.get(student.id);
                 return (
                   <tr key={student.id} className="border-t border-border">
-                    <td className="px-4 py-3 font-medium text-slate-800">{student.fullName}</td>
-                    <td className="px-4 py-3 text-slate-500">{student.email}</td>
+                    <td className="px-4 py-3 font-medium text-foreground">{student.fullName}</td>
+                    <td className="px-4 py-3 text-muted-foreground">{student.email}</td>
                     <td className="px-4 py-3">
                       <div className="flex gap-1.5 flex-wrap">
                         {STATUS_OPTIONS.map((opt) => {
@@ -271,7 +273,7 @@ export const AttendancePage = () => {
                                 }
                               }}
                               className={`px-2.5 py-1 rounded-full text-xs font-semibold border transition-colors ${
-                                isActive ? opt.activeClass : 'bg-white text-slate-500 border-slate-200 hover:border-slate-300'
+                                isActive ? opt.activeClass : 'bg-background text-muted-foreground border-border hover:border-foreground/50'
                               } ${isSavingThis ? 'opacity-50 cursor-wait' : ''}`}
                             >
                               {opt.label}
@@ -291,14 +293,14 @@ export const AttendancePage = () => {
               <button
                 onClick={handleSubmitNew}
                 disabled={isSaving}
-                className="flex items-center gap-2 bg-[#0f4c5c] hover:bg-[#0a3540] disabled:opacity-50 text-white text-sm font-medium px-4 py-2 rounded-md transition-colors"
+                className="flex items-center gap-2 bg-indigo-500 hover:bg-indigo-600 disabled:opacity-50 text-white text-sm font-medium px-4 py-2 rounded-md transition-colors border-0"
               >
                 {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
                 Lưu điểm danh
               </button>
             </div>
           )}
-        </div>
+        </TeacherCard>
       )}
     </div>
   );

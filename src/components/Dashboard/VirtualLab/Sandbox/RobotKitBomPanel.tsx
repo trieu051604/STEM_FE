@@ -20,10 +20,10 @@ const CATEGORY_LABELS: Record<RobotKitCategory, string> = {
 };
 
 const BADGE_STYLE: Record<string, string> = {
-  'Mô phỏng được': 'bg-emerald-100 text-emerald-700',
-  'Kiểm tra nối dây': 'bg-amber-100 text-amber-700',
-  'Chỉ hiển thị': 'bg-slate-100 text-slate-500',
-  'Phụ kiện BOM': 'bg-slate-100 text-slate-500',
+  'Mô phỏng được': 'bg-emerald-500/10 text-emerald-400',
+  'Kiểm tra nối dây': 'bg-amber-500/10 text-amber-500',
+  'Chỉ hiển thị': 'bg-muted text-muted-foreground',
+  'Phụ kiện BOM': 'bg-muted text-muted-foreground',
 };
 
 export const RobotKitBomPanel = ({ parts = [] }: RobotKitBomPanelProps) => {
@@ -34,12 +34,12 @@ export const RobotKitBomPanel = ({ parts = [] }: RobotKitBomPanelProps) => {
   }, {});
 
   return (
-    <section className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm">
+    <section className="rounded-xl border border-border bg-card p-3 shadow-sm">
       <div className="flex items-center gap-2">
-        <ClipboardList className="h-4 w-4 text-slate-500" />
-        <h5 className="text-sm font-bold text-slate-800">BOM — Robot giao hàng mini</h5>
+        <ClipboardList className="h-4 w-4 text-muted-foreground" />
+        <h5 className="text-sm font-bold text-foreground">BOM — Robot giao hàng mini</h5>
       </div>
-      <p className="mt-1 text-xs text-slate-500">
+      <p className="mt-1 text-xs text-muted-foreground">
         Danh sách linh kiện tiêu chuẩn cho bài Robot giao hàng mini (14 mục).
       </p>
 
@@ -52,15 +52,15 @@ export const RobotKitBomPanel = ({ parts = [] }: RobotKitBomPanelProps) => {
           return (
             <div
               key={entry.displayName}
-              className="flex items-start justify-between gap-2 rounded-lg border border-slate-100 bg-slate-50 px-2.5 py-2"
+              className="flex items-start justify-between gap-2 rounded-lg border border-border bg-muted/50 px-2.5 py-2"
             >
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-1.5">
                   {meetsQuantity && <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-emerald-600" />}
-                  <span className="truncate text-xs font-bold text-slate-800">{entry.displayName}</span>
+                  <span className="truncate text-xs font-bold text-foreground">{entry.displayName}</span>
                 </div>
                 <div className="mt-1 flex flex-wrap items-center gap-1">
-                  <span className="rounded bg-slate-200 px-1.5 py-0.5 text-[10px] font-semibold text-slate-600">
+                  <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] font-semibold text-muted-foreground">
                     {CATEGORY_LABELS[entry.category]}
                   </span>
                   <span className={`rounded-full px-1.5 py-0.5 text-[10px] font-bold ${BADGE_STYLE[badge]}`}>
@@ -69,7 +69,7 @@ export const RobotKitBomPanel = ({ parts = [] }: RobotKitBomPanelProps) => {
                 </div>
               </div>
               <div className="shrink-0 text-right">
-                <div className="text-xs font-bold text-slate-700">
+                <div className="text-xs font-bold text-foreground">
                   {onCanvasCount !== null ? `${onCanvasCount}/` : ''}
                   {entry.quantityLabel ?? entry.quantity}
                 </div>

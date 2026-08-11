@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Bell, Check, CheckCheck, Loader2, Trash2, AlertCircle, Info, CheckCircle, XCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { TeacherCard } from '@/components/Dashboard/teacher/TeacherCard';
+import { TeacherPageHeader } from '@/components/Dashboard/teacher/TeacherPageHeader';
 import { notificationsApi, Notification } from '@/services/dashboardApi';
 import { formatDistanceToNow } from 'date-fns';
 import { vi } from 'date-fns/locale';
@@ -62,46 +64,45 @@ export function NotificationsPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold">Thông báo</h1>
-          <p className="text-muted-foreground">
-            {notificationsData?.unreadCount ? `Bạn có ${notificationsData.unreadCount} thông báo chưa đọc` : 'Tất cả thông báo của bạn'}
-          </p>
-        </div>
-        {notificationsData?.unreadCount && notificationsData.unreadCount > 0 && (
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleMarkAllRead}
-            disabled={markAllAsReadMutation.isPending}
-          >
-            <CheckCheck className="w-4 h-4 mr-2" />
-            {markAllAsReadMutation.isPending ? 'Đang xử lý...' : 'Đánh dấu đã đọc tất cả'}
-          </Button>
-        )}
-      </div>
+      <TeacherPageHeader
+        title="Thông báo"
+        description={notificationsData?.unreadCount ? `Bạn có ${notificationsData.unreadCount} thông báo chưa đọc` : 'Tất cả thông báo của bạn'}
+        action={
+          notificationsData?.unreadCount && notificationsData.unreadCount > 0 && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleMarkAllRead}
+              disabled={markAllAsReadMutation.isPending}
+              className="border-border hover:bg-accent"
+            >
+              <CheckCheck className="w-4 h-4 mr-2" />
+              {markAllAsReadMutation.isPending ? 'Đang xử lý...' : 'Đánh dấu đã đọc tất cả'}
+            </Button>
+          )
+        }
+      />
 
       {/* Notifications List */}
       {isLoading ? (
         <div className="flex items-center justify-center py-20">
-          <Loader2 className="w-8 h-8 animate-spin text-primary" />
+          <Loader2 className="w-8 h-8 animate-spin text-indigo-500" />
         </div>
       ) : notifications.length === 0 ? (
-        <div className="bg-card rounded-xl border border-border p-12 text-center">
+        <TeacherCard className="p-12 text-center" noPadding={false}>
           <div className="w-16 h-16 rounded-full bg-muted mx-auto mb-4 flex items-center justify-center">
             <Bell className="w-8 h-8 text-muted-foreground" />
           </div>
           <h3 className="text-lg font-semibold mb-2">Không có thông báo nào</h3>
           <p className="text-muted-foreground text-sm">Bạn sẽ nhận được thông báo khi có cập nhật mới.</p>
-        </div>
+        </TeacherCard>
       ) : (
-        <div className="bg-card rounded-xl border border-border divide-y divide-border">
+        <TeacherCard noPadding className="divide-y divide-border">
           {notifications.map((notification) => (
             <div
               key={notification.id}
               className={`p-4 hover:bg-accent/50 transition-colors ${
-                !notification.isRead ? 'bg-primary/5' : ''
+                !notification.isRead ? 'bg-indigo-500/10' : ''
               }`}
             >
               <div className="flex items-start gap-4">
@@ -119,7 +120,7 @@ export function NotificationsPage() {
                       </p>
                     </div>
                     {!notification.isRead && (
-                      <div className="w-2 h-2 rounded-full bg-primary shrink-0 mt-2" />
+                      <div className="w-2 h-2 rounded-full bg-indigo-500 shrink-0 mt-2" />
                     )}
                   </div>
                   <p className="text-xs text-muted-foreground mt-2">
@@ -145,7 +146,7 @@ export function NotificationsPage() {
               </div>
             </div>
           ))}
-        </div>
+        </TeacherCard>
       )}
 
       {/* Pagination */}
@@ -154,6 +155,7 @@ export function NotificationsPage() {
           <Button
             variant="outline"
             size="sm"
+            className="border-border hover:bg-accent"
             onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
             disabled={currentPage === 1}
           >
@@ -165,6 +167,7 @@ export function NotificationsPage() {
           <Button
             variant="outline"
             size="sm"
+            className="border-border hover:bg-accent"
             onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
             disabled={currentPage === totalPages}
           >

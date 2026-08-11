@@ -127,7 +127,6 @@ export const ReportAssignmentForm: React.FC<ReportAssignmentFormProps> = ({
           onRetryClasses={onRetryClasses}
           descriptionLabel="Đề bài / Hướng dẫn chi tiết"
           descriptionPlaceholder="Nhập yêu cầu bài tập báo cáo..."
-          accentClassName="focus:border-orange-500 focus:ring-orange-500/20"
         />
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-5 bg-slate-50 rounded-xl border border-slate-100">

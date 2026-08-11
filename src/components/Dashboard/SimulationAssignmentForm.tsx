@@ -166,7 +166,6 @@ export const SimulationAssignmentForm: React.FC<SimulationAssignmentFormProps> =
           onRetryClasses={onRetryClasses}
           descriptionLabel="Yêu cầu đề bài"
           descriptionPlaceholder="Mô tả bài thực hành..."
-          accentClassName="focus:border-purple-500 focus:ring-purple-500/20"
         />
 
         <div>

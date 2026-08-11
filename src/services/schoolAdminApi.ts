@@ -653,10 +653,22 @@ export const scheduleApi = {
     return response.data.data || [];
   },
 
-  getByClassId: async (classId: number): Promise<ScheduleResponse[]> => {
-    const response = await api.get(`/classes/${classId}`);
+  getByClassId: async (classId: number, fromDate?: string, toDate?: string): Promise<ScheduleResponse[]> => {
+    const params: Record<string, string> = {};
+    if (fromDate) params.FromDate = fromDate;
+    if (toDate) params.ToDate = toDate;
+    const response = await api.get(`/schedules/class/${classId}`, { params });
     const data = response.data.data;
-    return data?.schedules || [];
+    // Convert to ScheduleResponse format
+    return (data || []).map((s: any) => ({
+      id: s.id,
+      classId: classId,
+      startTime: s.start,
+      endTime: s.end,
+      classCode: s.classCode,
+      className: s.className,
+      color: s.color,
+    }));
   },
 
   create: async (data: CreateScheduleRequest): Promise<CreateScheduleResponse> => {

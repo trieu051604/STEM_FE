@@ -194,14 +194,15 @@ export function ScheduleCalendar({ classId, schedules: initialSchedules, classIn
       });
 
       // Strip 'Z' suffix because backend returns local time with Z suffix
+      const scheduleData = newSchedule.schedule;
       const newEvent: ScheduleCalendarItem = {
-        id: newSchedule.id,
+        id: scheduleData.id,
         title: classInfo?.classCode || '',
-        start: newSchedule.startTime.replace('Z', ''),
-        end: newSchedule.endTime.replace('Z', ''),
+        start: scheduleData.startTime.replace('Z', ''),
+        end: scheduleData.endTime.replace('Z', ''),
         classCode: classInfo?.classCode || '',
         className: classInfo?.className || '',
-        color: getColorForSlot(newSchedule.startTime),
+        color: getColorForSlot(scheduleData.startTime),
       };
 
       setEvents([...events, newEvent]);
@@ -305,6 +306,26 @@ export function ScheduleCalendar({ classId, schedules: initialSchedules, classIn
             center: 'title',
             right: 'dayGridMonth,timeGridWeek,timeGridDay',
           }}
+          views={{
+            dayGridMonth: {
+              titleFormat: { year: 'numeric', month: 'long' },
+              buttonText: 'Tháng',
+            },
+            timeGridWeek: {
+              titleFormat: { year: 'numeric', month: 'short', day: 'numeric' },
+              buttonText: 'Tuần',
+            },
+            timeGridDay: {
+              titleFormat: { year: 'numeric', month: 'short', day: 'numeric', weekday: 'long' },
+              buttonText: 'Ngày',
+            },
+          }}
+          buttonText={{
+            today: 'Hôm nay',
+            month: 'Tháng',
+            week: 'Tuần',
+            day: 'Ngày',
+          }}
           events={events as any}
           dateClick={handleDateClick}
           eventClick={handleEventClick}
@@ -317,6 +338,8 @@ export function ScheduleCalendar({ classId, schedules: initialSchedules, classIn
           height="auto"
           eventDisplay="block"
           timeZone="local"
+          allDayText="Cả ngày"
+          noEventsText="Không có sự kiện"
           eventContent={(eventInfo) => (
             <div className="p-1 text-xs overflow-hidden text-white dark:text-slate-900">
               <div className="font-semibold truncate">{eventInfo.event.title}</div>

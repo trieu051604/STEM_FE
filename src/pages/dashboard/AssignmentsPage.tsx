@@ -348,7 +348,7 @@ export const AssignmentsPage = () => {
       const response =
         user?.role === 'teacher'
           ? await classesApi.getMyClasses(await resolveUserId())
-          : await classesApi.getAll({ page: 1, pageSize: 100 });
+          : await classesApi.getAll({ pageNumber: 1, pageSize: 100 });
 
       setManagedClasses((response.items ?? []).map(toClassOption));
     } catch (err) {

@@ -27,36 +27,6 @@ export default function TeacherClassesPage() {
   const classes = classesData?.items || [];
   const totalPages = Math.ceil((classesData?.total || 0) / ITEMS_PER_PAGE);
 
-  // Mock data for demo
-  const mockClasses: TeacherClass[] = [
-    {
-      id: 1,
-      name: 'IOT101',
-      courseName: 'Arduino Cơ bản',
-      studentCount: 15,
-      schedule: 'Thứ 2, 14:00 - 16:00',
-      room: 'Phòng A101',
-    },
-    {
-      id: 2,
-      name: 'IOT201',
-      courseName: 'ESP32 Nâng cao',
-      studentCount: 12,
-      schedule: 'Thứ 4, 08:00 - 10:00',
-      room: 'Phòng B202',
-    },
-    {
-      id: 3,
-      name: 'IOT301',
-      courseName: 'IoT Advanced',
-      studentCount: 10,
-      schedule: 'Thứ 6, 14:00 - 16:00',
-      room: 'Phòng C303',
-    },
-  ];
-
-  const displayClasses = classes.length > 0 ? classes : mockClasses;
-
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
@@ -88,7 +58,7 @@ export default function TeacherClassesPage() {
 
       {/* Classes Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {displayClasses.map((cls) => (
+        {classes.map((cls) => (
           <div key={cls.id} className="bg-card rounded-xl border border-border p-6 space-y-4">
             <div className="flex items-start justify-between">
               <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center">
@@ -141,7 +111,7 @@ export default function TeacherClassesPage() {
       </div>
 
       {/* Empty State */}
-      {displayClasses.length === 0 && (
+      {classes.length === 0 && (
         <div className="text-center py-12 text-muted-foreground">
           <BookOpen className="w-16 h-16 mx-auto mb-4 opacity-50" />
           <h3 className="text-lg font-medium mb-2">Chưa có lớp học nào</h3>

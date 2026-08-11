@@ -12,6 +12,7 @@ export interface User {
   avatar?: string;
   role: UserRole;
   schoolId?: number;
+  schoolName?: string;
   isOnline?: boolean;
   createdAt: string;
 }

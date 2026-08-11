@@ -15,46 +15,26 @@ export default function StudentClassesPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState<string>('all');
 
-  // Fetch classes
-  const { data: classesData, isLoading } = useQuery({
-    queryKey: ['student-classes', currentPage, searchTerm],
+  // Fetch classes from API
+  const { data: classesData, isLoading, error } = useQuery({
+    queryKey: ['student-classes', currentPage, filterStatus],
     queryFn: () => studentApi.getClasses({
       pageNumber: currentPage,
       pageSize: ITEMS_PER_PAGE,
       status: filterStatus !== 'all' ? filterStatus : undefined,
     }),
+    staleTime: 5 * 60 * 1000, // Cache for 5 minutes
   });
 
   const classes = classesData?.items || [];
   const totalPages = Math.ceil((classesData?.total || 0) / ITEMS_PER_PAGE);
 
-  // Mock data for demo
-  const mockClasses: StudentClass[] = [
-    {
-      id: 1,
-      name: 'IOT101 - Arduino Cơ bản',
-      courseName: 'Arduino Cơ bản',
-      teacherName: 'Thầy Nguyễn Văn A',
-      schedule: 'Thứ 2, 14:00 - 16:00',
-      room: 'Phòng A101',
-      progress: 75,
-      nextSession: new Date(Date.now() + 3600000 * 2).toISOString(),
-      status: 'active',
-    },
-    {
-      id: 2,
-      name: 'IOT201 - ESP32 Nâng cao',
-      courseName: 'ESP32 Nâng cao',
-      teacherName: 'Cô Trần Thị B',
-      schedule: 'Thứ 4, 08:00 - 10:00',
-      room: 'Phòng B202',
-      progress: 45,
-      nextSession: new Date(Date.now() + 86400000).toISOString(),
-      status: 'active',
-    },
-  ];
-
-  const displayClasses = classes.length > 0 ? classes : mockClasses;
+  // Filter by search term
+  const filteredClasses = classes.filter(cls => 
+    cls.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    cls.courseName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    cls.teacherName.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -85,6 +65,13 @@ export default function StudentClassesPage() {
         <p className="text-muted-foreground">Theo dõi tiến độ học tập tại các lớp học</p>
       </div>
 
+      {/* Error Message */}
+      {error && (
+        <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4 text-red-700 dark:text-red-400">
+          <p>Không thể tải danh sách lớp học. Vui lòng thử lại sau.</p>
+        </div>
+      )}
+
       {/* Filters */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
         <div className="relative flex-1 max-w-sm">
@@ -100,21 +87,21 @@ export default function StudentClassesPage() {
           <Button
             variant={filterStatus === 'all' ? 'default' : 'outline'}
             size="sm"
-            onClick={() => setFilterStatus('all')}
+            onClick={() => { setFilterStatus('all'); setCurrentPage(1); }}
           >
             Tất cả
           </Button>
           <Button
             variant={filterStatus === 'active' ? 'default' : 'outline'}
             size="sm"
-            onClick={() => setFilterStatus('active')}
+            onClick={() => { setFilterStatus('active'); setCurrentPage(1); }}
           >
             Đang học
           </Button>
           <Button
             variant={filterStatus === 'completed' ? 'default' : 'outline'}
             size="sm"
-            onClick={() => setFilterStatus('completed')}
+            onClick={() => { setFilterStatus('completed'); setCurrentPage(1); }}
           >
             Hoàn thành
           </Button>
@@ -122,79 +109,67 @@ export default function StudentClassesPage() {
       </div>
 
       {/* Classes Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {displayClasses.map((cls) => (
-          <div key={cls.id} className="bg-card rounded-xl border border-border p-6 space-y-4">
-            <div className="flex items-start justify-between">
-              <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center">
-                <BookOpen className="w-6 h-6 text-primary" />
-              </div>
-              {getStatusBadge(cls.status)}
-            </div>
-
-            <div>
-              <h3 className="text-lg font-semibold">{cls.name}</h3>
-              <p className="text-sm text-muted-foreground">{cls.courseName}</p>
-            </div>
-
-            {/* Progress Bar */}
-            <div className="space-y-2">
-              <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Tiến độ</span>
-                <span className="font-medium">{cls.progress}%</span>
-              </div>
-              <div className="w-full bg-muted rounded-full h-2">
-                <div
-                  className="bg-primary rounded-full h-2 transition-all"
-                  style={{ width: `${cls.progress}%` }}
-                />
-              </div>
-            </div>
-
-            <div className="space-y-2 text-sm">
-              <div className="flex items-center gap-2 text-muted-foreground">
-                <User className="w-4 h-4" />
-                <span>{cls.teacherName}</span>
-              </div>
-              {cls.schedule && (
-                <div className="flex items-center gap-2 text-muted-foreground">
-                  <Calendar className="w-4 h-4" />
-                  <span>{cls.schedule}</span>
+      {filteredClasses.length > 0 ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {filteredClasses.map((cls) => (
+            <div key={cls.id} className="bg-card rounded-xl border border-border p-6 space-y-4">
+              <div className="flex items-start justify-between">
+                <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center">
+                  <BookOpen className="w-6 h-6 text-primary" />
                 </div>
-              )}
-              {cls.room && (
-                <div className="flex items-center gap-2 text-muted-foreground">
-                  <MapPin className="w-4 h-4" />
-                  <span>{cls.room}</span>
-                </div>
-              )}
-              {cls.nextSession && (
-                <div className="flex items-center gap-2 text-muted-foreground">
-                  <Calendar className="w-4 h-4" />
-                  <span>Buổi tiếp theo: {formatDistanceToNow(new Date(cls.nextSession), { addSuffix: true, locale: vi })}</span>
-                </div>
-              )}
-            </div>
+                {getStatusBadge(cls.status)}
+              </div>
 
-            <div className="flex gap-2 pt-2">
-              <Link to={`/dashboard/student/classes/${cls.id}`} className="flex-1">
-                <Button className="w-full gap-2">
-                  <Play className="w-4 h-4" />
-                  Vào học
-                </Button>
-              </Link>
-              <Link to={`/dashboard/student/classes/${cls.id}/progress`}>
-                <Button variant="outline" size="icon">
-                  <CheckCircle className="w-4 h-4" />
-                </Button>
-              </Link>
-            </div>
-          </div>
-        ))}
-      </div>
+              <div>
+                <h3 className="text-lg font-semibold">{cls.name}</h3>
+                <p className="text-sm text-muted-foreground">{cls.courseName}</p>
+              </div>
 
-      {/* Empty State */}
-      {displayClasses.length === 0 && (
+              {/* Progress Bar */}
+              <div className="space-y-2">
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Tiến độ</span>
+                  <span className="font-medium">{cls.progress}%</span>
+                </div>
+                <div className="w-full bg-muted rounded-full h-2">
+                  <div
+                    className="bg-primary rounded-full h-2 transition-all"
+                    style={{ width: `${cls.progress}%` }}
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2 text-sm">
+                <div className="flex items-center gap-2 text-muted-foreground">
+                  <User className="w-4 h-4" />
+                  <span>{cls.teacherName}</span>
+                </div>
+                {cls.schedule && (
+                  <div className="flex items-center gap-2 text-muted-foreground">
+                    <Calendar className="w-4 h-4" />
+                    <span>{cls.schedule}</span>
+                  </div>
+                )}
+                {cls.room && (
+                  <div className="flex items-center gap-2 text-muted-foreground">
+                    <MapPin className="w-4 h-4" />
+                    <span>{cls.room}</span>
+                  </div>
+                )}
+              </div>
+
+              <div className="flex gap-2 pt-2">
+                <Link to={`/dashboard/student/classes/${cls.id}`} className="flex-1">
+                  <Button className="w-full gap-2">
+                    <Play className="w-4 h-4" />
+                    Vào học
+                  </Button>
+                </Link>
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : (
         <div className="text-center py-12 text-muted-foreground">
           <BookOpen className="w-16 h-16 mx-auto mb-4 opacity-50" />
           <h3 className="text-lg font-medium mb-2">Chưa tham gia lớp học nào</h3>

@@ -2,53 +2,38 @@ import { useQuery } from '@tanstack/react-query';
 import { useAuthStore } from '@/stores/authStore';
 import { Button } from '@/components/ui/button';
 import { Icon } from '@/components/ui/Icon';
-import { BookOpen, Users, ClipboardList, CheckCircle, Clock, Award, Calendar, Play, Loader2 } from 'lucide-react';
+import { BookOpen, Users, ClipboardList, CheckCircle, Clock, Award, Calendar, Play, Loader2, RefreshCw, AlertCircle } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { formatDistanceToNow } from 'date-fns';
 import { vi } from 'date-fns/locale';
 import { teacherApi } from '@/services/teacherStudentApi';
-
-// Mock data for fallback
-const mockData = {
-  myClasses: 3,
-  myStudents: 45,
-  pendingAssignments: 5,
-  recentActivities: [
-    { id: 1, title: 'Bài tập mới được nộp', description: 'Nguyễn Văn A đã nộp bài "LED Blinking"', time: new Date(Date.now() - 3600000) },
-    { id: 2, title: 'Lớp mới được thêm', description: 'Bạn được phân công dạy lớp IOT201', time: new Date(Date.now() - 86400000) },
-    { id: 3, title: 'Bài tập được chấm', description: 'Đã chấm 10 bài tập lớp IOT101', time: new Date(Date.now() - 172800000) },
-  ],
-  upcomingSessions: [
-    { id: 1, className: 'IOT101 - Arduino Cơ bản', time: new Date(Date.now() + 7200000), students: 15 },
-    { id: 2, className: 'IOT201 - ESP32 Nâng cao', time: new Date(Date.now() + 86400000), students: 12 },
-  ],
-};
+import { cn } from '@/lib/utils';
 
 export function TeacherDashboard() {
   const { user } = useAuthStore();
 
   // Fetch teacher's classes
-  const { data: classesData, isLoading: classesLoading } = useQuery({
+  const { data: classesData, isLoading: classesLoading, isError: classesError, refetch: refetchClasses, isFetching: classesFetching } = useQuery({
     queryKey: ['teacher-classes'],
     queryFn: () => teacherApi.getClasses({ pageSize: 5 }),
     staleTime: 5 * 60 * 1000,
   });
 
   // Fetch pending assignments
-  const { data: assignmentsData, isLoading: assignmentsLoading } = useQuery({
+  const { data: assignmentsData, isLoading: assignmentsLoading, isError: assignmentsError, refetch: refetchAssignments, isFetching: assignmentsFetching } = useQuery({
     queryKey: ['teacher-assignments'],
     queryFn: () => teacherApi.getAssignments({ pageSize: 5 }),
     staleTime: 2 * 60 * 1000,
   });
 
   // Fetch pending submissions to grade
-  const { data: submissionsData, isLoading: submissionsLoading } = useQuery({
+  const { data: submissionsData, isLoading: submissionsLoading, isError: submissionsError, refetch: refetchSubmissions, isFetching: submissionsFetching } = useQuery({
     queryKey: ['teacher-submissions'],
     queryFn: () => teacherApi.getSubmissions({ pageSize: 5 }),
     staleTime: 1 * 60 * 1000,
   });
 
-  // Use real data or mock data fallback
+  // Use real data only
   const classes = classesData?.items || [];
   const assignments = assignmentsData?.items || [];
   const submissions = submissionsData?.items || [];
@@ -58,6 +43,13 @@ export function TeacherDashboard() {
   const pendingToGrade = submissions.filter(s => s.status === 'submitted').length;
 
   const isLoading = classesLoading || assignmentsLoading || submissionsLoading;
+  const hasAnyError = classesError || assignmentsError || submissionsError;
+
+  const handleRefresh = () => {
+    refetchClasses();
+    refetchAssignments();
+    refetchSubmissions();
+  };
 
   if (isLoading) {
     return (
@@ -73,12 +65,37 @@ export function TeacherDashboard() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold">Xin chào, {user?.fullName} 👋</h1>
           <p className="text-muted-foreground">Chào mừng bạn đến với trang quản lý giáo viên</p>
         </div>
+        <Button 
+          variant="outline" 
+          size="sm" 
+          onClick={handleRefresh}
+          disabled={classesFetching || assignmentsFetching || submissionsFetching}
+          className="gap-2"
+        >
+          <RefreshCw className={cn('w-4 h-4', (classesFetching || assignmentsFetching || submissionsFetching) && 'animate-spin')} />
+          Làm mới
+        </Button>
       </div>
+
+      {/* Error Banner */}
+      {hasAnyError && (
+        <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl p-4 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <AlertCircle className="w-5 h-5 text-red-600 dark:text-red-400" />
+            <span className="text-sm text-red-700 dark:text-red-300">
+              Không thể tải một số dữ liệu. Vui lòng thử lại.
+            </span>
+          </div>
+          <Button size="sm" variant="outline" onClick={handleRefresh}>
+            Thử lại
+          </Button>
+        </div>
+      )}
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -88,7 +105,7 @@ export function TeacherDashboard() {
               <BookOpen className="w-6 h-6 text-blue-600 dark:text-blue-400" />
             </div>
             <div>
-              <p className="text-3xl font-bold">{classes.length || mockData.myClasses}</p>
+              <p className="text-3xl font-bold">{classes.length}</p>
               <p className="text-sm text-muted-foreground">Lớp học của tôi</p>
             </div>
           </div>
@@ -100,7 +117,7 @@ export function TeacherDashboard() {
               <Users className="w-6 h-6 text-green-600 dark:text-green-400" />
             </div>
             <div>
-              <p className="text-3xl font-bold">{totalStudents || mockData.myStudents}</p>
+              <p className="text-3xl font-bold">{totalStudents}</p>
               <p className="text-sm text-muted-foreground">Học sinh</p>
             </div>
           </div>
@@ -112,7 +129,7 @@ export function TeacherDashboard() {
               <ClipboardList className="w-6 h-6 text-amber-600 dark:text-amber-400" />
             </div>
             <div>
-              <p className="text-3xl font-bold">{pendingToGrade || mockData.pendingAssignments}</p>
+              <p className="text-3xl font-bold">{pendingToGrade}</p>
               <p className="text-sm text-muted-foreground">Bài tập cần chấm</p>
             </div>
           </div>

@@ -27,42 +27,6 @@ export default function TeacherAssignmentsPage() {
   const assignments = assignmentsData?.items || [];
   const totalPages = Math.ceil((assignmentsData?.total || 0) / ITEMS_PER_PAGE);
 
-  // Mock data for demo
-  const mockAssignments: TeacherAssignment[] = [
-    {
-      id: 1,
-      title: 'LED Blinking',
-      classId: 1,
-      className: 'IOT101 - Arduino Cơ bản',
-      dueDate: new Date(Date.now() + 86400000 * 2).toISOString(),
-      submittedCount: 8,
-      totalStudents: 15,
-      status: 'pending',
-    },
-    {
-      id: 2,
-      title: 'Button Counter',
-      classId: 1,
-      className: 'IOT101 - Arduino Cơ bản',
-      dueDate: new Date(Date.now() - 86400000).toISOString(),
-      submittedCount: 15,
-      totalStudents: 15,
-      status: 'graded',
-    },
-    {
-      id: 3,
-      title: 'Temperature Sensor',
-      classId: 2,
-      className: 'IOT201 - ESP32 Nâng cao',
-      dueDate: new Date(Date.now() + 86400000 * 5).toISOString(),
-      submittedCount: 5,
-      totalStudents: 12,
-      status: 'pending',
-    },
-  ];
-
-  const displayAssignments = assignments.length > 0 ? assignments : mockAssignments;
-
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'pending':
@@ -151,7 +115,7 @@ export default function TeacherAssignmentsPage() {
               </tr>
             </thead>
             <tbody>
-              {displayAssignments.map((assignment) => (
+              {assignments.map((assignment) => (
                 <tr key={assignment.id} className="border-b border-border/50 hover:bg-muted/30">
                   <td className="py-4 px-6 font-medium">{assignment.title}</td>
                   <td className="py-4 px-6 text-muted-foreground">{assignment.className}</td>
@@ -188,7 +152,7 @@ export default function TeacherAssignmentsPage() {
         </div>
 
         {/* Empty State */}
-        {displayAssignments.length === 0 && (
+        {assignments.length === 0 && (
           <div className="text-center py-12 text-muted-foreground">
             <ClipboardList className="w-16 h-16 mx-auto mb-4 opacity-50" />
             <h3 className="text-lg font-medium mb-2">Chưa có bài tập nào</h3>

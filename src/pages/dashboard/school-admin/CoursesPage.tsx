@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
@@ -59,11 +59,16 @@ export const CoursesPage = () => {
       pageNumber: currentPage,
       pageSize: pageSize,
     }),
-    onError: (error: any) => {
-      const message = error?.response?.data?.message || error?.message || 'Lỗi khi tải danh sách khóa học';
-      showToast(message, 'error');
-    },
   });
+
+  // Handle fetch error
+  useEffect(() => {
+    if (fetchError) {
+      const err = fetchError as any;
+      const message = err?.response?.data?.message || err?.message || 'Lỗi khi tải danh sách khóa học';
+      showToast(message, 'error');
+    }
+  }, [fetchError]);
 
   // Create course mutation
   const [createError, setCreateError] = useState<string | null>(null);

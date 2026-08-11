@@ -105,11 +105,16 @@ export const ClassesPage = () => {
       searchTerm: searchTerm,
       courseId: courseFilter ? Number(courseFilter) : undefined,
     }),
-    onError: (error: any) => {
-      const message = error?.response?.data?.message || error?.message || 'Lỗi khi tải danh sách lớp học';
-      showToast(message, 'error');
-    },
   });
+
+  // Handle fetch error
+  useEffect(() => {
+    if (fetchError) {
+      const err = fetchError as any;
+      const message = err?.response?.data?.message || err?.message || 'Lỗi khi tải danh sách lớp học';
+      showToast(message, 'error');
+    }
+  }, [fetchError]);
 
   // Fetch courses for filter and form
   const { data: coursesData } = useQuery({

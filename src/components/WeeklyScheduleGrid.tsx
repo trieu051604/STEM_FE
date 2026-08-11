@@ -1,11 +1,12 @@
 import { useState, useEffect, useMemo } from 'react';
 import { Calendar, Clock, ChevronLeft, ChevronRight, Plus, Edit, Trash2 } from 'lucide-react';
-import { format, startOfWeek, addDays, addWeeks, subWeeks, isToday } from 'date-fns';
+import { format, startOfWeek, addDays, addWeeks, subWeeks, isToday, startOfMonth, endOfMonth } from 'date-fns';
 import { vi } from 'date-fns/locale';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { scheduleApi, type ScheduleResponse, type ScheduleConflictInfo, type TeacherConflictInfo } from '@/services/schoolAdminApi';
+import { studentApi, type StudentScheduleResponse } from '@/services/teacherStudentApi';
 
 interface ClassInfo {
   id: number;
@@ -18,6 +19,7 @@ interface WeeklyScheduleGridProps {
   schedules?: ScheduleResponse[];
   classInfo?: ClassInfo;
   isAdmin?: boolean;
+  isStudentView?: boolean;
   onScheduleChange?: () => void | Promise<void> | ((options?: any) => Promise<any>);
 }
 
@@ -40,8 +42,10 @@ const DAYS_OF_WEEK = [
   { key: 0, short: 'CN', full: 'CN', fullEn: 'Sunday' },
 ];
 
-export function WeeklyScheduleGrid({ classId, schedules: initialSchedules, classInfo, isAdmin = false, onScheduleChange }: WeeklyScheduleGridProps) {
+export function WeeklyScheduleGrid({ classId, schedules: initialSchedules, classInfo, isAdmin = false, isStudentView = false, onScheduleChange }: WeeklyScheduleGridProps) {
   const [currentWeekStart, setCurrentWeekStart] = useState(() => startOfWeek(new Date(), { weekStartsOn: 1 }));
+  const [currentMonth, setCurrentMonth] = useState(new Date());
+  const [view, setView] = useState<'week' | 'month'>('week');
   const [schedules, setSchedules] = useState<ScheduleResponse[]>(initialSchedules || []);
   const [loading, setLoading] = useState(false);
 
@@ -59,12 +63,14 @@ export function WeeklyScheduleGrid({ classId, schedules: initialSchedules, class
   const [conflicts, setConflicts] = useState<ScheduleConflictInfo[]>([]);
   const [teacherConflicts, setTeacherConflicts] = useState<TeacherConflictInfo[]>([]);
 
-  // Fetch schedules when week changes or classId changes
+  // Fetch schedules when week/month or classId changes
   useEffect(() => {
-    if (classId) {
+    if (isStudentView) {
+      fetchStudentSchedules();
+    } else if (classId) {
       fetchSchedules();
     }
-  }, [classId, currentWeekStart]);
+  }, [classId, currentWeekStart, currentMonth, isStudentView]);
 
   // Set initial schedules only when not loading (not undefined)
   useEffect(() => {
@@ -78,10 +84,51 @@ export function WeeklyScheduleGrid({ classId, schedules: initialSchedules, class
 
     try {
       setLoading(true);
-      const data = await scheduleApi.getByClassId(classId);
+      // Calculate date range based on view
+      const fromDate = format(currentWeekStart, 'yyyy-MM-dd');
+      const toDate = format(addDays(currentWeekStart, view === 'week' ? 6 : 30), 'yyyy-MM-dd');
+      
+      const data = await scheduleApi.getByClassId(classId, fromDate, toDate);
       setSchedules(data);
     } catch (err) {
       console.error('Failed to fetch schedules:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchStudentSchedules = async () => {
+    try {
+      setLoading(true);
+      // Calculate date range based on view
+      let fromDate: string;
+      let toDate: string;
+      
+      if (view === 'week') {
+        fromDate = format(currentWeekStart, 'yyyy-MM-dd');
+        toDate = format(addDays(currentWeekStart, 6), 'yyyy-MM-dd');
+      } else {
+        // Month view - get first and last day of month
+        const firstDay = startOfMonth(currentMonth);
+        const lastDay = endOfMonth(currentMonth);
+        fromDate = format(firstDay, 'yyyy-MM-dd');
+        toDate = format(lastDay, 'yyyy-MM-dd');
+      }
+      
+      const data = await studentApi.getMySchedule(fromDate, toDate);
+      // Convert StudentScheduleResponse to ScheduleResponse
+      const converted: ScheduleResponse[] = data.map(s => ({
+        id: s.id,
+        classId: 0,
+        startTime: s.start,
+        endTime: s.end,
+        classCode: s.classCode,
+        className: s.className,
+        color: s.color,
+      }));
+      setSchedules(converted);
+    } catch (err) {
+      console.error('Failed to fetch student schedules:', err);
     } finally {
       setLoading(false);
     }
@@ -162,6 +209,10 @@ const scheduleGrid = useMemo(() => {
   const goToPreviousWeek = () => setCurrentWeekStart(subWeeks(currentWeekStart, 1));
   const goToNextWeek = () => setCurrentWeekStart(addWeeks(currentWeekStart, 1));
   const goToToday = () => setCurrentWeekStart(startOfWeek(new Date(), { weekStartsOn: 1 }));
+
+  const goToPreviousMonth = () => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1, 1));
+  const goToNextMonth = () => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1));
+  const goToTodayMonth = () => setCurrentMonth(new Date());
 
   const handleCellClick = (day: typeof DAYS_OF_WEEK[0], slot: typeof SLOTS[0]) => {
     if (!isAdmin) return;
@@ -334,39 +385,70 @@ const scheduleGrid = useMemo(() => {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-2">
-            <Button variant="outline" size="icon" onClick={goToPreviousWeek}>
+            <Button variant="outline" size="icon" onClick={() => view === 'week' ? goToPreviousWeek() : goToPreviousMonth()}>
               <ChevronLeft className="w-4 h-4" />
             </Button>
-            <Button variant="outline" size="icon" onClick={goToNextWeek}>
+            <Button variant="outline" size="icon" onClick={() => view === 'week' ? goToNextWeek() : goToNextMonth()}>
               <ChevronRight className="w-4 h-4" />
             </Button>
           </div>
           <div>
             <h3 className="font-semibold">
-              Tuần {format(currentWeekStart, 'dd/MM')} - {format(addDays(currentWeekStart, 6), 'dd/MM/yyyy')}
+              {view === 'week' ? (
+                <>Tuần {format(currentWeekStart, 'dd/MM')} - {format(addDays(currentWeekStart, 6), 'dd/MM/yyyy')}</>
+              ) : (
+                <>{format(currentMonth, 'MMMM yyyy', { locale: vi })}</>
+              )}
             </h3>
             <p className="text-xs text-muted-foreground">
-              {format(currentWeekStart, 'MMMM yyyy', { locale: vi })}
+              {format(currentMonth, 'yyyy')}
             </p>
           </div>
-          <Button variant="outline" size="sm" onClick={goToToday}>
+          <Button variant="outline" size="sm" onClick={view === 'week' ? goToToday : goToTodayMonth}>
             Hôm nay
           </Button>
         </div>
 
-        {isAdmin && (
-          <Button size="sm" onClick={() => {
-            setSelectedSlot({ day: 1, slot: SLOTS[0] });
-            setFormData({ startTime: SLOTS[0].start, endTime: SLOTS[0].end });
-            setShowAddModal(true);
-          }}>
-            <Plus className="w-4 h-4 mr-1" />
-            Thêm lịch
-          </Button>
-        )}
+        <div className="flex items-center gap-2">
+          {/* View Toggle */}
+          <div className="flex items-center bg-muted rounded-lg p-1">
+            <button
+              onClick={() => setView('week')}
+              className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${
+                view === 'week' ? 'bg-background shadow-sm' : 'text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              Tuần
+            </button>
+            <button
+              onClick={() => setView('month')}
+              className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${
+                view === 'month' ? 'bg-background shadow-sm' : 'text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              Tháng
+            </button>
+          </div>
+
+          {isAdmin && (
+            <Button size="sm" onClick={() => {
+              setSelectedSlot({ day: 1, slot: SLOTS[0] });
+              setFormData({ startTime: SLOTS[0].start, endTime: SLOTS[0].end });
+              setShowAddModal(true);
+            }}>
+              <Plus className="w-4 h-4 mr-1" />
+              Thêm lịch
+            </Button>
+          )}
+        </div>
       </div>
 
-      {/* Schedule Grid */}
+      {loading ? (
+        <div className="flex items-center justify-center h-96">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+        </div>
+      ) : view === 'week' ? (
+      /* Schedule Grid */
       <div className="border border-border rounded-xl overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full border-collapse min-w-[900px]">
@@ -457,6 +539,9 @@ const scheduleGrid = useMemo(() => {
           </table>
         </div>
       </div>
+      ) : (
+        <MonthView schedules={schedules} currentMonth={currentMonth} classInfo={classInfo} />
+      )}
 
       {/* Legend */}
       <div className="flex flex-wrap gap-4 text-xs">
@@ -631,6 +716,112 @@ const scheduleGrid = useMemo(() => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+    </div>
+  );
+}
+
+// Month View Component
+function MonthView({ schedules, currentMonth, classInfo }: { schedules: ScheduleResponse[]; currentMonth: Date; classInfo?: ClassInfo }) {
+  const [year, month] = [currentMonth.getFullYear(), currentMonth.getMonth()];
+  
+  // Get first day of month and total days
+  const firstDayOfMonth = new Date(year, month, 1);
+  const lastDayOfMonth = new Date(year, month + 1, 0);
+  const daysInMonth = lastDayOfMonth.getDate();
+  const firstDayOfWeek = firstDayOfMonth.getDay(); // 0 = Sunday
+
+  // Adjust for Monday start (T2)
+  const startDayOfWeek = firstDayOfWeek === 0 ? 7 : firstDayOfWeek;
+  
+  // Generate calendar days
+  const calendarDays: (number | null)[] = [];
+  
+  // Add empty cells for days before first day of month
+  for (let i = 1; i < startDayOfWeek; i++) {
+    calendarDays.push(null);
+  }
+  
+  // Add days of month
+  for (let day = 1; day <= daysInMonth; day++) {
+    calendarDays.push(day);
+  }
+
+  // Group schedules by day
+  const schedulesByDay = schedules.reduce((acc, schedule) => {
+    if (!schedule.startTime) return acc;
+    const datePart = schedule.startTime.split('T')[0];
+    const [y, m, d] = datePart.split('-').map(Number);
+    if (y === year && m === month + 1) {
+      if (!acc[d]) acc[d] = [];
+      acc[d].push(schedule);
+    }
+    return acc;
+  }, {} as Record<number, ScheduleResponse[]>);
+
+  const weekDays = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'];
+
+  return (
+    <div className="border border-border rounded-xl overflow-hidden">
+      {/* Week day headers */}
+      <div className="grid grid-cols-7 bg-gradient-to-r from-blue-600 to-blue-700 text-white">
+        {weekDays.map((day) => (
+          <div key={day} className="p-3 text-center font-bold text-sm">
+            {day}
+          </div>
+        ))}
+      </div>
+      
+      {/* Calendar grid */}
+      <div className="grid grid-cols-7">
+        {calendarDays.map((day, index) => {
+          const daySchedules = day ? (schedulesByDay[day] || []) : [];
+          const isToday = day === new Date().getDate() && 
+                          month === new Date().getMonth() && 
+                          year === new Date().getFullYear();
+          
+          return (
+            <div
+              key={index}
+              className={`min-h-[100px] border-r border-b border-border p-2 ${
+                day === null ? 'bg-muted/30' : 'hover:bg-muted/50'
+              } ${isToday ? 'bg-yellow-50 dark:bg-yellow-900/20' : ''}`}
+            >
+              {day !== null && (
+                <>
+                  <div className={`text-sm font-medium mb-1 ${
+                    isToday 
+                      ? 'bg-primary text-primary-foreground rounded-full w-7 h-7 flex items-center justify-center' 
+                      : 'text-muted-foreground'
+                  }`}>
+                    {day}
+                  </div>
+                  <div className="space-y-1">
+                    {daySchedules.slice(0, 3).map((schedule, i) => {
+                      const slot = SLOTS.find(s => {
+                        const time = schedule.startTime.split('T')[1]?.substring(0, 5) || '';
+                        return time >= s.start && time < s.end;
+                      });
+                      return (
+                        <div
+                          key={schedule.id}
+                          className={`text-xs p-1 rounded truncate text-white bg-gradient-to-br ${slot?.color || 'from-gray-500 to-gray-600'}`}
+                        >
+                          {schedule.startTime.split('T')[1]?.substring(0, 5)} {classInfo?.classCode || schedule.classCode}
+                        </div>
+                      );
+                    })}
+                    {daySchedules.length > 3 && (
+                      <div className="text-xs text-muted-foreground">
+                        +{daySchedules.length - 3} lịch
+                      </div>
+                    )}
+                  </div>
+                </>
+              )}
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }

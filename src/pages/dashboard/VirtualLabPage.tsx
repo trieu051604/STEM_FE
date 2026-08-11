@@ -272,7 +272,7 @@ export const VirtualLabPage = () => {
       const classResponse =
         user?.role === 'teacher' && teacherId
           ? await classesApi.getMyClasses(teacherId)
-          : await classesApi.getAll({ page: 1, pageSize: 100 });
+          : await classesApi.getAll({ pageNumber: 1, pageSize: 100 });
       const classes = classResponse.items.map(toClassOption);
       setManagedClasses(classes);
 

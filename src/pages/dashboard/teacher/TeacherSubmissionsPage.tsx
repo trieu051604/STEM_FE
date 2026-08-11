@@ -28,37 +28,6 @@ export default function TeacherSubmissionsPage() {
   const submissions = submissionsData?.items || [];
   const totalPages = Math.ceil((submissionsData?.total || 0) / ITEMS_PER_PAGE);
 
-  // Mock data for demo
-  const mockSubmissions: TeacherSubmission[] = [
-    {
-      id: 1,
-      studentName: 'Nguyễn Văn A',
-      assignmentTitle: 'LED Blinking',
-      className: 'IOT101 - Arduino Cơ bản',
-      submittedAt: new Date(Date.now() - 3600000).toISOString(),
-      status: 'submitted',
-    },
-    {
-      id: 2,
-      studentName: 'Trần Thị B',
-      assignmentTitle: 'LED Blinking',
-      className: 'IOT101 - Arduino Cơ bản',
-      submittedAt: new Date(Date.now() - 7200000).toISOString(),
-      status: 'submitted',
-    },
-    {
-      id: 3,
-      studentName: 'Lê Văn C',
-      assignmentTitle: 'Button Counter',
-      className: 'IOT101 - Arduino Cơ bản',
-      submittedAt: new Date(Date.now() - 86400000).toISOString(),
-      status: 'graded',
-      score: 9,
-    },
-  ];
-
-  const displaySubmissions = submissions.length > 0 ? submissions : mockSubmissions;
-
   // Toast notification helper
   const showToast = (message: string, type: 'success' | 'error' = 'success') => {
     console.log(`[${type.toUpperCase()}] ${message}`);
@@ -101,7 +70,7 @@ export default function TeacherSubmissionsPage() {
               <Clock className="w-5 h-5 text-amber-600" />
             </div>
             <div>
-              <p className="text-2xl font-bold">{displaySubmissions.filter(s => s.status === 'submitted').length}</p>
+              <p className="text-2xl font-bold">{submissions.filter(s => s.status === 'submitted').length}</p>
               <p className="text-sm text-muted-foreground">Chờ chấm</p>
             </div>
           </div>
@@ -112,7 +81,7 @@ export default function TeacherSubmissionsPage() {
               <CheckCircle className="w-5 h-5 text-green-600" />
             </div>
             <div>
-              <p className="text-2xl font-bold">{displaySubmissions.filter(s => s.status === 'graded').length}</p>
+              <p className="text-2xl font-bold">{submissions.filter(s => s.status === 'graded').length}</p>
               <p className="text-sm text-muted-foreground">Đã chấm</p>
             </div>
           </div>
@@ -123,7 +92,7 @@ export default function TeacherSubmissionsPage() {
               <FileText className="w-5 h-5 text-blue-600" />
             </div>
             <div>
-              <p className="text-2xl font-bold">{displaySubmissions.length}</p>
+              <p className="text-2xl font-bold">{submissions.length}</p>
               <p className="text-sm text-muted-foreground">Tổng bài nộp</p>
             </div>
           </div>
@@ -182,7 +151,7 @@ export default function TeacherSubmissionsPage() {
               </tr>
             </thead>
             <tbody>
-              {displaySubmissions.map((submission) => (
+              {submissions.map((submission) => (
                 <tr key={submission.id} className="border-b border-border/50 hover:bg-muted/30">
                   <td className="py-4 px-6">
                     <div className="flex items-center gap-3">
@@ -229,7 +198,7 @@ export default function TeacherSubmissionsPage() {
         </div>
 
         {/* Empty State */}
-        {displaySubmissions.length === 0 && (
+        {submissions.length === 0 && (
           <div className="text-center py-12 text-muted-foreground">
             <CheckCircle className="w-16 h-16 mx-auto mb-4 opacity-50" />
             <h3 className="text-lg font-medium mb-2">Không có bài nộp nào</h3>

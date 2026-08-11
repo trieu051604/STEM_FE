@@ -18,6 +18,11 @@ import TeacherAssignmentsPage from '@/pages/dashboard/teacher/TeacherAssignments
 import TeacherSubmissionsPage from '@/pages/dashboard/teacher/TeacherSubmissionsPage';
 import StudentClassesPage from '@/pages/dashboard/student/StudentClassesPage';
 import StudentAssignmentsPage from '@/pages/dashboard/student/StudentAssignmentsPage';
+import StudentClassDetailPage from '@/pages/dashboard/student/StudentClassDetailPage';
+import StudentSchedulePage from '@/pages/dashboard/student/StudentSchedulePage';
+import StudentSimulationsPage from '@/pages/dashboard/student/StudentSimulationsPage';
+import StudentProfilePage from '@/pages/dashboard/student/StudentProfilePage';
+import StudentAllVirtualLabsPage from '@/pages/dashboard/student/StudentAllVirtualLabsPage';
 import {
   StudentsPage,
   CoursesPage,
@@ -130,9 +135,14 @@ export const dashboardRoutes = [
       { path: 'teacher/assignments/:id', element: <TeacherAssignmentsPage /> },
       { path: 'teacher/submissions', element: <TeacherSubmissionsPage /> },
       { path: 'student/classes', element: <StudentClassesPage /> },
-      { path: 'student/classes/:id', element: <StudentClassesPage /> },
+      { path: 'student/classes/:classId', element: <StudentClassDetailPage /> },
       { path: 'student/assignments', element: <StudentAssignmentsPage /> },
       { path: 'student/assignments/:id', element: <StudentAssignmentsPage /> },
+      { path: 'student/schedule', element: <StudentSchedulePage /> },
+      { path: 'student/simulations', element: <StudentSimulationsPage /> },
+      { path: 'student/simulations/:id', element: <StudentSimulationsPage /> },
+      { path: 'student/virtual-labs', element: <StudentAllVirtualLabsPage /> },
+      { path: 'student/profile', element: <StudentProfilePage /> },
       // Login History (School Admin)
       { 
         path: 'login-history', 

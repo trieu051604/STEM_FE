@@ -325,7 +325,6 @@ export interface ClassEntity {
   teacherName?: string;
   schoolId: number;
   studentCount: number;
-  classCode?: string;
   startDate?: string;
   endDate?: string;
   createdAt: string;

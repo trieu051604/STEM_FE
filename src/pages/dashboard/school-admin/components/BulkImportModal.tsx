@@ -59,12 +59,12 @@ export const BulkImportModal = ({ isOpen, onClose, onSuccess }: BulkImportModalP
         const validData = jsonData.filter(row => row.fullName && row.email).map(row => {
           let dateOfBirth: string | undefined;
           if (row.dateOfBirth) {
-            const rawDate = row.dateOfBirth;
-            if (rawDate instanceof Date) {
-              dateOfBirth = rawDate.toISOString().split('T')[0];
+            const rawDate = row.dateOfBirth as unknown;
+            if (Object.prototype.toString.call(rawDate) === '[object Date]' && !isNaN((rawDate as Date).getTime())) {
+              dateOfBirth = (rawDate as Date).toISOString().split('T')[0];
             } else if (typeof rawDate === 'number') {
               // Excel serial date number - convert to ISO date string
-              const date = new Date((rawDate - 25569) * 86400 * 1000);
+              const date = new Date(((rawDate as number) - 25569) * 86400 * 1000);
               dateOfBirth = date.toISOString().split('T')[0];
             } else {
               const dateStr = String(rawDate);

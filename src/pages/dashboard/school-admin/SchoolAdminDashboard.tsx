@@ -176,7 +176,7 @@ export function SchoolAdminDashboard() {
           <div>
             <p className={`text-xs font-semibold uppercase tracking-wider ${mutedText}`}>Bài tập</p>
             <h3 className={`text-3xl font-extrabold mt-0.5 ${headingText}`}>
-              {loading ? <Loader2 className={`w-5 h-5 animate-spin`} /> : stats?.totalAssignments ?? 0}
+              {loading ? <Loader2 className={`w-5 h-5 animate-spin`} /> : stats?.pendingAssignments ?? 0}
             </h3>
           </div>
         </motion.div>

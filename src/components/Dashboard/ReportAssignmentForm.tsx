@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Switch } from '@/components/ui/Switch';
 import { RubricEditor, RubricCriteria } from './RubricEditor';
 import { RefreshCw } from 'lucide-react';
 import type { CreateAssignmentRequest } from '@/services/dashboardApi';
@@ -95,11 +97,11 @@ export const ReportAssignmentForm: React.FC<ReportAssignmentFormProps> = ({
   };
 
   return (
-    <div className="space-y-6 bg-white p-6 rounded-2xl border border-slate-200">
+    <div className="space-y-6">
       <div className="flex justify-between items-center mb-6">
         <div>
-          <h2 className="text-xl font-bold text-[#0f4c5c]">Tạo Bài tập Báo cáo</h2>
-          <p className="text-sm text-slate-500">Giáo viên chấm điểm dựa trên file nộp và tiêu chí.</p>
+          <h2 className="text-xl font-bold text-foreground">Tạo Bài tập Báo cáo</h2>
+          <p className="text-sm text-muted-foreground">Giáo viên chấm điểm dựa trên file nộp và tiêu chí.</p>
         </div>
         <div className="flex gap-3">
           <Button type="button" variant="outline" onClick={onCancel}>
@@ -109,7 +111,7 @@ export const ReportAssignmentForm: React.FC<ReportAssignmentFormProps> = ({
             type="button"
             onClick={handleSave}
             disabled={isSaving || isClassesLoading}
-            className="bg-orange-600 hover:bg-orange-700"
+            className="bg-orange-600 hover:bg-orange-700 text-white border-0"
           >
             {isSaving && <RefreshCw className="w-4 h-4 animate-spin" />}
             Lưu bài tập
@@ -129,65 +131,54 @@ export const ReportAssignmentForm: React.FC<ReportAssignmentFormProps> = ({
           descriptionPlaceholder="Nhập yêu cầu bài tập báo cáo..."
         />
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-5 bg-slate-50 rounded-xl border border-slate-100">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-5 bg-muted/30 rounded-xl border border-border">
           <div>
-            <label className="text-sm font-semibold text-slate-700 block mb-3">Hình thức nộp bài cho phép</label>
+            <label className="text-sm font-medium text-foreground block mb-3">Hình thức nộp bài cho phép</label>
             <div className="space-y-3">
               <label className="flex items-center gap-3">
-                <input
-                  type="checkbox"
-                  checked={allowFile}
-                  onChange={(e) => setAllowFile(e.target.checked)}
-                  className="w-4 h-4 text-orange-600 border-slate-300 rounded focus:ring-orange-500"
-                />
-                <span className="text-sm text-slate-700">File tài liệu (PDF, Word, Excel...)</span>
+                <Switch checked={allowFile} onCheckedChange={setAllowFile} />
+                <span className="text-sm text-foreground">File tài liệu (PDF, Word, Excel...)</span>
               </label>
               <label className="flex items-center gap-3">
-                <input
-                  type="checkbox"
-                  checked={allowVideo}
-                  onChange={(e) => setAllowVideo(e.target.checked)}
-                  className="w-4 h-4 text-orange-600 border-slate-300 rounded focus:ring-orange-500"
-                />
-                <span className="text-sm text-slate-700">Video (.mp4, .mov...)</span>
+                <Switch checked={allowVideo} onCheckedChange={setAllowVideo} />
+                <span className="text-sm text-foreground">Video (.mp4, .mov...)</span>
               </label>
             </div>
           </div>
           <div>
-            <label className="text-sm font-semibold text-slate-700 block mb-3">Cấu hình tải lên</label>
+            <label className="text-sm font-medium text-foreground block mb-3">Cấu hình tải lên</label>
             <div>
-              <span className="text-xs text-slate-500 block mb-1">Dung lượng tối đa mỗi file (MB)</span>
-              <input
+              <span className="text-xs text-muted-foreground block mb-1">Dung lượng tối đa mỗi file (MB)</span>
+              <Input
                 type="number"
                 value={maxSize}
                 onChange={(e) => setMaxSize(Number(e.target.value))}
                 min="1"
                 max="500"
-                className="w-full max-w-[150px] border border-slate-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-orange-500"
+                className="max-w-[150px]"
               />
             </div>
             <div className="mt-4">
-              <span className="text-xs text-slate-500 block mb-1">
+              <span className="text-xs text-muted-foreground block mb-1">
                 Định dạng file cho phép
               </span>
-              <input
+              <Input
                 type="text"
                 value={allowedExtensions}
                 onChange={(e) => setAllowedExtensions(e.target.value)}
                 placeholder=".pdf,.docx,.zip"
-                className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-orange-500"
               />
             </div>
           </div>
         </div>
 
         {(localError || error) && (
-          <p className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-600">
+          <p className="rounded-lg bg-destructive/10 border border-destructive/20 px-4 py-3 text-sm text-destructive">
             {localError || error}
           </p>
         )}
 
-        <div className="pt-4 border-t border-slate-100">
+        <div className="pt-4 border-t border-border">
           <RubricEditor initialCriteria={rubric} onChange={setRubric} />
         </div>
       </div>

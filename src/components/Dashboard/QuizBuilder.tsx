@@ -4,15 +4,21 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/Switch';
 import { DialogHeader, DialogContent, DialogFooter, DialogTitle } from '@/components/ui/dialog';
-import { Plus, Trash2, GripVertical, RefreshCw, X } from 'lucide-react';
+import { Plus, Trash2, GripVertical, RefreshCw, X, FileSpreadsheet, Download, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { CreateAssignmentRequest } from '@/services/dashboardApi';
 import {
   AssignmentFormFields,
   createDefaultAssignmentBasics,
   toAssignmentDueDate,
+  type AssignmentBasicsValue,
   type AssignmentClassOption,
 } from './AssignmentFormFields';
+import {
+  parseQuizExcelWorkbook,
+  downloadQuizExcelTemplate,
+  type QuizExcelParseResult,
+} from './quizExcelImport';
 
 export interface QuizQuestion {
   id: string;
@@ -23,7 +29,12 @@ export interface QuizQuestion {
 }
 
 interface QuizBuilderProps {
+  initialBasics?: AssignmentBasicsValue;
   initialQuestions?: QuizQuestion[];
+  initialTimeLimitMinutes?: number;
+  initialShuffleQuestions?: boolean;
+  heading?: string;
+  submitLabel?: string;
   classOptions?: AssignmentClassOption[];
   isClassesLoading?: boolean;
   classesError?: string | null;
@@ -41,7 +52,12 @@ const questionTypeSelectClassName =
   'rounded-lg border border-input bg-background px-3 py-1.5 text-sm text-foreground outline-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/50 dark:bg-input/30';
 
 export const QuizBuilder: React.FC<QuizBuilderProps> = ({
+  initialBasics,
   initialQuestions = [],
+  initialTimeLimitMinutes = 45,
+  initialShuffleQuestions = true,
+  heading = 'Soạn câu hỏi Quiz',
+  submitLabel = 'Lưu Quiz',
   classOptions = [],
   isClassesLoading,
   classesError,
@@ -51,11 +67,13 @@ export const QuizBuilder: React.FC<QuizBuilderProps> = ({
   onSave,
   onCancel,
 }) => {
-  const [basics, setBasics] = useState(createDefaultAssignmentBasics);
+  const [basics, setBasics] = useState(initialBasics ?? createDefaultAssignmentBasics());
   const [questions, setQuestions] = useState<QuizQuestion[]>(initialQuestions);
-  const [timeLimitMinutes, setTimeLimitMinutes] = useState(45);
-  const [shuffleQuestions, setShuffleQuestions] = useState(true);
+  const [timeLimitMinutes, setTimeLimitMinutes] = useState(initialTimeLimitMinutes);
+  const [shuffleQuestions, setShuffleQuestions] = useState(initialShuffleQuestions);
   const [localError, setLocalError] = useState<string | null>(null);
+  const [excelImportResult, setExcelImportResult] = useState<QuizExcelParseResult | null>(null);
+  const [excelFileName, setExcelFileName] = useState<string | null>(null);
 
   useEffect(() => {
     const previousOverflow = document.body.style.overflow;
@@ -168,6 +186,44 @@ export const QuizBuilder: React.FC<QuizBuilderProps> = ({
     return null;
   };
 
+  const handleExcelFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file) return;
+
+    setExcelFileName(file.name);
+    setExcelImportResult(null);
+
+    const reader = new FileReader();
+    reader.onload = (loadEvent) => {
+      const data = loadEvent.target?.result as ArrayBuffer;
+      setExcelImportResult(parseQuizExcelWorkbook(data));
+    };
+    reader.onerror = () => {
+      setExcelImportResult({
+        questions: [],
+        rowStatuses: [],
+        errors: [{ row: 0, field: 'File', message: 'Không thể đọc file.' }],
+        hasFatalError: true,
+      });
+    };
+    reader.readAsArrayBuffer(file);
+  };
+
+  const closeExcelImport = () => {
+    setExcelImportResult(null);
+    setExcelFileName(null);
+  };
+
+  // Atomic import: any row error blocks the whole batch (Phase 9 default when no
+  // explicit partial-import requirement exists) — imported questions are appended,
+  // never overwrite existing manually-entered ones.
+  const confirmExcelImport = () => {
+    if (!excelImportResult || excelImportResult.errors.length > 0) return;
+    setQuestions([...questions, ...excelImportResult.questions]);
+    closeExcelImport();
+  };
+
   const handleSave = async () => {
     const classId = Number(basics.classId);
     const title = basics.title.trim();
@@ -217,7 +273,7 @@ export const QuizBuilder: React.FC<QuizBuilderProps> = ({
       <div className="bg-card border border-border rounded-xl shadow-xl w-full max-w-4xl max-h-[90vh] flex flex-col">
         <DialogHeader className="flex items-center justify-between gap-4 shrink-0">
           <div className="min-w-0">
-            <DialogTitle>Soạn câu hỏi Quiz</DialogTitle>
+            <DialogTitle>{heading}</DialogTitle>
             <p className="text-sm text-muted-foreground mt-1">
               Tạo danh sách các câu hỏi trắc nghiệm hoặc điền khuyết.
             </p>
@@ -351,6 +407,103 @@ export const QuizBuilder: React.FC<QuizBuilderProps> = ({
           >
             <Plus className="w-5 h-5 mr-2" /> Thêm câu hỏi mới
           </Button>
+
+          <div className="flex flex-wrap items-center gap-3 rounded-lg border border-border bg-muted/30 p-4">
+            <span className="text-sm font-medium text-foreground mr-auto">
+              Nhập câu hỏi hàng loạt từ Excel
+            </span>
+            <Button type="button" variant="outline" size="sm" onClick={downloadQuizExcelTemplate}>
+              <Download className="w-4 h-4" /> Tải file mẫu
+            </Button>
+            <label className="inline-flex items-center gap-2 px-3 py-2 rounded-md border border-input bg-background hover:bg-accent text-sm cursor-pointer text-foreground">
+              <FileSpreadsheet className="w-4 h-4" />
+              Import Excel
+              <input
+                type="file"
+                accept=".xlsx,.xls"
+                onChange={handleExcelFileChange}
+                className="hidden"
+              />
+            </label>
+          </div>
+
+          {excelImportResult && (
+            <div className="rounded-xl border border-border bg-card overflow-hidden">
+              <div className="p-4 border-b border-border flex items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="text-sm font-medium text-foreground truncate">{excelFileName}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    {excelImportResult.hasFatalError
+                      ? 'Không đọc được file'
+                      : `${excelImportResult.rowStatuses.length} dòng — ${excelImportResult.errors.length === 0 ? 'tất cả hợp lệ' : `${excelImportResult.errors.length} lỗi`}`}
+                  </p>
+                </div>
+                <button type="button" onClick={closeExcelImport} className="text-muted-foreground hover:text-foreground shrink-0" aria-label="Đóng preview">
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              {!excelImportResult.hasFatalError && excelImportResult.rowStatuses.length > 0 && (
+                <div className="max-h-72 overflow-y-auto custom-scrollbar">
+                  <table className="w-full text-sm">
+                    <thead className="bg-muted/30 sticky top-0">
+                      <tr>
+                        <th className="p-2 text-left text-xs font-medium text-muted-foreground w-16">Dòng</th>
+                        <th className="p-2 text-left text-xs font-medium text-muted-foreground">Câu hỏi</th>
+                        <th className="p-2 text-left text-xs font-medium text-muted-foreground w-20">Trạng thái</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {excelImportResult.rowStatuses.map((status) => (
+                        <tr key={status.row} className="border-t border-border">
+                          <td className="p-2 text-muted-foreground">{status.row}</td>
+                          <td className="p-2 text-foreground">
+                            {status.question ? (
+                              status.question.text
+                            ) : (
+                              <span className="text-destructive">
+                                {status.errors.map((e) => `${e.field}: ${e.message}`).join('; ')}
+                              </span>
+                            )}
+                          </td>
+                          <td className="p-2">
+                            {status.errors.length === 0 ? (
+                              <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                            ) : (
+                              <AlertCircle className="w-4 h-4 text-destructive" />
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+
+              {excelImportResult.hasFatalError && (
+                <div className="p-4 text-sm text-destructive">
+                  {excelImportResult.errors.map((e, idx) => <p key={idx}>{e.message}</p>)}
+                </div>
+              )}
+
+              {!excelImportResult.hasFatalError && (
+                <div className="p-4 border-t border-border flex justify-end gap-3">
+                  <Button type="button" variant="outline" size="sm" onClick={closeExcelImport}>
+                    Hủy
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    onClick={confirmExcelImport}
+                    disabled={excelImportResult.errors.length > 0}
+                    className="bg-indigo-500 hover:bg-indigo-600 text-white border-0"
+                  >
+                    Import {excelImportResult.questions.length} câu hỏi
+                  </Button>
+                </div>
+              )}
+            </div>
+          )}
         </DialogContent>
 
         <DialogFooter className="shrink-0">
@@ -364,7 +517,7 @@ export const QuizBuilder: React.FC<QuizBuilderProps> = ({
             className="bg-indigo-500 hover:bg-indigo-600 text-white border-0"
           >
             {isSaving && <RefreshCw className="w-4 h-4 animate-spin" />}
-            Lưu Quiz
+            {submitLabel}
           </Button>
         </DialogFooter>
       </div>

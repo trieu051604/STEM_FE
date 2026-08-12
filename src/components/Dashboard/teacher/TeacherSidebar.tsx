@@ -58,12 +58,7 @@ export const TeacherSidebar = ({ isDesktop }: { isDesktop: boolean }) => {
 
       <nav className="flex-1 py-6 overflow-y-auto">
         <div className="px-6 mb-6">
-          <h3 className="font-bold text-indigo-400 text-sm tracking-wider uppercase mb-1">
-            INTELLECTUAL
-            <br />
-            ATELIER
-          </h3>
-          <p className="text-xs text-muted-foreground">Quản lý giảng dạy</p>
+          <p className="text-sm font-semibold text-foreground">Quản lý giảng dạy</p>
         </div>
         
         <ul className="space-y-2 px-3">

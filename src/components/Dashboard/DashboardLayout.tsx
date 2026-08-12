@@ -116,17 +116,6 @@ export const StandardDashboardLayout = () => {
         </div>
 
         <nav className="flex-1 py-6 overflow-y-auto">
-          {user?.role === 'teacher' && (
-            <div className="px-6 mb-6">
-              <h3 className="font-bold text-[#0f4c5c] text-sm tracking-wider uppercase mb-1">
-                INTELLECTUAL
-                <br />
-                ATELIER
-              </h3>
-              <p className="text-xs text-muted-foreground">Quản lý giảng dạy</p>
-            </div>
-          )}
-          
           <ul className="space-y-2 px-3">
             {sidebarItems.map((item) => {
               const isActive = location.pathname === item.path;

@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { format, startOfWeek, addDays, parseISO, isSameDay } from 'date-fns';
+import { format, startOfWeek, addDays, isSameDay, parseISO } from 'date-fns';
 import { vi } from 'date-fns/locale';
 import { Loader2, ChevronLeft, ChevronRight, Calendar as CalendarIcon } from 'lucide-react';
 import { TeacherPageHeader } from '@/components/Dashboard/teacher/TeacherPageHeader';
@@ -44,8 +44,13 @@ export const TeacherSchedulePage = () => {
     
     if (scheduleItems) {
       scheduleItems.forEach((item) => {
-        const itemDate = parseISO(item.start);
-        // Find which day of the week it matches
+        // Parse date directly from the ISO string's date part (no timezone conversion) —
+        // StartTime is stored/transmitted as literal wall-clock digits with a spurious
+        // "Z" suffix (see WeeklyScheduleGrid.tsx), so converting via parseISO()/isSameDay()
+        // rolls late-day times into the next local calendar day and misplaces the session.
+        const datePart = item.start.split('T')[0];
+        const [year, month, day] = datePart.split('-').map(Number);
+        const itemDate = new Date(year, month - 1, day);
         const dayIndex = weekDays.findIndex(d => isSameDay(d, itemDate));
         if (dayIndex !== -1) {
           const slot = getSlotByTime(item.start);

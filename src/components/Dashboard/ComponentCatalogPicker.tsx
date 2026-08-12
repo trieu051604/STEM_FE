@@ -33,13 +33,13 @@ export const ComponentCatalogPicker: React.FC<ComponentCatalogPickerProps> = ({ 
   const isAllSelected = selectedComponentIds.length === AVAILABLE_COMPONENTS.length;
 
   return (
-    <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
-      <div className="p-3 bg-slate-50 border-b border-slate-200 flex justify-between items-center">
-        <span className="text-sm font-semibold text-slate-700">Danh sách linh kiện cho phép</span>
+    <div className="bg-card border border-border rounded-xl overflow-hidden">
+      <div className="p-3 bg-muted/30 border-b border-border flex justify-between items-center">
+        <span className="text-sm font-medium text-foreground">Danh sách linh kiện cho phép</span>
         <button
           type="button"
           onClick={isAllSelected ? deselectAll : selectAll}
-          className="text-xs text-purple-600 hover:underline font-medium"
+          className="text-xs text-purple-400 hover:underline font-medium"
         >
           {isAllSelected ? 'Bỏ chọn tất cả' : 'Chọn tất cả'}
         </button>
@@ -54,17 +54,17 @@ export const ComponentCatalogPicker: React.FC<ComponentCatalogPickerProps> = ({ 
                 onClick={() => toggleComponent(comp.id)}
                 className={cn(
                   "flex items-center gap-2 p-2 rounded-lg cursor-pointer border transition-all text-sm",
-                  isSelected ? "bg-purple-50 border-purple-200" : "bg-white border-slate-100 hover:border-slate-300"
+                  isSelected ? "bg-purple-500/10 border-purple-500/30" : "bg-muted/20 border-border hover:border-muted-foreground/40"
                 )}
               >
                 <div className={cn(
                   "w-4 h-4 rounded border flex items-center justify-center transition-colors",
-                  isSelected ? "bg-purple-600 border-purple-600 text-white" : "border-slate-300 bg-white"
+                  isSelected ? "bg-purple-500 border-purple-500 text-white" : "border-input bg-background"
                 )}>
                   {isSelected && <Check className="w-3 h-3" />}
                 </div>
                 <div className="truncate flex-1">
-                  <span className={cn("block truncate", isSelected ? "text-purple-700 font-medium" : "text-slate-600")}>
+                  <span className={cn("block truncate", isSelected ? "text-purple-300 font-medium" : "text-muted-foreground")}>
                     {comp.name}
                   </span>
                 </div>

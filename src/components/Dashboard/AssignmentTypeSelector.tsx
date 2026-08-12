@@ -14,27 +14,27 @@ const types = [
     title: '📝 Quiz',
     description: 'Trắc nghiệm',
     features: ['Chấm tự động', 'Hỗ trợ nhiều dạng câu hỏi', 'Xáo trộn ngẫu nhiên'],
-    icon: <CheckSquare className="w-8 h-8 text-blue-500 mb-4" />,
-    colorClass: 'hover:border-blue-300 hover:ring-4 hover:ring-blue-50',
-    bgClass: 'bg-blue-50/50',
+    icon: <CheckSquare className="w-8 h-8 text-blue-400 mb-4" />,
+    colorClass: 'hover:border-blue-500/40 hover:ring-4 hover:ring-blue-500/10',
+    bgClass: 'bg-blue-500/10',
   },
   {
     id: 'text_report' as const,
     title: '📄 Báo cáo',
     description: 'Nộp file/video',
     features: ['Giáo viên chấm tay', 'Đính kèm Rubric', 'Hỗ trợ tải lên đa phương tiện'],
-    icon: <FileText className="w-8 h-8 text-orange-500 mb-4" />,
-    colorClass: 'hover:border-orange-300 hover:ring-4 hover:ring-orange-50',
-    bgClass: 'bg-orange-50/50',
+    icon: <FileText className="w-8 h-8 text-orange-400 mb-4" />,
+    colorClass: 'hover:border-orange-500/40 hover:ring-4 hover:ring-orange-500/10',
+    bgClass: 'bg-orange-500/10',
   },
   {
     id: 'practical_simulation' as const,
     title: '🔬 Thực hành mô phỏng',
     description: 'Sandbox linh kiện',
     features: ['Auto-check + chấm tay', 'Tích hợp mạch điện tử', 'Kịch bản kiểm thử linh hoạt'],
-    icon: <Cpu className="w-8 h-8 text-purple-500 mb-4" />,
-    colorClass: 'hover:border-purple-300 hover:ring-4 hover:ring-purple-50',
-    bgClass: 'bg-purple-50/50',
+    icon: <Cpu className="w-8 h-8 text-purple-400 mb-4" />,
+    colorClass: 'hover:border-purple-500/40 hover:ring-4 hover:ring-purple-500/10',
+    bgClass: 'bg-purple-500/10',
   },
 ];
 
@@ -42,8 +42,8 @@ export const AssignmentTypeSelector: React.FC<AssignmentTypeSelectorProps> = ({ 
   return (
     <div className="space-y-6">
       <div className="text-center mb-8">
-        <h2 className="text-2xl font-bold text-[#0f4c5c] mb-2">Chọn loại bài tập</h2>
-        <p className="text-slate-500">Mỗi loại bài tập sẽ có một giao diện thiết lập riêng phù hợp.</p>
+        <h2 className="text-2xl font-bold text-foreground mb-2">Chọn loại bài tập</h2>
+        <p className="text-muted-foreground">Mỗi loại bài tập sẽ có một giao diện thiết lập riêng phù hợp.</p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -55,21 +55,21 @@ export const AssignmentTypeSelector: React.FC<AssignmentTypeSelectorProps> = ({ 
             transition={{ delay: index * 0.1 }}
             onClick={() => onSelect(type.id)}
             className={cn(
-              'relative p-6 rounded-3xl border border-slate-200 cursor-pointer transition-all bg-white shadow-sm',
+              'relative p-6 rounded-3xl border border-border cursor-pointer transition-all bg-muted/20',
               type.colorClass
             )}
           >
             <div className={cn('p-4 rounded-2xl w-fit mb-4', type.bgClass)}>
               {type.icon}
             </div>
-            
-            <h3 className="text-xl font-bold text-slate-800 mb-1">{type.title}</h3>
-            <p className="text-slate-500 text-sm font-medium mb-4">{type.description}</p>
-            
+
+            <h3 className="text-xl font-bold text-foreground mb-1">{type.title}</h3>
+            <p className="text-muted-foreground text-sm font-medium mb-4">{type.description}</p>
+
             <ul className="space-y-2">
               {type.features.map((feature, idx) => (
-                <li key={idx} className="flex items-center gap-2 text-sm text-slate-600">
-                  <div className="w-1.5 h-1.5 rounded-full bg-slate-300" />
+                <li key={idx} className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <div className="w-1.5 h-1.5 rounded-full bg-muted-foreground/50" />
                   {feature}
                 </li>
               ))}

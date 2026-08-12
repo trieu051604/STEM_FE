@@ -41,6 +41,18 @@ export function toAssignmentDueDate(value: string) {
   return value ? new Date(value).toISOString() : null;
 }
 
+// Inverse of toAssignmentDueDate — formats an ISO due-date string (from the API)
+// into the local "yyyy-MM-ddTHH:mm" value a <input type="datetime-local"> expects,
+// so editing a quiz prefills the same local wall-clock time it was created with.
+export function fromAssignmentDueDate(value?: string | null) {
+  if (!value) return '';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '';
+
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+}
+
 export function createDefaultAssignmentBasics(): AssignmentBasicsValue {
   return {
     classId: '',

@@ -7,11 +7,9 @@ import type {
   ClassEntity,
   ComponentGlueRegistryEntity,
   CreateLabRequest,
-  LabCategory,
   LabEntity,
   ValidateWokwiProjectResponse,
 } from '@/services/dashboardApi';
-import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { LabStatsHeader } from '@/components/Dashboard/VirtualLab/LabStatsHeader';
 import type { LabStats } from '@/components/Dashboard/VirtualLab/LabStatsHeader';
@@ -26,8 +24,6 @@ import { TemplatePickerModal } from '@/components/Dashboard/VirtualLab/TemplateP
 import type { VirtualLabSampleExercise } from '@/data/virtualLabSampleExercises';
 import { TeacherPageHeader } from '@/components/Dashboard/teacher/TeacherPageHeader';
 
-type LabFilter = 'all' | LabCategory;
-
 type ManagedClassOption = {
   id: number;
   classCode?: string;
@@ -35,14 +31,6 @@ type ManagedClassOption = {
   courseName?: string;
   studentCount?: number;
 };
-
-const tabs: Array<{ id: LabFilter; label: string }> = [
-  { id: 'all', label: 'Tất cả' },
-  { id: 'physics', label: 'Vật lý' },
-  { id: 'chemistry', label: 'Hóa học' },
-  { id: 'biology', label: 'Sinh học' },
-  { id: 'robotics', label: 'Robot' },
-];
 
 function getErrorMessage(error: unknown, fallback: string) {
   if (error && typeof error === 'object' && 'response' in error) {
@@ -146,28 +134,6 @@ function isWokwiUrl(value: string) {
   return /^https?:\/\//i.test(value) || value.includes('wokwi.com');
 }
 
-const CATEGORY_ALIASES: Record<string, LabCategory> = {
-  physics: 'physics',
-  physical: 'physics',
-  'vật lý': 'physics',
-  'vat ly': 'physics',
-  chemistry: 'chemistry',
-  'hóa học': 'chemistry',
-  'hoa hoc': 'chemistry',
-  biology: 'biology',
-  'sinh học': 'biology',
-  'sinh hoc': 'biology',
-  robotics: 'robotics',
-  robot: 'robotics',
-};
-
-// BE /VirtualLabs hiện không trả field category — normalizeCategory('') sẽ luôn ra null,
-// nghĩa là các lab đó chỉ hiện ở tab "Tất cả" (đúng yêu cầu, không phải bug).
-function normalizeCategory(value: string | null | undefined): LabCategory | null {
-  if (!value) return null;
-  return CATEGORY_ALIASES[value.trim().toLowerCase()] ?? null;
-}
-
 // /api/labs (LIVE) trả sẵn `stats` (studentCount/startedCount/completedCount/
 // averageDurationSeconds) nhúng trong từng lab của response GET /api/labs — không cần gọi
 // thêm /labs/{id}/stats cho từng lab (N+1). `classes` (đối số 2) chỉ dùng làm phương án dự
@@ -208,7 +174,6 @@ function buildStats(labs: LabEntity[]): LabStats {
 
 export const VirtualLabPage = () => {
   const { token, user } = useAuthStore();
-  const [activeTab, setActiveTab] = useState<LabFilter>('all');
   const [labs, setLabs] = useState<LabEntity[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -245,8 +210,6 @@ export const VirtualLabPage = () => {
     setError(null);
 
     try {
-      // Lấy toàn bộ rồi lọc category phía FE (visibleLabs) — đơn giản hơn đồng bộ 2 nguồn lọc
-      // (tab UI + query param), /labs hỗ trợ Category nhưng không bắt buộc phải dùng ở đây.
       const response = await labsApi.getAll({ pageNumber: 1, pageSize: 100 });
 
       setLabs(response.items);
@@ -286,18 +249,7 @@ export const VirtualLabPage = () => {
     return labs.filter((lab) => lab.createdById === teacherFilterId);
   }, [labs, teacherFilterId]);
 
-  const visibleLabs = useMemo(() => {
-    const filtered =
-      activeTab === 'all'
-        ? teacherFilteredLabs
-        : teacherFilteredLabs.filter((lab) => normalizeCategory(lab.category) === activeTab);
-
-    if (import.meta.env.DEV) {
-      console.debug('[VirtualLabPage] labs sau filter (tab:', activeTab, '):', filtered);
-    }
-
-    return filtered;
-  }, [teacherFilteredLabs, activeTab]);
+  const visibleLabs = teacherFilteredLabs;
 
   const aggregateStats = useMemo(
     () => buildStats(teacherFilteredLabs),
@@ -506,35 +458,15 @@ export const VirtualLabPage = () => {
 
       <LabStatsHeader stats={aggregateStats} loading={isLoading} error={error} />
 
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div className="flex items-center gap-2 overflow-x-auto pb-2 sm:pb-0 hide-scrollbar border-b border-border w-full">
-          {tabs.map((tab) => (
-            <button
-              key={tab.id}
-              type="button"
-              onClick={() => setActiveTab(tab.id)}
-              className={cn(
-                'px-4 py-3 text-sm font-medium border-b-2 transition-colors whitespace-nowrap',
-                activeTab === tab.id
-                  ? 'border-indigo-500 text-indigo-500'
-                  : 'border-transparent text-muted-foreground hover:text-foreground'
-              )}
-            >
-              {tab.label}
-            </button>
-          ))}
-        </div>
-
-        <div className="flex items-center gap-2 text-sm font-semibold text-muted-foreground shrink-0 mt-4 sm:mt-0">
-          Sắp xếp theo:
-          <button
-            type="button"
-            className="flex items-center gap-1 text-foreground font-medium hover:bg-accent px-2 py-1 rounded transition-colors"
-          >
-            Mới nhất
-            <ChevronDown className="w-4 h-4" />
-          </button>
-        </div>
+      <div className="flex items-center justify-end gap-2 text-sm font-semibold text-muted-foreground">
+        Sắp xếp theo:
+        <button
+          type="button"
+          className="flex items-center gap-1 text-foreground font-medium hover:bg-accent px-2 py-1 rounded transition-colors"
+        >
+          Mới nhất
+          <ChevronDown className="w-4 h-4" />
+        </button>
       </div>
 
       {metaError && canManageLabs && (

@@ -19,8 +19,6 @@ const defaultStats = {
   newClasses: 0,
   pendingSubmissions: 0,
   activeLabs: 0,
-  performanceScore: 0,
-  performancePercent: 0,
 };
 
 function countNewClasses(classes: ClassEntity[]) {
@@ -154,20 +152,12 @@ export const TeacherDashboard = () => {
 
       const activeLabsCount = myClassesRes.items.reduce((acc, c) => acc + (c.virtualLabs?.length || 0), 0);
       const pendingSubmissionsCount = dbStats?.pendingAssignments ?? 0;
-      let score = 0;
-      if (dbStats?.studentPerformance && dbStats.studentPerformance.length > 0) {
-        const totalGrades = dbStats.studentPerformance.reduce((acc, curr) => acc + (parseInt(curr.grade) || 0) * curr.count, 0);
-        const totalCount = dbStats.studentPerformance.reduce((acc, curr) => acc + curr.count, 0);
-        score = totalCount > 0 ? (totalGrades / totalCount) : 0;
-      }
 
       setStats({
         totalClasses: myClassesRes.total,
         newClasses: myClassesRes.items.length ? countNewClasses(myClassesRes.items) : 0,
         pendingSubmissions: pendingSubmissionsCount,
         activeLabs: activeLabsCount,
-        performanceScore: Number((score / 2).toFixed(1)), // Scale 10 to 5
-        performancePercent: score > 0 ? Math.round((score / 10) * 100) : 0,
       });
 
       setTodayClassCount(schedule.length);
@@ -239,7 +229,7 @@ export const TeacherDashboard = () => {
       </div>
 
       {/* Stats Row */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 lg:gap-6">
         <div className="bg-card rounded-xl border border-border p-6">
           <div className="flex items-start justify-between mb-4">
             <div className="w-11 h-11 rounded-lg bg-indigo-500/10 flex items-center justify-center">
@@ -299,20 +289,6 @@ export const TeacherDashboard = () => {
           </p>
         </div>
 
-        <div className="bg-card rounded-xl border border-border p-6">
-          <div className="flex items-start justify-between mb-4">
-            <div className="w-11 h-11 rounded-lg bg-emerald-500/10 flex items-center justify-center">
-              <Icon name="TrendingUp" className="w-5 h-5 text-emerald-400" />
-            </div>
-            <span className="text-xs font-medium text-emerald-400 bg-emerald-500/10 px-2.5 py-1 rounded-full">
-              {isStatsLoading ? '--' : stats.performancePercent}% trung bình
-            </span>
-          </div>
-          <p className="text-sm font-medium text-muted-foreground">Hiệu suất sinh viên</p>
-          <p className="text-3xl font-bold mt-1 text-foreground">
-            {isStatsLoading ? '--' : stats.performanceScore}/5
-          </p>
-        </div>
       </div>
 
       {/* Main Content Area */}

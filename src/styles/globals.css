@@ -352,37 +352,11 @@
   border-color: hsl(var(--border));
 }
 
-/* ============ TEACHER THEME (SCOPED DARK THEME) ============ */
-.teacher-theme {
-  --border: 240, 4%, 24%;
-  --input: 240, 4%, 24%;
-  --ring: 235, 86%, 65%;
-
-  --background: 240, 2%, 11%;
-  --foreground: 220, 12%, 94%;
-
-  --primary: 235, 86%, 65%;
-  --primary-foreground: 0, 0%, 100%;
-
-  --secondary: 240, 4%, 17%;
-  --secondary-foreground: 220, 12%, 94%;
-
-  --muted: 240, 4%, 17%;
-  --muted-foreground: 220, 8%, 66%;
-
-  --accent: 240, 4%, 21%;
-  --accent-foreground: 220, 12%, 94%;
-
-  --popover: 240, 2%, 13%;
-  --popover-foreground: 220, 12%, 94%;
-
-  --card: 240, 4%, 16%;
-  --card-foreground: 220, 12%, 94%;
-
-  --destructive: 0, 72%, 48%;
-  --destructive-foreground: 0, 0%, 100%;
-}
-
-.teacher-theme * {
-  border-color: hsl(var(--border));
-}
+/* ============ TEACHER THEME ============ */
+/* Previously hardcoded dark HSL values unconditionally here, which made the
+   Light/Dark toggle a no-op on Teacher pages (this class always won over
+   .dark on <html> further up the tree). Teacher pages already use the same
+   semantic tokens (bg-card, text-foreground, border-border, ...) as every
+   other role, so removing the override lets them inherit the normal
+   :root/.dark cascade and respond to the toggle like the rest of the app.
+   The class is kept as a namespace hook for future Teacher-specific rules. */

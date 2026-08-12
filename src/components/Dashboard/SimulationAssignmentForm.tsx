@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
+import { Switch } from '@/components/ui/Switch';
 import { ComponentCatalogPicker } from './ComponentCatalogPicker';
 import { ScenarioBuilder, TestScenario } from './ScenarioBuilder';
 import { RubricEditor, RubricCriteria } from './RubricEditor';
@@ -134,11 +135,11 @@ export const SimulationAssignmentForm: React.FC<SimulationAssignmentFormProps> =
   };
 
   return (
-    <div className="space-y-6 bg-white p-6 rounded-2xl border border-slate-200">
+    <div className="space-y-6">
       <div className="flex justify-between items-center mb-6">
         <div>
-          <h2 className="text-xl font-bold text-[#0f4c5c]">Tạo Bài tập Thực hành</h2>
-          <p className="text-sm text-slate-500">Thiết lập mạch điện tử và kịch bản chấm tự động.</p>
+          <h2 className="text-xl font-bold text-foreground">Tạo Bài tập Thực hành</h2>
+          <p className="text-sm text-muted-foreground">Thiết lập mạch điện tử và kịch bản chấm tự động.</p>
         </div>
         <div className="flex gap-3">
           <Button type="button" variant="outline" onClick={onCancel}>
@@ -148,7 +149,7 @@ export const SimulationAssignmentForm: React.FC<SimulationAssignmentFormProps> =
             type="button"
             onClick={handleSave}
             disabled={isSaving || isClassesLoading}
-            className="bg-purple-600 hover:bg-purple-700"
+            className="bg-purple-600 hover:bg-purple-700 text-white border-0"
           >
             {isSaving && <RefreshCw className="w-4 h-4 animate-spin" />}
             Lưu bài tập
@@ -169,29 +170,29 @@ export const SimulationAssignmentForm: React.FC<SimulationAssignmentFormProps> =
         />
 
         <div>
-          <label className="text-sm font-semibold text-slate-700 block mb-3">Chế độ làm bài của học sinh</label>
+          <label className="text-sm font-medium text-foreground block mb-3">Chế độ làm bài của học sinh</label>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div
               onClick={() => setStudentMode('code_only')}
               className={cn(
                 "p-4 rounded-xl border cursor-pointer transition-all",
-                studentMode === 'code_only' ? "bg-purple-50 border-purple-300 ring-2 ring-purple-100" : "bg-white border-slate-200 hover:border-slate-300"
+                studentMode === 'code_only' ? "bg-purple-500/10 border-purple-500/40 ring-2 ring-purple-500/20" : "bg-muted/20 border-border hover:border-muted-foreground/40"
               )}
             >
-              <FileCode2 className={cn("w-6 h-6 mb-2", studentMode === 'code_only' ? "text-purple-600" : "text-slate-400")} />
-              <h4 className="font-semibold text-slate-800 text-sm mb-1">Chỉ viết code (Mô hình 1)</h4>
-              <p className="text-xs text-slate-500">Giáo viên tạo sẵn mạch mẫu, học sinh chỉ cần lập trình để mạch hoạt động.</p>
+              <FileCode2 className={cn("w-6 h-6 mb-2", studentMode === 'code_only' ? "text-purple-400" : "text-muted-foreground")} />
+              <h4 className="font-semibold text-foreground text-sm mb-1">Chỉ viết code (Mô hình 1)</h4>
+              <p className="text-xs text-muted-foreground">Giáo viên tạo sẵn mạch mẫu, học sinh chỉ cần lập trình để mạch hoạt động.</p>
             </div>
             <div
               onClick={() => setStudentMode('circuit_build')}
               className={cn(
                 "p-4 rounded-xl border cursor-pointer transition-all",
-                studentMode === 'circuit_build' ? "bg-purple-50 border-purple-300 ring-2 ring-purple-100" : "bg-white border-slate-200 hover:border-slate-300"
+                studentMode === 'circuit_build' ? "bg-purple-500/10 border-purple-500/40 ring-2 ring-purple-500/20" : "bg-muted/20 border-border hover:border-muted-foreground/40"
               )}
             >
-              <Cpu className={cn("w-6 h-6 mb-2", studentMode === 'circuit_build' ? "text-purple-600" : "text-slate-400")} />
-              <h4 className="font-semibold text-slate-800 text-sm mb-1">Tự lắp mạch (Mô hình 2)</h4>
-              <p className="text-xs text-slate-500">Học sinh phải tự kéo thả lắp ráp linh kiện và viết code từ đầu.</p>
+              <Cpu className={cn("w-6 h-6 mb-2", studentMode === 'circuit_build' ? "text-purple-400" : "text-muted-foreground")} />
+              <h4 className="font-semibold text-foreground text-sm mb-1">Tự lắp mạch (Mô hình 2)</h4>
+              <p className="text-xs text-muted-foreground">Học sinh phải tự kéo thả lắp ráp linh kiện và viết code từ đầu.</p>
             </div>
           </div>
         </div>
@@ -204,84 +205,79 @@ export const SimulationAssignmentForm: React.FC<SimulationAssignmentFormProps> =
 
         {studentMode === 'code_only' && (
           <label className="block">
-            <span className="text-sm font-semibold text-slate-700">Starter code</span>
+            <span className="text-sm font-medium text-foreground">Starter code</span>
             <textarea
               value={starterCode}
               onChange={(event) => setStarterCode(event.target.value)}
               spellCheck={false}
-              className="mt-2 w-full min-h-[150px] rounded-xl border border-slate-200 bg-slate-900 px-4 py-3 font-mono text-sm text-slate-100 outline-none transition-all focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20"
+              className="mt-2 w-full min-h-[150px] rounded-xl border border-border bg-slate-900 px-4 py-3 font-mono text-sm text-slate-100 outline-none transition-all focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20"
             />
           </label>
         )}
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           <label className="block">
-            <span className="text-sm font-semibold text-slate-700">
+            <span className="text-sm font-medium text-foreground">
               Sơ đồ mạch nền (diagram.json)
             </span>
             <textarea
               value={baseDiagramText}
               onChange={(event) => setBaseDiagramText(event.target.value)}
               spellCheck={false}
-              className="mt-2 w-full min-h-[220px] rounded-xl border border-slate-200 bg-slate-950 px-4 py-3 font-mono text-xs text-slate-100 outline-none transition-all focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20"
+              className="mt-2 w-full min-h-[220px] rounded-xl border border-border bg-slate-950 px-4 py-3 font-mono text-xs text-slate-100 outline-none transition-all focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20"
             />
           </label>
 
           <label className="block">
-            <span className="text-sm font-semibold text-slate-700">
+            <span className="text-sm font-medium text-foreground">
               Đáp án mẫu để auto-check
             </span>
             <textarea
               value={answerKeyText}
               onChange={(event) => setAnswerKeyText(event.target.value)}
               spellCheck={false}
-              className="mt-2 w-full min-h-[220px] rounded-xl border border-slate-200 bg-slate-950 px-4 py-3 font-mono text-xs text-slate-100 outline-none transition-all focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20"
+              className="mt-2 w-full min-h-[220px] rounded-xl border border-border bg-slate-950 px-4 py-3 font-mono text-xs text-slate-100 outline-none transition-all focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20"
             />
           </label>
         </div>
 
-        <div className="border border-slate-200 rounded-xl overflow-hidden">
-          <div className="bg-slate-50 p-4 border-b border-slate-200 flex justify-between items-center">
+        <div className="border border-border rounded-xl overflow-hidden">
+          <div className="bg-muted/30 p-4 border-b border-border flex justify-between items-center">
             <div className="flex items-center gap-2">
-              <input
-                type="checkbox"
-                checked={enableAutoCheck}
-                onChange={(e) => setEnableAutoCheck(e.target.checked)}
-                className="w-4 h-4 text-purple-600 border-slate-300 rounded focus:ring-purple-500"
-              />
-              <span className="font-semibold text-slate-700 text-sm">Bật chấm tự động (Auto-check)</span>
+              <Switch checked={enableAutoCheck} onCheckedChange={setEnableAutoCheck} />
+              <span className="font-medium text-foreground text-sm">Bật chấm tự động (Auto-check)</span>
             </div>
             {enableAutoCheck && (
               <div className="flex items-center gap-2">
-                <span className="text-xs text-slate-500">Tỉ trọng điểm:</span>
-                <span className="text-sm font-bold text-purple-700">{autoGradeWeight}% auto</span>
+                <span className="text-xs text-muted-foreground">Tỉ trọng điểm:</span>
+                <span className="text-sm font-bold text-purple-400">{autoGradeWeight}% auto</span>
                 <input
                   type="range"
                   min="0"
                   max="100"
                   value={autoGradeWeight}
                   onChange={(e) => setAutoGradeWeight(Number(e.target.value))}
-                  className="w-24 accent-purple-600"
+                  className="w-24 accent-purple-500"
                 />
-                <span className="text-sm font-bold text-slate-700">{100 - autoGradeWeight}% tay</span>
+                <span className="text-sm font-bold text-foreground">{100 - autoGradeWeight}% tay</span>
               </div>
             )}
           </div>
-          
+
           {enableAutoCheck && (
-            <div className="p-4 bg-white">
+            <div className="p-4 bg-card">
               <ScenarioBuilder scenarios={scenarios} onChange={setScenarios} />
             </div>
           )}
         </div>
 
         {(localError || error) && (
-          <p className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-600">
+          <p className="rounded-lg bg-destructive/10 border border-destructive/20 px-4 py-3 text-sm text-destructive">
             {localError || error}
           </p>
         )}
 
-        <div className="pt-4 border-t border-slate-100">
+        <div className="pt-4 border-t border-border">
           <RubricEditor initialCriteria={rubric} onChange={setRubric} />
         </div>
       </div>

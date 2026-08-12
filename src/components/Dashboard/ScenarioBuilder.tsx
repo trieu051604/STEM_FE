@@ -33,34 +33,34 @@ export const ScenarioBuilder: React.FC<ScenarioBuilderProps> = ({ scenarios, onC
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center mb-2">
-        <h3 className="text-sm font-semibold text-slate-700">Kịch bản Auto-check (Expectations)</h3>
+        <h3 className="text-sm font-medium text-foreground">Kịch bản Auto-check (Expectations)</h3>
       </div>
-      
+
       {scenarios.length === 0 ? (
-        <div className="text-center p-6 border border-slate-200 rounded-xl bg-slate-50">
-          <p className="text-sm text-slate-500 mb-3">Chưa có điều kiện kiểm tra nào.</p>
+        <div className="text-center p-6 border border-border rounded-xl bg-muted/30">
+          <p className="text-sm text-muted-foreground mb-3">Chưa có điều kiện kiểm tra nào.</p>
         </div>
       ) : (
-        <div className="border border-slate-200 rounded-xl overflow-hidden">
-          <table className="w-full text-sm text-left text-slate-600">
-            <thead className="bg-slate-50 text-slate-700 border-b border-slate-200">
+        <div className="border border-border rounded-xl overflow-hidden">
+          <table className="w-full text-sm text-left text-muted-foreground">
+            <thead className="bg-muted/30 text-foreground border-b border-border">
               <tr>
-                <th className="px-4 py-3 font-semibold">Chân/Tín hiệu (Pin)</th>
-                <th className="px-4 py-3 font-semibold">Giá trị kỳ vọng</th>
-                <th className="px-4 py-3 font-semibold">Mô tả test case</th>
+                <th className="px-4 py-3 font-medium">Chân/Tín hiệu (Pin)</th>
+                <th className="px-4 py-3 font-medium">Giá trị kỳ vọng</th>
+                <th className="px-4 py-3 font-medium">Mô tả test case</th>
                 <th className="px-4 py-3 w-10"></th>
               </tr>
             </thead>
             <tbody>
               {scenarios.map(s => (
-                <tr key={s.id} className="border-b border-slate-100 bg-white">
+                <tr key={s.id} className="border-b border-border bg-card">
                   <td className="px-4 py-2">
                     <input
                       type="text"
                       value={s.pin}
                       onChange={(e) => updateScenario(s.id, { pin: e.target.value })}
                       placeholder="VD: 13, A0, Serial..."
-                      className="w-full border border-slate-200 rounded-md px-2 py-1.5 text-sm outline-none focus:border-purple-500"
+                      className="w-full rounded-md border border-input bg-background px-2 py-1.5 text-sm text-foreground outline-none focus:border-ring focus:ring-2 focus:ring-ring/50"
                     />
                   </td>
                   <td className="px-4 py-2">
@@ -69,7 +69,7 @@ export const ScenarioBuilder: React.FC<ScenarioBuilderProps> = ({ scenarios, onC
                       value={s.expectedValue}
                       onChange={(e) => updateScenario(s.id, { expectedValue: e.target.value })}
                       placeholder="VD: HIGH, 1023, 'Hello'"
-                      className="w-full border border-slate-200 rounded-md px-2 py-1.5 text-sm outline-none focus:border-purple-500"
+                      className="w-full rounded-md border border-input bg-background px-2 py-1.5 text-sm text-foreground outline-none focus:border-ring focus:ring-2 focus:ring-ring/50"
                     />
                   </td>
                   <td className="px-4 py-2">
@@ -78,11 +78,11 @@ export const ScenarioBuilder: React.FC<ScenarioBuilderProps> = ({ scenarios, onC
                       value={s.description}
                       onChange={(e) => updateScenario(s.id, { description: e.target.value })}
                       placeholder="Ghi chú lỗi nếu sai..."
-                      className="w-full border border-slate-200 rounded-md px-2 py-1.5 text-sm outline-none focus:border-purple-500"
+                      className="w-full rounded-md border border-input bg-background px-2 py-1.5 text-sm text-foreground outline-none focus:border-ring focus:ring-2 focus:ring-ring/50"
                     />
                   </td>
                   <td className="px-4 py-2 text-center">
-                    <button onClick={() => removeScenario(s.id)} className="text-slate-400 hover:text-red-500">
+                    <button onClick={() => removeScenario(s.id)} className="text-muted-foreground hover:text-destructive" aria-label="Xoá điều kiện">
                       <Trash2 className="w-4 h-4" />
                     </button>
                   </td>
@@ -93,7 +93,7 @@ export const ScenarioBuilder: React.FC<ScenarioBuilderProps> = ({ scenarios, onC
         </div>
       )}
 
-      <Button type="button" variant="outline" size="sm" onClick={addScenario} className="w-full border-dashed border-2 text-purple-600 border-purple-200 hover:bg-purple-50">
+      <Button type="button" variant="outline" size="sm" onClick={addScenario} className="w-full border-dashed border-2 text-purple-400 border-purple-500/30 hover:bg-purple-500/10">
         <Plus className="w-4 h-4 mr-1" /> Thêm điều kiện test
       </Button>
     </div>

@@ -70,24 +70,24 @@ function ChangeCard({
   };
 
   return (
-    <div className="rounded-xl border border-slate-200 bg-white p-3 space-y-2">
+    <div className="rounded-xl border border-border bg-card p-3 space-y-2">
       <div className="flex items-center justify-between gap-2">
-        <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded-md bg-cyan-50 text-cyan-700">
+        <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded-md bg-accent text-accent-foreground">
           {TYPE_LABELS[change.type] ?? change.type}
         </span>
         {status === 'applied' && (
-          <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-700">
+          <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
             Đã áp dụng
           </span>
         )}
         {status === 'rejected' && (
-          <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded-md bg-slate-100 text-slate-500">
+          <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded-md bg-muted text-muted-foreground">
             Đã từ chối
           </span>
         )}
       </div>
 
-      <p className="text-sm font-bold text-[#0f4c5c]">{change.title}</p>
+      <p className="text-sm font-bold text-foreground">{change.title}</p>
       {change.description && (
         <p className="text-xs text-muted-foreground">{change.description}</p>
       )}
@@ -96,43 +96,43 @@ function ChangeCard({
         change.after && (
           <div className="space-y-1">
             {change.before && (
-              <pre className="text-[11px] bg-red-50 text-red-800 rounded-md p-2 overflow-x-auto max-h-32 whitespace-pre-wrap">
+              <pre className="text-[11px] font-mono leading-relaxed bg-destructive/10 text-destructive rounded-md p-2 overflow-x-auto max-h-32 whitespace-pre-wrap">
                 - {change.before}
               </pre>
             )}
-            <pre className="text-[11px] bg-emerald-50 text-emerald-800 rounded-md p-2 overflow-x-auto max-h-32 whitespace-pre-wrap">
+            <pre className="text-[11px] font-mono leading-relaxed bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 rounded-md p-2 overflow-x-auto max-h-32 whitespace-pre-wrap">
               + {change.after}
             </pre>
           </div>
         )}
 
       {change.type === 'add_component' && change.component && (
-        <p className="text-xs bg-slate-50 rounded-md p-2 font-mono">
+        <p className="text-xs font-mono bg-muted text-foreground rounded-md p-2">
           + {change.component.type} {change.component.id ? `(id: ${change.component.id})` : ''}
         </p>
       )}
 
       {change.type === 'update_wire' && change.wire && (
-        <p className="text-xs bg-slate-50 rounded-md p-2 font-mono">
+        <p className="text-xs font-mono bg-muted text-foreground rounded-md p-2">
           {change.wire.from} → {change.wire.to}
         </p>
       )}
 
       {change.type === 'update_diagram_json' && change.diagramJson && (
-        <pre className="text-[11px] bg-amber-50 text-amber-800 rounded-md p-2 overflow-x-auto max-h-32 whitespace-pre-wrap">
+        <pre className="text-[11px] font-mono leading-relaxed bg-amber-500/10 text-amber-600 dark:text-amber-400 rounded-md p-2 overflow-x-auto max-h-32 whitespace-pre-wrap">
           {change.diagramJson.slice(0, 400)}
           {change.diagramJson.length > 400 ? '…' : ''}
         </pre>
       )}
 
       {conflict && (
-        <div className="flex items-start gap-1.5 text-xs text-amber-700 bg-amber-50 rounded-md p-2">
+        <div className="flex items-start gap-1.5 text-xs text-amber-600 dark:text-amber-400 bg-amber-500/10 border border-amber-500/20 rounded-md p-2">
           <AlertTriangle className="w-3.5 h-3.5 shrink-0 mt-0.5" />
           <span>Code hiện tại đã khác với lúc AI đề xuất — áp dụng có thể ghi đè thay đổi bạn vừa làm.</span>
         </div>
       )}
       {!conflict && large && (
-        <div className="flex items-start gap-1.5 text-xs text-amber-700 bg-amber-50 rounded-md p-2">
+        <div className="flex items-start gap-1.5 text-xs text-amber-600 dark:text-amber-400 bg-amber-500/10 border border-amber-500/20 rounded-md p-2">
           <AlertTriangle className="w-3.5 h-3.5 shrink-0 mt-0.5" />
           <span>Đây là thay đổi lớn — thay thế toàn bộ file code.</span>
         </div>
@@ -153,7 +153,7 @@ function ChangeCard({
           <button
             type="button"
             onClick={onReject}
-            className="flex items-center gap-1 text-xs font-bold px-3 py-1.5 rounded-full bg-slate-100 text-slate-600 hover:bg-slate-200 transition-colors"
+            className="flex items-center gap-1 text-xs font-bold px-3 py-1.5 rounded-full bg-muted text-muted-foreground hover:bg-muted/70 transition-colors"
           >
             <XIcon className="w-3.5 h-3.5" />
             Từ chối
@@ -203,7 +203,7 @@ export const AiProposedChangesPanel = ({
           <button
             type="button"
             onClick={() => onRejectAll(pending)}
-            className="text-xs font-bold px-3 py-1.5 rounded-full bg-slate-100 text-slate-600 hover:bg-slate-200 transition-colors"
+            className="text-xs font-bold px-3 py-1.5 rounded-full bg-muted text-muted-foreground hover:bg-muted/70 transition-colors"
           >
             Từ chối tất cả
           </button>

@@ -4,6 +4,8 @@ import { Link } from 'react-router-dom';
 import { ClipboardList, Clock, CheckCircle, AlertCircle, Search, Loader2, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { TeacherCard } from '@/components/Dashboard/teacher/TeacherCard';
+import { TeacherPageHeader } from '@/components/Dashboard/teacher/TeacherPageHeader';
 import { teacherApi, TeacherAssignment } from '@/services/teacherStudentApi';
 import { formatDistanceToNow } from 'date-fns';
 import { vi } from 'date-fns/locale';
@@ -30,13 +32,13 @@ export default function TeacherAssignmentsPage() {
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'pending':
-        return <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400">Chờ nộp</span>;
+        return <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-indigo-500/10 text-indigo-500">Chờ nộp</span>;
       case 'graded':
-        return <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">Đã chấm</span>;
+        return <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-500/10 text-green-500">Đã chấm</span>;
       case 'overdue':
-        return <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400">Quá hạn</span>;
+        return <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-500/10 text-red-500">Quá hạn</span>;
       default:
-        return <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-700">{status}</span>;
+        return <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-muted text-muted-foreground">{status}</span>;
     }
   };
 
@@ -51,18 +53,18 @@ export default function TeacherAssignmentsPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold">Bài tập</h1>
-          <p className="text-muted-foreground">Quản lý bài tập đã giao cho các lớp</p>
-        </div>
-        <Link to="/dashboard/teacher/assignments/create">
-          <Button className="gap-2">
-            <Plus className="w-4 h-4" />
-            Tạo bài tập mới
-          </Button>
-        </Link>
-      </div>
+      <TeacherPageHeader
+        title="Bài tập"
+        description="Quản lý bài tập đã giao cho các lớp"
+        action={
+          <Link to="/dashboard/teacher/assignments/create">
+            <Button className="gap-2 bg-indigo-500 hover:bg-indigo-600 text-white border-0">
+              <Plus className="w-4 h-4" />
+              Tạo bài tập mới
+            </Button>
+          </Link>
+        }
+      />
 
       {/* Filters */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
@@ -101,7 +103,7 @@ export default function TeacherAssignmentsPage() {
       </div>
 
       {/* Assignments Table */}
-      <div className="bg-card rounded-xl border border-border overflow-hidden">
+      <TeacherCard noPadding>
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead>
@@ -126,7 +128,7 @@ export default function TeacherAssignmentsPage() {
                     </div>
                   </td>
                   <td className="py-4 px-6 text-center">
-                    <span className={assignment.submittedCount === assignment.totalStudents ? 'text-green-600' : ''}>
+                    <span className={assignment.submittedCount === assignment.totalStudents ? 'text-green-500' : ''}>
                       {assignment.submittedCount}/{assignment.totalStudents}
                     </span>
                   </td>
@@ -134,7 +136,7 @@ export default function TeacherAssignmentsPage() {
                   <td className="py-4 px-6 text-right">
                     <div className="flex items-center justify-end gap-2">
                       <Link to={`/dashboard/teacher/assignments/${assignment.id}/submissions`}>
-                        <Button variant="outline" size="sm">
+                        <Button variant="outline" size="sm" className="border-border hover:bg-accent">
                           Xem bài nộp
                         </Button>
                       </Link>
@@ -159,7 +161,7 @@ export default function TeacherAssignmentsPage() {
             <p>Tạo bài tập mới để giao cho học sinh</p>
           </div>
         )}
-      </div>
+      </TeacherCard>
 
       {/* Pagination */}
       {totalPages > 1 && (

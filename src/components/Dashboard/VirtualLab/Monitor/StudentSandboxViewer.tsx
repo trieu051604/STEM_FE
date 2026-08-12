@@ -192,23 +192,24 @@ export const StudentSandboxViewer = ({ projectId, studentName, onClose, boardTyp
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-      <div className="bg-slate-50 w-full max-w-7xl h-[90vh] rounded-2xl shadow-2xl flex flex-col overflow-hidden border border-border">
+      <div className="bg-card w-full max-w-7xl h-[90vh] rounded-2xl shadow-2xl flex flex-col overflow-hidden border border-border">
         {/* Header */}
-        <div className="bg-[#0f4c5c] text-white p-4 flex items-center justify-between shrink-0">
+        <div className="bg-indigo-500 text-white p-4 flex items-center justify-between shrink-0">
           <div>
             <h2 className="text-xl font-bold">Giám sát học sinh: {studentName}</h2>
-            <p className="text-xs text-cyan-200 mt-1 opacity-80 flex items-center gap-2">
+            <p className="text-xs text-indigo-200 mt-1 flex items-center gap-2">
               Chế độ xem trực tiếp (Read-only)
               {isLoadingSnapshot && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
               {runPhase === 'compiling' && <span className="text-amber-300">· Đang biên dịch...</span>}
               {runPhase === 'compile_failed' && <span className="text-red-300">· Biên dịch lỗi</span>}
               {runPhase === 'booting' && <span className="text-cyan-300">· Đang khởi động...</span>}
               {runPhase === 'running' && <span className="text-emerald-300">· Đang chạy</span>}
-              {runPhase === 'completed' && <span className="text-slate-300">· Đã dừng</span>}
+              {runPhase === 'completed' && <span className="text-indigo-200">· Đã dừng</span>}
             </p>
           </div>
           <button
             onClick={onClose}
+            aria-label="Đóng"
             className="w-10 h-10 rounded-full flex items-center justify-center hover:bg-white/10 transition-colors"
           >
             <X className="w-5 h-5" />
@@ -216,7 +217,7 @@ export const StudentSandboxViewer = ({ projectId, studentName, onClose, boardTyp
         </div>
 
         {loadError && (
-          <div className="bg-red-50 border-b border-red-200 text-red-700 text-sm px-4 py-2 flex items-center gap-2 shrink-0">
+          <div className="bg-destructive/10 border-b border-destructive/20 text-destructive text-sm px-4 py-2 flex items-center gap-2 shrink-0">
             <AlertTriangle className="w-4 h-4 shrink-0" />
             {loadError}
           </div>
@@ -261,25 +262,25 @@ export const StudentSandboxViewer = ({ projectId, studentName, onClose, boardTyp
               <div className="flex-1 pointer-events-none">
                  <SerialMonitorPanel output={serialOutput} onClear={() => setSerialOutput('')} />
               </div>
-              <div className="w-80 bg-white rounded-xl border border-border p-4 flex flex-col">
-                <h3 className="font-bold text-[#0f4c5c] mb-2 text-sm">Nhận xét nhanh</h3>
+              <div className="w-80 bg-card rounded-xl border border-border p-4 flex flex-col">
+                <h3 className="font-semibold text-foreground mb-2 text-sm">Nhận xét nhanh</h3>
                 <form onSubmit={handleSendGuidance} className="flex flex-col gap-2 flex-1">
                   <textarea
                     ref={guidanceInputRef as any}
                     value={guidanceMessage}
                     onChange={(e) => setGuidanceMessage(e.target.value)}
                     placeholder="Nhập góp ý cho học sinh này..."
-                    className="flex-1 w-full p-3 text-sm border border-slate-200 rounded-lg resize-none focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500"
+                    className="flex-1 w-full p-3 text-sm bg-background text-foreground placeholder:text-muted-foreground border border-input rounded-lg resize-none focus:outline-none focus:border-ring focus:ring-2 focus:ring-ring/50"
                   />
                   {guidanceError && (
-                    <p className="text-xs text-red-600 flex items-center gap-1">
+                    <p className="text-xs text-destructive flex items-center gap-1">
                       <AlertTriangle className="w-3.5 h-3.5 shrink-0" /> {guidanceError}
                     </p>
                   )}
                   <Button
                     type="submit"
                     disabled={!guidanceMessage.trim() || isSendingGuidance}
-                    className="bg-[#0f4c5c] hover:bg-[#0a3540] text-white w-full h-9 rounded-lg pointer-events-auto"
+                    className="bg-indigo-500 hover:bg-indigo-600 text-white border-0 w-full h-9 rounded-lg pointer-events-auto"
                   >
                     {isSendingGuidance ? (
                       <Loader2 className="w-4 h-4 mr-2 animate-spin" />

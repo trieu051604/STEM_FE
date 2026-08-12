@@ -8,7 +8,6 @@ import { classesApi } from '@/services/dashboardApi';
 import type { ClassEntity } from '@/services/dashboardApi';
 import { formatDistanceToNow } from 'date-fns';
 import { vi } from 'date-fns/locale';
-import { cn } from '@/lib/utils';
 
 // Đúng danh sách trạng thái mục 4.5 yêu cầu — "idle" là trạng thái ngay sau
 // StudentJoined (chưa sửa gì); không có "offline" thật sự phát hiện được vì
@@ -39,7 +38,7 @@ export const ClassMonitorPage = () => {
   const navigate = useNavigate();
   const [classInfo, setClassInfo] = useState<ClassEntity | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  
+
   const [students, setStudents] = useState<Record<string, StudentStatus>>({});
   const [selectedStudent, setSelectedStudent] = useState<StudentStatus | null>(null);
   const [now, setNow] = useState(Date.now());
@@ -159,68 +158,78 @@ export const ClassMonitorPage = () => {
   const getStatusBadge = (status: StudentStatus['status']) => {
     switch (status) {
       case 'idle':
-        return <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-slate-100 text-slate-500">Đã vào, chưa thao tác</span>;
+        return <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-muted text-muted-foreground">Đã vào, chưa thao tác</span>;
       case 'editing_diagram':
-        return <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-blue-100 text-blue-700"><PencilRuler className="w-3.5 h-3.5" /> Đang chỉnh mạch</span>;
+        return <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-blue-500/10 text-blue-300 border border-blue-500/20"><PencilRuler className="w-3.5 h-3.5" /> Đang chỉnh mạch</span>;
       case 'editing_code':
-        return <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-blue-100 text-blue-700"><Code2 className="w-3.5 h-3.5" /> Đang chỉnh code</span>;
+        return <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-blue-500/10 text-blue-300 border border-blue-500/20"><Code2 className="w-3.5 h-3.5" /> Đang chỉnh code</span>;
       case 'compiling':
-        return <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-100 text-amber-700"><Loader2 className="w-3.5 h-3.5 animate-spin" /> Biên dịch</span>;
+        return <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-500/10 text-amber-400 border border-amber-500/20"><Loader2 className="w-3.5 h-3.5 animate-spin" /> Biên dịch</span>;
       case 'compile_success':
-        return <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-cyan-100 text-cyan-700"><CheckCircle2 className="w-3.5 h-3.5" /> Biên dịch OK</span>;
+        return <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-cyan-500/10 text-cyan-300 border border-cyan-500/20"><CheckCircle2 className="w-3.5 h-3.5" /> Biên dịch OK</span>;
       case 'compile_failed':
-        return <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-red-100 text-red-700"><XCircle className="w-3.5 h-3.5" /> Lỗi biên dịch</span>;
+        return <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-destructive/10 text-destructive border border-destructive/20"><XCircle className="w-3.5 h-3.5" /> Lỗi biên dịch</span>;
       case 'running':
-        return <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-700"><Play className="w-3.5 h-3.5" /> Đang chạy Lab</span>;
+        return <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"><Play className="w-3.5 h-3.5" /> Đang chạy Lab</span>;
       case 'stopped':
-        return <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-slate-100 text-slate-600"><Square className="w-3.5 h-3.5" /> Đã dừng</span>;
+        return <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-muted text-muted-foreground"><Square className="w-3.5 h-3.5" /> Đã dừng</span>;
       case 'submitted':
-        return <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-slate-100 text-slate-700"><CheckCircle2 className="w-3.5 h-3.5" /> Đã nộp bài</span>;
+        return <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-indigo-500/10 text-indigo-300 border border-indigo-500/20"><CheckCircle2 className="w-3.5 h-3.5" /> Đã nộp bài</span>;
     }
   };
+
+  const monitoringTitle = isLoading
+    ? 'Đang tải...'
+    : classInfo
+      ? `Giám sát: ${classInfo.classCode ?? classInfo.name}`
+      : 'Giám sát lớp học';
 
   return (
     <div className="space-y-6 pb-20">
       <div className="flex items-center gap-4">
         <button
+          type="button"
           onClick={() => navigate('/dashboard')}
-          className="w-10 h-10 flex items-center justify-center rounded-full bg-white border border-border hover:bg-slate-50 transition-colors shadow-sm"
+          aria-label="Quay lại Tổng quan"
+          className="w-10 h-10 flex items-center justify-center rounded-full bg-card border border-border hover:bg-accent text-muted-foreground hover:text-foreground transition-colors shrink-0"
         >
-          <ArrowLeft className="w-5 h-5 text-slate-600" />
+          <ArrowLeft className="w-5 h-5" />
         </button>
-        <div>
-          <h1 className="text-2xl font-bold text-[#0f4c5c]">
-            {isLoading ? 'Đang tải...' : classInfo ? `Giám sát: ${classInfo.classCode ?? classInfo.name}` : 'Giám sát lớp học'}
+        <div className="min-w-0">
+          <h1 className="text-xl font-bold text-foreground truncate">
+            {monitoringTitle}
           </h1>
           <p className="text-sm text-muted-foreground flex items-center gap-2 mt-1">
-            <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+            <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
             Realtime Monitoring - {activeCount} học sinh đang hoạt động
           </p>
         </div>
       </div>
 
-      <div className="bg-white rounded-2xl border border-border p-6 shadow-sm min-h-[500px]">
+      <div className="bg-card rounded-xl border border-border p-6 min-h-[500px]">
         {studentList.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-[400px] text-slate-400">
-            <Users className="w-16 h-16 mb-4 opacity-20" />
-            <p className="text-lg font-medium">Chưa có học sinh nào truy cập Virtual Lab.</p>
-            <p className="text-sm mt-2">Học sinh sẽ xuất hiện ở đây khi họ bắt đầu làm bài.</p>
+          <div className="flex flex-col items-center justify-center h-[400px] text-center">
+            <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mb-4">
+              <Users className="w-8 h-8 text-muted-foreground" />
+            </div>
+            <p className="text-lg font-semibold text-foreground">Chưa có học sinh nào truy cập Virtual Lab.</p>
+            <p className="text-sm mt-2 text-muted-foreground">Học sinh sẽ xuất hiện ở đây khi họ bắt đầu làm bài.</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {studentList.map(student => (
               <div
                 key={student.projectId}
-                className="p-4 rounded-xl border transition-all hover:shadow-md cursor-pointer group flex flex-col gap-4 border-cyan-100 bg-white hover:border-cyan-300"
+                className="p-4 rounded-xl border border-border bg-muted/30 transition-all hover:border-indigo-500/40 cursor-pointer group flex flex-col gap-4"
                 onClick={() => setSelectedStudent(student)}
               >
-                <div className="flex items-start justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full flex items-center justify-center font-bold text-white shadow-inner bg-gradient-to-br from-cyan-500 to-[#0f4c5c]">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="w-10 h-10 rounded-full flex items-center justify-center font-bold text-white shrink-0 bg-indigo-500">
                       {student.studentName.charAt(0).toUpperCase()}
                     </div>
-                    <div>
-                      <h3 className="font-bold text-[#0f4c5c]">
+                    <div className="min-w-0">
+                      <h3 className="font-semibold text-foreground truncate">
                         {student.studentName}
                       </h3>
                       <p className="text-xs text-muted-foreground">
@@ -228,12 +237,12 @@ export const ClassMonitorPage = () => {
                       </p>
                     </div>
                   </div>
-                  {getStatusBadge(student.status)}
                 </div>
+                {getStatusBadge(student.status)}
 
                 <Button
                   variant="outline"
-                  className="w-full bg-slate-50 border-slate-200 group-hover:bg-cyan-50 group-hover:border-cyan-200 transition-colors text-cyan-700"
+                  className="w-full text-indigo-400 border-indigo-500/30 group-hover:bg-indigo-500/10 group-hover:text-indigo-300 transition-colors"
                 >
                   <Monitor className="w-4 h-4 mr-2" />
                   Xem màn hình
@@ -245,7 +254,7 @@ export const ClassMonitorPage = () => {
       </div>
 
       {selectedStudent && (
-        <StudentSandboxViewer 
+        <StudentSandboxViewer
           projectId={selectedStudent.projectId}
           studentName={selectedStudent.studentName}
           onClose={() => setSelectedStudent(null)}

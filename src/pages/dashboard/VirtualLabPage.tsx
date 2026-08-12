@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { AlertCircle, ChevronDown, Plus, PlusCircle, RefreshCw } from 'lucide-react';
+import { AlertCircle, BookOpen, ChevronDown, Plus, PlusCircle, RefreshCw } from 'lucide-react';
 import { useAuthStore } from '@/stores/authStore';
 import { assignmentsApi, classesApi, labsApi, usersApi } from '@/services/dashboardApi';
 import type {
@@ -7,22 +7,22 @@ import type {
   ClassEntity,
   ComponentGlueRegistryEntity,
   CreateLabRequest,
-  LabCategory,
   LabEntity,
-  LabStatsEntity,
   ValidateWokwiProjectResponse,
 } from '@/services/dashboardApi';
-import { cn } from '@/lib/utils';
+import { Button } from '@/components/ui/button';
 import { LabStatsHeader } from '@/components/Dashboard/VirtualLab/LabStatsHeader';
 import type { LabStats } from '@/components/Dashboard/VirtualLab/LabStatsHeader';
 import { LabCard } from '@/components/Dashboard/VirtualLab/LabCard';
 import {
   CreateLabModal,
+  type CreateLabTemplateData,
   type LabAssignmentOption,
   type LabClassOption,
 } from '@/components/Dashboard/VirtualLab/CreateLabModal';
-
-type LabFilter = 'all' | LabCategory;
+import { TemplatePickerModal } from '@/components/Dashboard/VirtualLab/TemplatePickerModal';
+import type { VirtualLabSampleExercise } from '@/data/virtualLabSampleExercises';
+import { TeacherPageHeader } from '@/components/Dashboard/teacher/TeacherPageHeader';
 
 type ManagedClassOption = {
   id: number;
@@ -31,14 +31,6 @@ type ManagedClassOption = {
   courseName?: string;
   studentCount?: number;
 };
-
-const tabs: Array<{ id: LabFilter; label: string }> = [
-  { id: 'all', label: 'Tất cả' },
-  { id: 'physics', label: 'Vật lý' },
-  { id: 'chemistry', label: 'Hóa học' },
-  { id: 'biology', label: 'Sinh học' },
-  { id: 'robotics', label: 'Robot' },
-];
 
 function getErrorMessage(error: unknown, fallback: string) {
   if (error && typeof error === 'object' && 'response' in error) {
@@ -142,6 +134,10 @@ function isWokwiUrl(value: string) {
   return /^https?:\/\//i.test(value) || value.includes('wokwi.com');
 }
 
+// /api/labs (LIVE) trả sẵn `stats` (studentCount/startedCount/completedCount/
+// averageDurationSeconds) nhúng trong từng lab của response GET /api/labs — không cần gọi
+// thêm /labs/{id}/stats cho từng lab (N+1). `classes` (đối số 2) chỉ dùng làm phương án dự
+// phòng nếu 1 lab nào đó thiếu stats.studentCount thật.
 function buildStats(labs: LabEntity[]): LabStats {
   const activeLabs = labs.filter((lab) => lab.status === 'published').length;
   const totalStudents = labs.reduce(
@@ -156,8 +152,7 @@ function buildStats(labs: LabEntity[]): LabStats {
     (total, lab) => total + (lab.stats?.completedCount ?? 0),
     0
   );
-  const denominator = startedCount || totalStudents;
-  const completionRate = denominator ? Math.round((completedCount / denominator) * 100) : 0;
+  const completionRate = startedCount ? Math.round((completedCount / startedCount) * 100) : null;
   const averageDurations = labs
     .map((lab) => lab.stats?.averageDurationSeconds)
     .filter((value): value is number => typeof value === 'number' && value > 0);
@@ -167,7 +162,7 @@ function buildStats(labs: LabEntity[]): LabStats {
           averageDurations.length /
           60
       )
-    : 0;
+    : null;
 
   return {
     activeLabs,
@@ -179,13 +174,13 @@ function buildStats(labs: LabEntity[]): LabStats {
 
 export const VirtualLabPage = () => {
   const { token, user } = useAuthStore();
-  const [activeTab, setActiveTab] = useState<LabFilter>('all');
   const [labs, setLabs] = useState<LabEntity[]>([]);
-  const [statsByLabId, setStatsByLabId] = useState<Record<string, LabStatsEntity>>({});
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [editingLab, setEditingLab] = useState<LabEntity | null>(null);
+  const [isTemplatePickerOpen, setIsTemplatePickerOpen] = useState(false);
+  const [selectedTemplate, setSelectedTemplate] = useState<VirtualLabSampleExercise | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [managedClasses, setManagedClasses] = useState<ManagedClassOption[]>([]);
@@ -197,17 +192,7 @@ export const VirtualLabPage = () => {
   const [componentsError, setComponentsError] = useState<string | null>(null);
 
   const canManageLabs = user?.role === 'teacher' || user?.role === 'school_admin';
-
-  const displayedLabs = useMemo(
-    () =>
-      labs.map((lab) => ({
-        ...lab,
-        stats: statsByLabId[lab.id] ?? lab.stats,
-      })),
-    [labs, statsByLabId]
-  );
-
-  const aggregateStats = useMemo(() => buildStats(displayedLabs), [displayedLabs]);
+  const [teacherFilterId, setTeacherFilterId] = useState<number | null>(null);
 
   const resolveUserId = useCallback(async () => {
     const storeUserId = getIdentityId(user as unknown as Record<string, unknown> | null);
@@ -225,36 +210,51 @@ export const VirtualLabPage = () => {
     setError(null);
 
     try {
-      const response = await labsApi.getAll({
-        category: activeTab === 'all' ? undefined : activeTab,
-        pageNumber: 1,
-        pageSize: 100,
-      });
+      const response = await labsApi.getAll({ pageNumber: 1, pageSize: 100 });
 
       setLabs(response.items);
-
-      if (canManageLabs && response.items.length) {
-        const statsEntries = await Promise.all(
-          response.items.map(async (lab) => {
-            try {
-              return [lab.id, await labsApi.getStats(lab.id)] as const;
-            } catch {
-              return [lab.id, lab.stats] as const;
-            }
-          })
-        );
-        setStatsByLabId(Object.fromEntries(statsEntries));
-      } else {
-        setStatsByLabId({});
-      }
     } catch (fetchError) {
       setError(getErrorMessage(fetchError, 'Không tải được danh sách phòng lab.'));
       setLabs([]);
-      setStatsByLabId({});
     } finally {
       setIsLoading(false);
     }
-  }, [activeTab, canManageLabs]);
+  }, []);
+
+  // Chỉ lọc theo giáo viên khi response THẬT SỰ có field định danh người tạo (createdById) —
+  // nếu không có, hiển thị toàn bộ thay vì làm danh sách rỗng giả.
+  useEffect(() => {
+    let cancelled = false;
+
+    if (user?.role !== 'teacher') {
+      setTeacherFilterId(null);
+      return;
+    }
+
+    void resolveUserId().then((id) => {
+      if (!cancelled) setTeacherFilterId(id);
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [user?.role, resolveUserId]);
+
+  const teacherFilteredLabs = useMemo(() => {
+    if (!teacherFilterId) return labs;
+
+    const hasCreatorField = labs.some((lab) => toPositiveNumber(lab.createdById));
+    if (!hasCreatorField) return labs;
+
+    return labs.filter((lab) => lab.createdById === teacherFilterId);
+  }, [labs, teacherFilterId]);
+
+  const visibleLabs = teacherFilteredLabs;
+
+  const aggregateStats = useMemo(
+    () => buildStats(teacherFilteredLabs),
+    [teacherFilteredLabs]
+  );
 
   const fetchMetadata = useCallback(async () => {
     if (!canManageLabs) return;
@@ -360,13 +360,23 @@ export const VirtualLabPage = () => {
 
   const openCreateModal = () => {
     setEditingLab(null);
+    setSelectedTemplate(null);
     setFormError(null);
     setIsCreateModalOpen(true);
   };
 
   const openEditModal = (lab: LabEntity) => {
     setEditingLab(lab);
+    setSelectedTemplate(null);
     setFormError(null);
+    setIsCreateModalOpen(true);
+  };
+
+  const handleSelectTemplate = (exercise: VirtualLabSampleExercise) => {
+    setEditingLab(null);
+    setSelectedTemplate(exercise);
+    setFormError(null);
+    setIsTemplatePickerOpen(false);
     setIsCreateModalOpen(true);
   };
 
@@ -374,8 +384,19 @@ export const VirtualLabPage = () => {
     if (isSaving) return;
     setIsCreateModalOpen(false);
     setEditingLab(null);
+    setSelectedTemplate(null);
     setFormError(null);
   };
+
+  const templateData: CreateLabTemplateData | null = selectedTemplate
+    ? {
+        title: selectedTemplate.title,
+        description: selectedTemplate.description,
+        category: selectedTemplate.category,
+        starterCode: selectedTemplate.starterCode,
+        circuitConfig: selectedTemplate.circuitConfig,
+      }
+    : null;
 
   const handleSaveLab = async (data: CreateLabRequest, lab?: LabEntity) => {
     setIsSaving(true);
@@ -412,84 +433,62 @@ export const VirtualLabPage = () => {
 
   return (
     <div className="space-y-8 pb-12">
-      <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-bold text-[#0f4c5c]">
-            Quản lý Phòng Thí Nghiệm
-          </h1>
-          <p className="text-muted-foreground mt-2 max-w-xl text-base">
-            Kiến tạo và điều phối các không gian thực hành STEM chuyên sâu dành cho học sinh.
-          </p>
-        </div>
-        {canManageLabs && (
-          <button
-            type="button"
-            onClick={openCreateModal}
-            className="bg-[#b45309] hover:bg-[#92400e] text-white rounded-full px-6 py-3 h-auto flex items-center gap-2 shadow-sm font-semibold transition-colors shrink-0"
-          >
-            <PlusCircle className="w-5 h-5" />
-            Tạo phòng thí nghiệm mới
-          </button>
-        )}
-      </div>
+      <TeacherPageHeader
+        title="Quản lý Phòng Thí Nghiệm"
+        description="Kiến tạo và điều phối các không gian thực hành STEM chuyên sâu dành cho học sinh."
+        action={
+          canManageLabs && (
+            <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto">
+              <Button type="button" variant="outline" onClick={() => setIsTemplatePickerOpen(true)}>
+                <BookOpen className="w-4 h-4" />
+                Chọn bài tập mẫu
+              </Button>
+              <Button
+                type="button"
+                onClick={openCreateModal}
+                className="bg-indigo-500 hover:bg-indigo-600 text-white border-0"
+              >
+                <PlusCircle className="w-4 h-4" />
+                Tạo phòng thí nghiệm mới
+              </Button>
+            </div>
+          )
+        }
+      />
 
       <LabStatsHeader stats={aggregateStats} loading={isLoading} error={error} />
 
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div className="flex items-center gap-2 overflow-x-auto pb-2 sm:pb-0 hide-scrollbar">
-          {tabs.map((tab) => (
-            <button
-              key={tab.id}
-              type="button"
-              onClick={() => setActiveTab(tab.id)}
-              className={cn(
-                'px-5 py-2 rounded-full text-sm font-semibold transition-colors whitespace-nowrap',
-                activeTab === tab.id
-                  ? 'bg-[#0f4c5c] text-white'
-                  : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
-              )}
-            >
-              {tab.label}
-            </button>
-          ))}
-        </div>
-
-        <div className="flex items-center gap-2 text-sm font-semibold text-slate-500 shrink-0">
-          Sắp xếp theo:
-          <button
-            type="button"
-            className="flex items-center gap-1 text-[#0f4c5c] font-bold hover:bg-slate-100 px-2 py-1 rounded transition-colors"
-          >
-            Mới nhất
-            <ChevronDown className="w-4 h-4" />
-          </button>
-        </div>
+      <div className="flex items-center justify-end gap-2 text-sm font-semibold text-muted-foreground">
+        Sắp xếp theo:
+        <button
+          type="button"
+          className="flex items-center gap-1 text-foreground font-medium hover:bg-accent px-2 py-1 rounded transition-colors"
+        >
+          Mới nhất
+          <ChevronDown className="w-4 h-4" />
+        </button>
       </div>
 
       {metaError && canManageLabs && (
-        <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-medium text-amber-800 flex items-start gap-2">
+        <div className="rounded-xl border border-amber-500/20 bg-amber-500/10 px-4 py-3 text-sm font-medium text-amber-500 flex items-start gap-2">
           <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" />
           {metaError}
         </div>
       )}
 
       {error && !isLoading && (
-        <div className="rounded-2xl border border-red-200 bg-red-50 p-5 text-red-700 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="rounded-xl border border-border bg-card p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="flex items-start gap-3">
-            <AlertCircle className="w-5 h-5 mt-0.5 shrink-0" />
+            <AlertCircle className="w-5 h-5 mt-0.5 shrink-0 text-destructive" />
             <div>
-              <p className="font-bold">Không tải được phòng lab</p>
-              <p className="text-sm text-red-600">{error}</p>
+              <p className="font-semibold text-foreground">Không tải được phòng lab</p>
+              <p className="text-sm text-muted-foreground">{error}</p>
             </div>
           </div>
-          <button
-            type="button"
-            onClick={() => void fetchLabs()}
-            className="inline-flex items-center justify-center gap-2 rounded-full bg-red-600 px-4 py-2 text-sm font-bold text-white hover:bg-red-700"
-          >
+          <Button type="button" variant="outline" onClick={() => void fetchLabs()}>
             <RefreshCw className="w-4 h-4" />
             Tải lại
-          </button>
+          </Button>
         </div>
       )}
 
@@ -498,21 +497,21 @@ export const VirtualLabPage = () => {
           {Array.from({ length: 3 }).map((_, index) => (
             <div
               key={index}
-              className="h-[420px] rounded-3xl border border-border bg-white shadow-sm overflow-hidden"
+              className="h-[420px] rounded-2xl border border-border bg-card shadow-sm overflow-hidden"
             >
-              <div className="h-48 bg-slate-100 animate-pulse" />
+              <div className="h-48 bg-muted animate-pulse" />
               <div className="p-6 space-y-4">
-                <div className="h-5 w-2/3 rounded bg-slate-100 animate-pulse" />
-                <div className="h-4 w-full rounded bg-slate-100 animate-pulse" />
-                <div className="h-4 w-5/6 rounded bg-slate-100 animate-pulse" />
-                <div className="h-10 w-full rounded-full bg-slate-100 animate-pulse mt-12" />
+                <div className="h-5 w-2/3 rounded bg-muted animate-pulse" />
+                <div className="h-4 w-full rounded bg-muted animate-pulse" />
+                <div className="h-4 w-5/6 rounded bg-muted animate-pulse" />
+                <div className="h-10 w-full rounded-full bg-muted animate-pulse mt-12" />
               </div>
             </div>
           ))}
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {displayedLabs.map((lab) => (
+          {visibleLabs.map((lab) => (
             <LabCard
               key={lab.id}
               lab={lab}
@@ -527,12 +526,12 @@ export const VirtualLabPage = () => {
               type="button"
               onClick={openCreateModal}
               disabled={isMetaLoading}
-              className="bg-slate-50/50 rounded-3xl border-2 border-dashed border-slate-300 flex flex-col items-center justify-center p-8 text-center min-h-[380px] hover:bg-slate-100 hover:border-slate-400 transition-all cursor-pointer group disabled:opacity-60"
+              className="bg-card rounded-2xl border border-dashed border-border flex flex-col items-center justify-center p-8 text-center min-h-[380px] hover:bg-accent transition-all cursor-pointer group disabled:opacity-60"
             >
-              <div className="w-16 h-16 bg-slate-200 rounded-full flex items-center justify-center text-slate-500 mb-6 group-hover:scale-110 group-hover:bg-slate-300 group-hover:text-[#0f4c5c] transition-all">
+              <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center text-muted-foreground mb-6 group-hover:scale-110 group-hover:text-indigo-500 transition-all">
                 <Plus className="w-8 h-8" />
               </div>
-              <h3 className="text-xl font-bold text-[#0f4c5c] mb-2">Tạo Lab Mới</h3>
+              <h3 className="text-xl font-bold text-foreground mb-2">Tạo Lab Mới</h3>
               <p className="text-sm text-muted-foreground max-w-[220px]">
                 Thiết kế một không gian học tập mới từ project Wokwi.
               </p>
@@ -541,9 +540,9 @@ export const VirtualLabPage = () => {
         </div>
       )}
 
-      {!isLoading && !error && displayedLabs.length === 0 && (
-        <div className="rounded-3xl border border-dashed border-slate-300 bg-slate-50/70 p-10 text-center">
-          <h3 className="text-xl font-bold text-[#0f4c5c] mb-2">
+      {!isLoading && !error && visibleLabs.length === 0 && (
+        <div className="rounded-2xl border border-dashed border-border bg-card p-10 text-center">
+          <h3 className="text-xl font-bold text-foreground mb-2">
             Chưa có phòng lab phù hợp
           </h3>
           <p className="text-sm text-muted-foreground">
@@ -564,8 +563,15 @@ export const VirtualLabPage = () => {
         componentsError={componentsError}
         onRetryComponents={() => void fetchComponentRegistry()}
         initialLab={editingLab}
+        templateData={templateData}
         isSaving={isSaving}
         error={formError}
+      />
+
+      <TemplatePickerModal
+        isOpen={isTemplatePickerOpen}
+        onClose={() => setIsTemplatePickerOpen(false)}
+        onSelect={handleSelectTemplate}
       />
     </div>
   );

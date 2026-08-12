@@ -13,7 +13,7 @@ export const AssignmentTypeBadge: React.FC<AssignmentTypeBadgeProps> = ({ type, 
       return (
         <div
           className={cn(
-            'inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-200/50',
+            'inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-blue-500/10 text-blue-400 border border-blue-500/20',
             className
           )}
         >
@@ -24,7 +24,7 @@ export const AssignmentTypeBadge: React.FC<AssignmentTypeBadgeProps> = ({ type, 
       return (
         <div
           className={cn(
-            'inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-orange-50 text-orange-700 border border-orange-200/50',
+            'inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-orange-500/10 text-orange-400 border border-orange-500/20',
             className
           )}
         >
@@ -35,7 +35,7 @@ export const AssignmentTypeBadge: React.FC<AssignmentTypeBadgeProps> = ({ type, 
       return (
         <div
           className={cn(
-            'inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-purple-50 text-purple-700 border border-purple-200/50',
+            'inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-purple-500/10 text-purple-400 border border-purple-500/20',
             className
           )}
         >
@@ -46,7 +46,7 @@ export const AssignmentTypeBadge: React.FC<AssignmentTypeBadgeProps> = ({ type, 
       return (
         <div
           className={cn(
-            'inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-slate-100 text-slate-700 border border-slate-200/50',
+            'inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-muted text-muted-foreground border border-border',
             className
           )}
         >

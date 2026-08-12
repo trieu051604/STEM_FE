@@ -1,6 +1,6 @@
 import { HubConnection, HubConnectionBuilder, HubConnectionState, LogLevel } from '@microsoft/signalr';
 import { useAuthStore } from '@/stores/authStore';
-import { API_BASE_URL } from './api';
+import { API_BASE_HOST } from './api';
 import type { SimulationEventEntity } from './dashboardApi';
 
 class VirtualLabHubService {
@@ -25,7 +25,8 @@ class VirtualLabHubService {
   private joinedSessionProjectId: string | null = null;
 
   private getHubUrl() {
-    return `${API_BASE_URL.replace(/\/api\/?$/i, '')}/hubs/virtual-lab`;
+    // Ưu tiên URL hub tường minh từ env; chỉ suy ra từ API host khi VITE_SIGNALR_URL chưa set.
+    return import.meta.env.VITE_SIGNALR_URL || `${API_BASE_HOST}/hubs/virtual-lab`;
   }
 
   public async connect(): Promise<void> {

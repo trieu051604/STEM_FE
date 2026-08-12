@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Plus, Trash2 } from 'lucide-react';
-import { cn } from '@/lib/utils';
 
 export interface RubricCriteria {
   id: string;
@@ -46,49 +46,47 @@ export const RubricEditor: React.FC<RubricEditorProps> = ({ initialCriteria = []
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center mb-2">
-        <h3 className="text-sm font-semibold text-slate-700">Tiêu chí đánh giá (Rubric)</h3>
-        <span className="text-sm font-bold text-blue-600 bg-blue-50 px-3 py-1 rounded-full">
+        <h3 className="text-sm font-medium text-foreground">Tiêu chí đánh giá (Rubric)</h3>
+        <span className="text-sm font-bold text-blue-400 bg-blue-500/10 px-3 py-1 rounded-full">
           Tổng điểm: {totalPoints}
         </span>
       </div>
 
       {criteria.length === 0 ? (
-        <div className="text-center p-6 border-2 border-dashed border-slate-200 rounded-xl bg-slate-50">
-          <p className="text-sm text-slate-500 mb-3">Chưa có tiêu chí nào. Thêm tiêu chí để giáo viên dễ dàng chấm điểm.</p>
+        <div className="text-center p-6 border-2 border-dashed border-border rounded-xl bg-muted/30">
+          <p className="text-sm text-muted-foreground mb-3">Chưa có tiêu chí nào. Thêm tiêu chí để giáo viên dễ dàng chấm điểm.</p>
         </div>
       ) : (
         <div className="space-y-3">
-          {criteria.map((c, index) => (
-            <div key={c.id} className="flex gap-3 items-start p-4 bg-white border border-slate-200 rounded-xl shadow-sm">
+          {criteria.map((c) => (
+            <div key={c.id} className="flex gap-3 items-start p-4 bg-card border border-border rounded-xl">
               <div className="flex-1 space-y-3">
                 <div className="flex gap-3">
-                  <input
+                  <Input
                     type="text"
                     value={c.name}
                     onChange={(e) => updateCriteria(c.id, { name: e.target.value })}
                     placeholder="Tên tiêu chí (VD: Trình bày, Nội dung)"
-                    className="flex-1 border border-slate-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-blue-500"
+                    className="flex-1"
                   />
                   <div className="flex items-center gap-2 w-32">
-                    <input
+                    <Input
                       type="number"
                       value={c.maxPoints}
                       onChange={(e) => updateCriteria(c.id, { maxPoints: Number(e.target.value) })}
                       min="0"
-                      className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-blue-500"
                     />
-                    <span className="text-sm text-slate-500">điểm</span>
+                    <span className="text-sm text-muted-foreground">điểm</span>
                   </div>
                 </div>
-                <input
+                <Input
                   type="text"
                   value={c.description || ''}
                   onChange={(e) => updateCriteria(c.id, { description: e.target.value })}
                   placeholder="Mô tả yêu cầu đạt điểm tối đa..."
-                  className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-blue-500 bg-slate-50"
                 />
               </div>
-              <button type="button" onClick={() => removeCriteria(c.id)} className="text-slate-400 hover:text-red-500 p-2">
+              <button type="button" onClick={() => removeCriteria(c.id)} className="text-muted-foreground hover:text-destructive p-2" aria-label="Xoá tiêu chí">
                 <Trash2 className="w-4 h-4" />
               </button>
             </div>
@@ -96,7 +94,7 @@ export const RubricEditor: React.FC<RubricEditorProps> = ({ initialCriteria = []
         </div>
       )}
 
-      <Button type="button" variant="outline" size="sm" onClick={addCriteria} className="w-full border-dashed border-2 text-blue-600 border-blue-200 hover:bg-blue-50">
+      <Button type="button" variant="outline" size="sm" onClick={addCriteria} className="w-full border-dashed border-2 text-indigo-400 border-indigo-500/30 hover:bg-indigo-500/10">
         <Plus className="w-4 h-4 mr-1" /> Thêm tiêu chí
       </Button>
     </div>

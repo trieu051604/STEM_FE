@@ -23,13 +23,21 @@ interface WeeklyScheduleGridProps {
   onScheduleChange?: () => void | Promise<void> | ((options?: any) => Promise<any>);
 }
 
-// Slot definitions - times are LOCAL (stored as-is from DB)
-const SLOTS = [
+export const SLOTS = [
   { number: 1, name: 'Tiết 1', start: '07:00', end: '09:15', displayStart: '07:00', displayEnd: '09:15', color: 'from-blue-500 to-blue-600', bgDark: 'dark:from-blue-600 dark:to-blue-700' },
   { number: 2, name: 'Tiết 2', start: '09:30', end: '11:45', displayStart: '09:30', displayEnd: '11:45', color: 'from-green-500 to-green-600', bgDark: 'dark:from-green-600 dark:to-green-700' },
   { number: 3, name: 'Tiết 3', start: '12:30', end: '14:45', displayStart: '12:30', displayEnd: '14:45', color: 'from-purple-500 to-purple-600', bgDark: 'dark:from-purple-600 dark:to-purple-700' },
   { number: 4, name: 'Tiết 4', start: '15:00', end: '17:15', displayStart: '15:00', displayEnd: '17:15', color: 'from-orange-500 to-orange-600', bgDark: 'dark:from-orange-600 dark:to-orange-700' },
+  { number: 5, name: 'Tiết 5', start: '17:30', end: '19:45', displayStart: '17:30', displayEnd: '19:45', color: 'from-red-500 to-red-600', bgDark: 'dark:from-red-600 dark:to-red-700' },
+  { number: 6, name: 'Tiết 6', start: '20:00', end: '22:15', displayStart: '20:00', displayEnd: '22:15', color: 'from-indigo-500 to-indigo-600', bgDark: 'dark:from-indigo-600 dark:to-indigo-700' },
 ];
+
+export const getSlotByTime = (timeString: string): number => {
+  // Extract HH:mm
+  const time = timeString.includes('T') ? timeString.split('T')[1].substring(0, 5) : timeString;
+  const match = SLOTS.find(slot => time >= slot.start && time < slot.end);
+  return match ? match.number : 1; // Default to 1 if not matched
+};
 
 // Monday to Friday only (T2-T6)
 const DAYS_OF_WEEK = [

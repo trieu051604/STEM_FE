@@ -28,6 +28,7 @@ import {
   Users,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 import { AssignmentCard } from '@/components/Dashboard/AssignmentCard';
 import { AssignmentTypeSelector } from '@/components/Dashboard/AssignmentTypeSelector';
@@ -35,7 +36,9 @@ import { AssignmentTypeBadge } from '@/components/Dashboard/AssignmentTypeBadge'
 import { QuizBuilder } from '@/components/Dashboard/QuizBuilder';
 import { ReportAssignmentForm } from '@/components/Dashboard/ReportAssignmentForm';
 import { SimulationAssignmentForm } from '@/components/Dashboard/SimulationAssignmentForm';
-import type { AssignmentClassOption } from '@/components/Dashboard/AssignmentFormFields';
+import { fromAssignmentDueDate } from '@/components/Dashboard/AssignmentFormFields';
+import type { AssignmentBasicsValue, AssignmentClassOption } from '@/components/Dashboard/AssignmentFormFields';
+import type { QuizQuestion } from '@/components/Dashboard/QuizBuilder';
 
 type AssignmentFilter = 'all' | 'quiz' | 'text_report' | 'practical_simulation' | 'submitted';
 type AssignmentFormMode = 'create' | 'create_quiz' | 'create_report' | 'create_simulation' | 'edit';
@@ -229,6 +232,19 @@ function buildUpdateAssignmentRequest(
       allowedFileExtensions: assignment.reportDetail?.allowedFileExtensions ?? [],
       maxFileSizeMb: assignment.reportDetail?.maxFileSizeMb ?? 50,
     },
+  };
+}
+
+function toQuizBasicsFromEntity(assignment: AssignmentEntity): AssignmentBasicsValue {
+  return {
+    classId: String(assignment.classId),
+    title: assignment.title,
+    description: assignment.description ?? '',
+    dueDate: fromAssignmentDueDate(assignment.dueDate),
+    maxScore: assignment.maxScore || 100,
+    status: normalizeAssignmentStatus(assignment.status),
+    allowResubmit: assignment.allowResubmit ?? false,
+    resubmitLimit: assignment.resubmitLimit != null ? String(assignment.resubmitLimit) : '',
   };
 }
 
@@ -449,6 +465,23 @@ export const AssignmentsPage = () => {
     }
   };
 
+  const handleUpdateQuizAssignment = async (request: CreateAssignmentRequest) => {
+    if (!editingAssignment) return;
+
+    setIsSaving(true);
+    setFormError(null);
+
+    try {
+      await assignmentsApi.update(editingAssignment.id, request);
+      closeForm();
+      await fetchAssignments(searchQuery);
+    } catch (err) {
+      setFormError(getErrorMessage(err, 'Không lưu được bài tập.'));
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   const handleSaveAssignment = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
@@ -590,29 +623,30 @@ export const AssignmentsPage = () => {
   // AssignmentCard was extracted
 
   return (
-    <div className="max-w-7xl mx-auto space-y-8 pb-12">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6 bg-white p-6 md:p-8 rounded-3xl border border-border shadow-sm">
-        <div>
-          <div className="w-12 h-12 bg-cyan-50 rounded-2xl flex items-center justify-center mb-4">
-            <ClipboardList className="w-6 h-6 text-cyan-600" />
+    <div className="max-w-7xl mx-auto space-y-6 pb-12">
+      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+        <div className="flex items-start gap-3">
+          <div className="w-10 h-10 rounded-lg bg-indigo-500/10 text-indigo-400 flex items-center justify-center shrink-0">
+            <ClipboardList className="w-5 h-5" />
           </div>
-          <h1 className="text-2xl md:text-3xl font-bold text-[#0f4c5c] mb-2">
-            {canManageAssignments ? 'Quản lý bài tập' : 'Bài tập của tôi'}
-          </h1>
-          <p className="text-muted-foreground">
-            {canManageAssignments
-              ? 'Theo dõi bài tập đã giao, bài nộp và tiêu chí đánh giá.'
-              : 'Theo dõi các bài tập được giao trong lớp học của bạn.'}
-          </p>
+          <div>
+            <h1 className="text-2xl font-bold text-foreground">
+              {canManageAssignments ? 'Quản lý bài tập' : 'Bài tập của tôi'}
+            </h1>
+            <p className="text-muted-foreground text-sm mt-1">
+              {canManageAssignments
+                ? 'Theo dõi bài tập đã giao, bài nộp và tiêu chí đánh giá.'
+                : 'Theo dõi các bài tập được giao trong lớp học của bạn.'}
+            </p>
+          </div>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto">
           <Button
             type="button"
             variant="outline"
             onClick={() => fetchAssignments(searchQuery)}
             disabled={isLoading}
-            className="rounded-2xl"
           >
             <RefreshCw className={cn('w-4 h-4', isLoading && 'animate-spin')} />
             Làm mới
@@ -621,49 +655,49 @@ export const AssignmentsPage = () => {
             <Button
               type="button"
               onClick={openCreateForm}
-              className="bg-gradient-to-r from-[#0f4c5c] to-[#1a667b] hover:from-[#0a3540] hover:to-[#0f4c5c] text-white px-6 py-3 rounded-2xl font-bold transition-all shadow-md hover:shadow-lg flex items-center gap-2 transform hover:-translate-y-0.5 h-auto"
+              className="bg-indigo-500 hover:bg-indigo-600 text-white border-0"
             >
-              <Plus className="w-5 h-5" />
+              <Plus className="w-4 h-4" />
               Tạo bài tập mới
             </Button>
           )}
         </div>
       </div>
 
-      <div className="flex flex-col md:flex-row justify-between items-center gap-4 bg-white p-2 rounded-2xl border border-border shadow-sm">
-        <div className="flex w-full md:w-auto p-1 bg-slate-50 rounded-xl overflow-x-auto hide-scrollbar">
+      <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+        <div className="flex w-full md:w-auto gap-1 overflow-x-auto no-scrollbar">
           {filterOptions.map((option) => (
-            <button
+            <Button
               key={option.id}
               type="button"
+              variant={filter === option.id ? 'outline' : 'ghost'}
+              size="sm"
               onClick={() => setFilter(option.id)}
               className={cn(
-                'px-5 py-2.5 rounded-lg text-sm font-semibold transition-all whitespace-nowrap',
+                'shrink-0',
                 filter === option.id
-                  ? 'bg-white text-[#0f4c5c] shadow-sm'
-                  : 'text-slate-500 hover:text-slate-700 hover:bg-slate-100/50'
+                  ? 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20 hover:bg-indigo-500/10 hover:text-indigo-400'
+                  : 'text-muted-foreground hover:text-foreground'
               )}
             >
               {option.label}
-            </button>
+            </Button>
           ))}
         </div>
 
         <div className="flex w-full md:w-auto items-center gap-3">
-          <div className="text-sm font-medium text-slate-500 hidden md:flex items-center gap-2">
+          <div className="text-sm font-medium text-muted-foreground hidden md:flex items-center gap-2 shrink-0">
             <BarChart3 className="w-4 h-4" />
             {filteredAssignments.length}/{totalCount} bài tập
           </div>
-          <div className="w-full md:w-72 relative group">
-            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <Search className="w-4 h-4 text-slate-400 group-focus-within:text-[#0f4c5c] transition-colors" />
-            </div>
-            <input
+          <div className="w-full md:w-72 relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
+            <Input
               type="text"
               placeholder="Tìm kiếm bài tập..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-4 py-3 border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-[#0f4c5c]/20 focus:border-[#0f4c5c] transition-all bg-slate-50 focus:bg-white text-sm"
+              className="pl-10"
             />
           </div>
         </div>
@@ -674,14 +708,14 @@ export const AssignmentsPage = () => {
           {[1, 2, 3].map((item) => (
             <div
               key={item}
-              className="bg-white rounded-3xl border border-border shadow-sm p-6 animate-pulse"
+              className="bg-card rounded-xl border border-border p-6 animate-pulse"
             >
-              <div className="h-6 w-28 bg-slate-100 rounded-full mb-5" />
-              <div className="h-5 w-4/5 bg-slate-100 rounded mb-3" />
-              <div className="h-4 w-2/3 bg-slate-100 rounded mb-8" />
+              <div className="h-6 w-28 bg-muted rounded-full mb-5" />
+              <div className="h-5 w-4/5 bg-muted rounded mb-3" />
+              <div className="h-4 w-2/3 bg-muted rounded mb-8" />
               <div className="grid grid-cols-2 gap-3">
-                <div className="h-20 bg-slate-100 rounded-2xl" />
-                <div className="h-20 bg-slate-100 rounded-2xl" />
+                <div className="h-20 bg-muted rounded-lg" />
+                <div className="h-20 bg-muted rounded-lg" />
               </div>
             </div>
           ))}
@@ -689,13 +723,13 @@ export const AssignmentsPage = () => {
       )}
 
       {!isLoading && error && (
-        <div className="bg-white rounded-3xl border border-red-100 p-8 shadow-sm text-center">
-          <div className="w-12 h-12 rounded-2xl bg-red-50 text-red-600 flex items-center justify-center mx-auto mb-4">
+        <div className="bg-card rounded-xl border border-border p-8 text-center">
+          <div className="w-12 h-12 rounded-lg bg-destructive/10 text-destructive flex items-center justify-center mx-auto mb-4">
             <AlertCircle className="w-6 h-6" />
           </div>
-          <p className="font-semibold text-[#0f4c5c] mb-2">Không tải được bài tập</p>
-          <p className="text-sm text-slate-500 mb-5">{error}</p>
-          <Button type="button" onClick={() => fetchAssignments(searchQuery)}>
+          <p className="font-semibold text-foreground mb-2">Không tải được bài tập</p>
+          <p className="text-sm text-muted-foreground mb-5">{error}</p>
+          <Button type="button" variant="outline" onClick={() => fetchAssignments(searchQuery)}>
             <RefreshCw className="w-4 h-4" />
             Thử lại
           </Button>
@@ -703,12 +737,12 @@ export const AssignmentsPage = () => {
       )}
 
       {!isLoading && !error && filteredAssignments.length === 0 && (
-        <div className="bg-white rounded-3xl border border-border p-10 shadow-sm text-center">
-          <div className="w-12 h-12 rounded-2xl bg-cyan-50 text-cyan-600 flex items-center justify-center mx-auto mb-4">
+        <div className="bg-card rounded-xl border border-border p-10 text-center">
+          <div className="w-12 h-12 rounded-lg bg-indigo-500/10 text-indigo-400 flex items-center justify-center mx-auto mb-4">
             <BookOpen className="w-6 h-6" />
           </div>
-          <p className="font-semibold text-[#0f4c5c] mb-2">Chưa có bài tập phù hợp</p>
-          <p className="text-sm text-slate-500">
+          <p className="font-semibold text-foreground mb-2">Chưa có bài tập phù hợp</p>
+          <p className="text-sm text-muted-foreground">
             Thay đổi bộ lọc hoặc từ khóa tìm kiếm để xem thêm kết quả.
           </p>
         </div>
@@ -735,12 +769,54 @@ export const AssignmentsPage = () => {
         </motion.div>
       )}
 
-      {formMode && (
+      {formMode === 'create_quiz' && (
+        <QuizBuilder
+          classOptions={assignmentClassOptions}
+          isClassesLoading={isClassesLoading}
+          classesError={classesError}
+          onRetryClasses={fetchManageableClasses}
+          isSaving={isSaving}
+          error={formError}
+          onCancel={closeForm}
+          onSave={handleCreateAssignment}
+        />
+      )}
+
+      {formMode === 'edit' && editingAssignment && getAssignmentType(editingAssignment) === 'quiz' && (
+        <QuizBuilder
+          heading="Chỉnh sửa Quiz"
+          submitLabel="Cập nhật Quiz"
+          initialBasics={toQuizBasicsFromEntity(editingAssignment)}
+          initialQuestions={
+            Array.isArray(editingAssignment.quizDetail?.questions)
+              ? (editingAssignment.quizDetail.questions as QuizQuestion[])
+              : []
+          }
+          initialTimeLimitMinutes={
+            editingAssignment.quizDetail?.timeLimitSeconds
+              ? Math.round(editingAssignment.quizDetail.timeLimitSeconds / 60)
+              : 45
+          }
+          initialShuffleQuestions={editingAssignment.quizDetail?.shuffleQuestions ?? true}
+          classOptions={assignmentClassOptions}
+          isClassesLoading={isClassesLoading}
+          classesError={classesError}
+          onRetryClasses={fetchManageableClasses}
+          isSaving={isSaving}
+          error={formError}
+          onCancel={closeForm}
+          onSave={handleUpdateQuizAssignment}
+        />
+      )}
+
+      {formMode &&
+        formMode !== 'create_quiz' &&
+        !(formMode === 'edit' && editingAssignment && getAssignmentType(editingAssignment) === 'quiz') && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 p-4 overflow-y-auto overflow-x-hidden pt-20 pb-10 custom-scrollbar">
           <div className="relative w-full max-w-4xl max-h-full">
             {formMode === 'create' && (
-              <div className="bg-white p-8 rounded-3xl relative">
-                <button type="button" onClick={closeForm} className="absolute top-4 right-4 text-slate-400 hover:text-slate-600">×</button>
+              <div className="bg-card border border-border p-8 rounded-3xl relative">
+                <button type="button" onClick={closeForm} className="absolute top-4 right-4 text-muted-foreground hover:text-foreground" aria-label="Đóng">×</button>
                 <AssignmentTypeSelector onSelect={(type) => {
                   if (type === 'quiz') setFormMode('create_quiz');
                   else if (type === 'text_report') setFormMode('create_report');
@@ -748,24 +824,9 @@ export const AssignmentsPage = () => {
                 }} />
               </div>
             )}
-            
-            {formMode === 'create_quiz' && (
-              <div className="bg-white p-8 rounded-3xl relative">
-                <QuizBuilder
-                  classOptions={assignmentClassOptions}
-                  isClassesLoading={isClassesLoading}
-                  classesError={classesError}
-                  onRetryClasses={fetchManageableClasses}
-                  isSaving={isSaving}
-                  error={formError}
-                  onCancel={closeForm}
-                  onSave={handleCreateAssignment}
-                />
-              </div>
-            )}
 
             {formMode === 'create_report' && (
-              <div className="bg-white p-8 rounded-3xl relative">
+              <div className="bg-card border border-border p-8 rounded-3xl relative">
                 <ReportAssignmentForm
                   classOptions={assignmentClassOptions}
                   isClassesLoading={isClassesLoading}
@@ -780,7 +841,7 @@ export const AssignmentsPage = () => {
             )}
 
             {formMode === 'create_simulation' && (
-              <div className="bg-white p-8 rounded-3xl relative">
+              <div className="bg-card border border-border p-8 rounded-3xl relative">
                 <SimulationAssignmentForm
                   classOptions={assignmentClassOptions}
                   isClassesLoading={isClassesLoading}
@@ -797,21 +858,21 @@ export const AssignmentsPage = () => {
             {formMode === 'edit' && (
               <form
                 onSubmit={handleSaveAssignment}
-                className="w-full max-w-md mx-auto rounded-2xl bg-white border border-border shadow-xl p-6"
+                className="w-full max-w-md mx-auto rounded-2xl bg-card border border-border shadow-xl p-6"
               >
                 <div className="flex items-start justify-between gap-4 mb-6">
                   <div>
-                    <h2 className="text-xl font-bold text-[#0f4c5c]">
+                    <h2 className="text-xl font-bold text-foreground">
                       Cập nhật bài tập
                     </h2>
-                    <p className="text-sm text-slate-500 mt-1">
+                    <p className="text-sm text-muted-foreground mt-1">
                       Nhập đúng lớp học và tiêu đề bài tập.
                     </p>
                   </div>
                   <button
                     type="button"
                     onClick={closeForm}
-                    className="text-slate-400 hover:text-slate-600 transition-colors"
+                    className="text-muted-foreground hover:text-foreground transition-colors"
                     aria-label="Đóng"
                   >
                     ×
@@ -820,12 +881,12 @@ export const AssignmentsPage = () => {
 
                 <div className="space-y-4">
                   <label className="block">
-                    <span className="text-sm font-semibold text-slate-700">Lớp học</span>
+                    <span className="text-sm font-medium text-foreground">Lớp học</span>
                     <select
                       value={formClassId}
                       onChange={(event) => setFormClassId(event.target.value)}
                       disabled={isClassesLoading || selectableClasses.length === 0}
-                      className="mt-2 w-full rounded-xl border border-border bg-slate-50 px-4 py-3 text-sm outline-none focus:border-[#0f4c5c] focus:ring-2 focus:ring-[#0f4c5c]/20 disabled:cursor-not-allowed disabled:opacity-60"
+                      className="mt-2 flex h-10 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground outline-none transition-colors focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-input/30"
                     >
                       <option value="">
                         {isClassesLoading
@@ -843,12 +904,12 @@ export const AssignmentsPage = () => {
                   </label>
 
                   {classesError && (
-                    <div className="rounded-xl bg-amber-50 px-4 py-3 text-sm text-amber-700">
+                    <div className="rounded-lg bg-amber-500/10 border border-amber-500/20 px-4 py-3 text-sm text-amber-500">
                       <p>{classesError}</p>
                       <button
                         type="button"
                         onClick={fetchManageableClasses}
-                        className="mt-2 font-semibold text-[#0f4c5c] hover:underline"
+                        className="mt-2 font-semibold text-indigo-400 hover:underline"
                       >
                         Tải lại danh sách lớp
                       </button>
@@ -856,19 +917,19 @@ export const AssignmentsPage = () => {
                   )}
 
                   <label className="block">
-                    <span className="text-sm font-semibold text-slate-700">Tiêu đề</span>
-                    <input
+                    <span className="text-sm font-medium text-foreground">Tiêu đề</span>
+                    <Input
                       type="text"
                       value={formTitle}
                       onChange={(event) => setFormTitle(event.target.value)}
-                      className="mt-2 w-full rounded-xl border border-border bg-slate-50 px-4 py-3 text-sm outline-none focus:border-[#0f4c5c] focus:ring-2 focus:ring-[#0f4c5c]/20"
+                      className="mt-2"
                       placeholder="Tên bài tập"
                     />
                   </label>
                 </div>
 
                 {formError && (
-                  <p className="mt-4 rounded-xl bg-red-50 px-4 py-3 text-sm text-red-600">
+                  <p className="mt-4 rounded-lg bg-destructive/10 border border-destructive/20 px-4 py-3 text-sm text-destructive">
                     {formError}
                   </p>
                 )}
@@ -893,15 +954,15 @@ export const AssignmentsPage = () => {
 
       {detailAssignment && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 p-4 overflow-y-auto overflow-x-hidden pt-20 pb-10 custom-scrollbar">
-          <div className="w-full max-w-4xl rounded-3xl bg-white border border-border shadow-xl overflow-hidden">
+          <div className="w-full max-w-4xl rounded-3xl bg-card border border-border shadow-xl overflow-hidden">
             <div className="flex items-start justify-between gap-4 border-b border-border p-6">
               <div className="space-y-3">
                 <AssignmentTypeBadge type={detailAssignmentType ?? undefined} />
                 <div>
-                  <h2 className="text-2xl font-bold text-[#0f4c5c]">
+                  <h2 className="text-2xl font-bold text-foreground">
                     {detailAssignment.title}
                   </h2>
-                  <p className="text-sm text-slate-500 mt-1">
+                  <p className="text-sm text-muted-foreground mt-1">
                     {detailAssignment.classCode || `Lớp #${detailAssignment.classId}`} ·{' '}
                     {detailAssignment.courseTitle || 'Chưa có khóa học'}
                   </p>
@@ -910,7 +971,7 @@ export const AssignmentsPage = () => {
               <button
                 type="button"
                 onClick={closeAssignmentDetails}
-                className="text-2xl leading-none text-slate-400 hover:text-slate-600 transition-colors"
+                className="text-2xl leading-none text-muted-foreground hover:text-foreground transition-colors"
                 aria-label="Đóng"
               >
                 ×
@@ -919,14 +980,14 @@ export const AssignmentsPage = () => {
 
             <div className="p-6 space-y-6">
               {isDetailLoading && (
-                <div className="flex items-center justify-center gap-3 rounded-2xl bg-slate-50 p-8 text-slate-600">
+                <div className="flex items-center justify-center gap-3 rounded-2xl bg-muted/30 p-8 text-muted-foreground">
                   <RefreshCw className="w-5 h-5 animate-spin" />
                   Đang tải chi tiết bài tập...
                 </div>
               )}
 
               {!isDetailLoading && detailError && (
-                <div className="rounded-2xl border border-red-100 bg-red-50 p-5 text-red-700">
+                <div className="rounded-2xl border border-destructive/20 bg-destructive/10 p-5 text-destructive">
                   <div className="flex items-center gap-2 font-semibold">
                     <AlertCircle className="w-5 h-5" />
                     Không tải được chi tiết
@@ -938,48 +999,48 @@ export const AssignmentsPage = () => {
               {!isDetailLoading && !detailError && (
                 <>
                   <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
-                    <div className="rounded-2xl bg-slate-50 border border-slate-100 p-4">
-                      <p className="text-xs text-slate-500 mb-1">Trạng thái</p>
-                      <p className="font-bold text-[#0f4c5c]">{detailAssignment.status}</p>
+                    <div className="rounded-2xl bg-muted/30 border border-border p-4">
+                      <p className="text-xs text-muted-foreground mb-1">Trạng thái</p>
+                      <p className="font-bold text-foreground">{detailAssignment.status}</p>
                     </div>
-                    <div className="rounded-2xl bg-slate-50 border border-slate-100 p-4">
-                      <p className="text-xs text-slate-500 mb-1">Hạn nộp</p>
-                      <p className="font-bold text-[#0f4c5c]">
+                    <div className="rounded-2xl bg-muted/30 border border-border p-4">
+                      <p className="text-xs text-muted-foreground mb-1">Hạn nộp</p>
+                      <p className="font-bold text-foreground">
                         {formatDate(detailAssignment.dueDate ?? undefined)}
                       </p>
                     </div>
-                    <div className="rounded-2xl bg-slate-50 border border-slate-100 p-4">
-                      <p className="text-xs text-slate-500 mb-1">Điểm tối đa</p>
-                      <p className="font-bold text-[#0f4c5c]">{detailAssignment.maxScore}</p>
+                    <div className="rounded-2xl bg-muted/30 border border-border p-4">
+                      <p className="text-xs text-muted-foreground mb-1">Điểm tối đa</p>
+                      <p className="font-bold text-foreground">{detailAssignment.maxScore}</p>
                     </div>
-                    <div className="rounded-2xl bg-slate-50 border border-slate-100 p-4">
-                      <p className="text-xs text-slate-500 mb-1">Bài nộp</p>
-                      <p className="font-bold text-[#0f4c5c]">
+                    <div className="rounded-2xl bg-muted/30 border border-border p-4">
+                      <p className="text-xs text-muted-foreground mb-1">Bài nộp</p>
+                      <p className="font-bold text-foreground">
                         {detailAssignment.submissionCount}
                       </p>
                     </div>
                   </div>
 
                   {detailAssignment.description && (
-                    <div className="rounded-2xl border border-slate-100 bg-white p-5">
-                      <h3 className="font-bold text-slate-800 mb-2">Mô tả</h3>
-                      <p className="text-sm text-slate-600 whitespace-pre-line">
+                    <div className="rounded-2xl border border-border bg-card p-5">
+                      <h3 className="font-bold text-foreground mb-2">Mô tả</h3>
+                      <p className="text-sm text-muted-foreground whitespace-pre-line">
                         {detailAssignment.description}
                       </p>
                     </div>
                   )}
 
                   {detailAssignmentType === 'quiz' && (
-                    <div className="rounded-2xl border border-blue-100 bg-blue-50/50 p-5">
-                      <h3 className="font-bold text-blue-900 mb-3">Cấu hình Quiz</h3>
+                    <div className="rounded-2xl border border-blue-500/20 bg-blue-500/5 p-5">
+                      <h3 className="font-bold text-blue-300 mb-3">Cấu hình Quiz</h3>
                       <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-sm">
-                        <div className="rounded-xl bg-white border border-blue-100 p-3">
-                          <p className="text-blue-500 mb-1">Số câu hỏi</p>
-                          <p className="font-bold text-blue-900">{detailQuizQuestions.length}</p>
+                        <div className="rounded-xl bg-card border border-blue-500/20 p-3">
+                          <p className="text-blue-400 mb-1">Số câu hỏi</p>
+                          <p className="font-bold text-blue-300">{detailQuizQuestions.length}</p>
                         </div>
-                        <div className="rounded-xl bg-white border border-blue-100 p-3">
-                          <p className="text-blue-500 mb-1">Thời gian</p>
-                          <p className="font-bold text-blue-900">
+                        <div className="rounded-xl bg-card border border-blue-500/20 p-3">
+                          <p className="text-blue-400 mb-1">Thời gian</p>
+                          <p className="font-bold text-blue-300">
                             {detailAssignment.quizDetail?.timeLimitSeconds
                               ? `${Math.round(
                                   (detailAssignment.quizDetail?.timeLimitSeconds ?? 0) / 60
@@ -987,20 +1048,67 @@ export const AssignmentsPage = () => {
                               : 'Không giới hạn'}
                           </p>
                         </div>
-                        <div className="rounded-xl bg-white border border-blue-100 p-3">
-                          <p className="text-blue-500 mb-1">Xáo trộn</p>
-                          <p className="font-bold text-blue-900">
+                        <div className="rounded-xl bg-card border border-blue-500/20 p-3">
+                          <p className="text-blue-400 mb-1">Xáo trộn</p>
+                          <p className="font-bold text-blue-300">
                             {detailAssignment.quizDetail?.shuffleQuestions ? 'Bật' : 'Tắt'}
                           </p>
                         </div>
                       </div>
+
+                      {detailQuizQuestions.length > 0 && (
+                        <div className="mt-4 space-y-3">
+                          {detailQuizQuestions.map((rawQuestion, index) => {
+                            const question = rawQuestion as {
+                              id?: string;
+                              text?: string;
+                              type?: string;
+                              options?: { id?: string; text?: string; isCorrect?: boolean }[];
+                              correctAnswer?: string;
+                            };
+                            return (
+                              <div
+                                key={question.id ?? index}
+                                className="rounded-xl bg-card border border-blue-500/20 p-4"
+                              >
+                                <p className="font-semibold text-foreground mb-2">
+                                  Câu {index + 1}. {question.text}
+                                </p>
+                                {question.type === 'fill_blank' ? (
+                                  <p className="text-sm text-blue-300">
+                                    Đáp án đúng:{' '}
+                                    <span className="font-semibold">{question.correctAnswer}</span>
+                                  </p>
+                                ) : (
+                                  <ul className="space-y-1">
+                                    {(question.options ?? []).map((option, optionIndex) => (
+                                      <li
+                                        key={option.id ?? optionIndex}
+                                        className={cn(
+                                          'text-sm px-3 py-1.5 rounded-lg',
+                                          option.isCorrect
+                                            ? 'bg-emerald-500/10 text-emerald-400 font-semibold'
+                                            : 'text-muted-foreground'
+                                        )}
+                                      >
+                                        {option.text}
+                                        {option.isCorrect && ' ✓'}
+                                      </li>
+                                    ))}
+                                  </ul>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
                     </div>
                   )}
 
                   {detailAssignmentType === 'text_report' && (
-                    <div className="rounded-2xl border border-orange-100 bg-orange-50/50 p-5">
-                      <h3 className="font-bold text-orange-900 mb-3">Cấu hình Báo cáo</h3>
-                      <div className="space-y-3 text-sm text-orange-950">
+                    <div className="rounded-2xl border border-orange-500/20 bg-orange-500/5 p-5">
+                      <h3 className="font-bold text-orange-300 mb-3">Cấu hình Báo cáo</h3>
+                      <div className="space-y-3 text-sm text-foreground">
                         <p>
                           <span className="font-semibold">Hình thức nộp:</span>{' '}
                           {detailSubmissionTypes}
@@ -1018,18 +1126,18 @@ export const AssignmentsPage = () => {
                   )}
 
                   {detailAssignmentType === 'practical_simulation' && (
-                    <div className="rounded-2xl border border-purple-100 bg-purple-50/50 p-5 space-y-4">
+                    <div className="rounded-2xl border border-purple-500/20 bg-purple-500/5 p-5 space-y-4">
                       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
                         <div>
-                          <h3 className="font-bold text-purple-950">Cấu hình mô phỏng</h3>
-                          <p className="text-sm text-purple-700">
+                          <h3 className="font-bold text-purple-300">Cấu hình mô phỏng</h3>
+                          <p className="text-sm text-muted-foreground">
                             Chế độ:{' '}
                             {detailAssignment.simulationDetail?.studentInputMode === 'code_only'
                               ? 'Chỉ viết code'
                               : 'Tự lắp mạch'}
                           </p>
                         </div>
-                        <div className="rounded-xl bg-white border border-purple-100 px-4 py-3 text-sm text-purple-900">
+                        <div className="rounded-xl bg-card border border-purple-500/20 px-4 py-3 text-sm text-foreground">
                           Auto-grade:{' '}
                           <span className="font-bold">
                             {detailAssignment.simulationDetail?.autoGradingEnabled
@@ -1044,25 +1152,25 @@ export const AssignmentsPage = () => {
 
                       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                         <label className="block">
-                          <span className="text-sm font-semibold text-purple-950">
+                          <span className="text-sm font-semibold text-purple-300">
                             Base diagram từ API
                           </span>
                           <textarea
                             readOnly
                             value={formatJson(simulationBaseDiagram)}
-                            className="mt-2 h-64 w-full rounded-xl border border-purple-100 bg-slate-950 px-4 py-3 font-mono text-xs text-slate-100 outline-none"
+                            className="mt-2 h-64 w-full rounded-xl border border-purple-500/20 bg-background px-4 py-3 font-mono text-xs text-foreground outline-none"
                           />
                         </label>
 
                         <label className="block">
-                          <span className="text-sm font-semibold text-purple-950">
+                          <span className="text-sm font-semibold text-purple-300">
                             Circuit JSON để kiểm tra
                           </span>
                           <textarea
                             value={simulationCircuitText}
                             onChange={(event) => setSimulationCircuitText(event.target.value)}
                             spellCheck={false}
-                            className="mt-2 h-64 w-full rounded-xl border border-purple-100 bg-white px-4 py-3 font-mono text-xs text-slate-800 outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20"
+                            className="mt-2 h-64 w-full rounded-xl border border-purple-500/20 bg-background px-4 py-3 font-mono text-xs text-foreground outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20"
                           />
                         </label>
                       </div>
@@ -1072,7 +1180,7 @@ export const AssignmentsPage = () => {
                           type="button"
                           onClick={handleValidateSimulation}
                           disabled={isValidatingSimulation}
-                          className="bg-purple-600 hover:bg-purple-700"
+                          className="bg-purple-600 hover:bg-purple-700 text-white border-0"
                         >
                           {isValidatingSimulation && (
                             <RefreshCw className="w-4 h-4 animate-spin" />
@@ -1085,8 +1193,8 @@ export const AssignmentsPage = () => {
                             className={cn(
                               'flex items-center gap-2 rounded-xl px-4 py-3 text-sm font-semibold',
                               simulationValidateResult.isValid
-                                ? 'bg-emerald-50 text-emerald-700'
-                                : 'bg-red-50 text-red-700'
+                                ? 'bg-emerald-500/10 text-emerald-400'
+                                : 'bg-destructive/10 text-destructive'
                             )}
                           >
                             {simulationValidateResult.isValid ? (
@@ -1100,7 +1208,7 @@ export const AssignmentsPage = () => {
                       </div>
 
                       {simulationValidateError && (
-                        <p className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-600">
+                        <p className="rounded-xl bg-destructive/10 px-4 py-3 text-sm text-destructive">
                           {simulationValidateError}
                         </p>
                       )}

@@ -328,6 +328,7 @@ export interface ClassEntity {
   startDate?: string;
   endDate?: string;
   createdAt: string;
+  virtualLabs?: any[];
   // Chỉ có trong response của getById (GetClassDetailHandler), không có trong getMyClasses.
   students?: ClassStudentEntry[];
 }
@@ -454,6 +455,7 @@ export const classesApi = {
 // Schedules API
 export interface ScheduleCalendarItem {
   id: number;
+  classId: number;
   title: string;
   start: string;
   end: string;
@@ -471,6 +473,7 @@ export interface GetMyScheduleParams {
 function normalizeScheduleItem(source: Record<string, unknown>): ScheduleCalendarItem {
   return {
     id: toNumberValue(pick(source, 'id', 'Id')),
+    classId: toNumberValue(pick(source, 'classId', 'ClassId')),
     title: (pick<string>(source, 'title', 'Title')) ?? '',
     start: (pick<string>(source, 'start', 'Start')) ?? '',
     end: (pick<string>(source, 'end', 'End')) ?? '',
@@ -485,8 +488,8 @@ export const schedulesApi = {
     const queryParams: Record<string, string | number> = {};
 
     if (params?.classId) queryParams.ClassId = params.classId;
-    if (params?.fromDate) queryParams.FromDate = params.fromDate;
-    if (params?.toDate) queryParams.ToDate = params.toDate;
+    if (params?.fromDate) queryParams.FromDate = params.fromDate.includes('T') ? params.fromDate : `${params.fromDate}T00:00:00Z`;
+    if (params?.toDate) queryParams.ToDate = params.toDate.includes('T') ? params.toDate : `${params.toDate}T23:59:59Z`;
 
     const response = await api.get('/Schedules/my-schedule', {
       params: queryParams,
@@ -569,7 +572,9 @@ export const attendanceApi = {
 
     if (params?.classId) queryParams.ClassId = params.classId;
     if (params?.studentId) queryParams.StudentId = params.studentId;
-    if (params?.attendanceDate) queryParams.AttendanceDate = params.attendanceDate;
+    if (params?.attendanceDate) {
+      queryParams.AttendanceDate = params.attendanceDate.includes('T') ? params.attendanceDate.split('T')[0] : params.attendanceDate;
+    }
     queryParams.PageNumber = params?.pageNumber ?? 1;
     queryParams.PageSize = params?.pageSize ?? 100;
 
@@ -588,9 +593,10 @@ export const attendanceApi = {
   createAttendance: async (
     payload: CreateAttendanceRequestPayload
   ): Promise<AttendanceRecord[]> => {
+    const dateStr = payload.attendanceDate.includes('T') ? payload.attendanceDate.split('T')[0] : payload.attendanceDate;
     const response = await api.post('/Attendance', {
       classId: payload.classId,
-      attendanceDate: payload.attendanceDate,
+      attendanceDate: dateStr,
       records: payload.records,
     });
     const data = unwrapApiData<Record<string, unknown>>(response.data) ?? {};
@@ -2166,6 +2172,105 @@ function normalizeVirtualLabSubmission(value: unknown): VirtualLabSubmissionResu
     autoCheck: normalizeAutoGradeResult(pick(source, 'autoCheck', 'AutoCheck')),
   };
 }
+
+export type SubmissionStatus = 'draft' | 'submitted' | 'graded';
+
+export interface SubmissionEntity {
+  id: number;
+  assignmentId: number;
+  assignmentTitle: string;
+  classId: number;
+  classCode: string;
+  studentId: number | null;
+  studentName: string;
+  studentEmail: string;
+  status: SubmissionStatus;
+  score: number | null;
+  finalScore: number | null;
+  gradedById: number | null;
+  gradedByName: string;
+  gradedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface GetSubmissionsParams {
+  assignmentId?: number;
+  classId?: number;
+  studentId?: number;
+  pageNumber?: number;
+  pageSize?: number;
+}
+
+export interface PagedSubmissionsResult {
+  items: SubmissionEntity[];
+  totalCount: number;
+  pageNumber: number;
+  pageSize: number;
+  totalPages: number;
+}
+
+// GetSubmissionsHandler.cs — enum thật chỉ có 3 giá trị này (SubmissionStatuses.All).
+function normalizeSubmissionStatus(value: unknown): SubmissionStatus {
+  const normalized = typeof value === 'string' ? value.toLowerCase() : '';
+  if (normalized === 'graded') return 'graded';
+  if (normalized === 'draft') return 'draft';
+  return 'submitted';
+}
+
+function normalizeSubmissionEntity(value: unknown): SubmissionEntity {
+  const source = toRecord(value) ?? {};
+  return {
+    id: toNumberValue(pick(source, 'id', 'Id')),
+    assignmentId: toNumberValue(pick(source, 'assignmentId', 'AssignmentId')),
+    assignmentTitle: toStringValue(pick(source, 'assignmentTitle', 'AssignmentTitle')),
+    classId: toNumberValue(pick(source, 'classId', 'ClassId')),
+    classCode: toStringValue(pick(source, 'classCode', 'ClassCode')),
+    studentId: toNullableNumber(pick(source, 'studentId', 'StudentId')),
+    studentName: toStringValue(pick(source, 'studentName', 'StudentName')),
+    studentEmail: toStringValue(pick(source, 'studentEmail', 'StudentEmail')),
+    status: normalizeSubmissionStatus(pick(source, 'status', 'Status')),
+    score: toNullableNumber(pick(source, 'score', 'Score')),
+    finalScore: toNullableNumber(pick(source, 'finalScore', 'FinalScore')),
+    gradedById: toNullableNumber(pick(source, 'gradedById', 'GradedById')),
+    gradedByName: toStringValue(pick(source, 'gradedByName', 'GradedByName')),
+    gradedAt: (pick(source, 'gradedAt', 'GradedAt') as string | null | undefined) ?? null,
+    createdAt: toStringValue(pick(source, 'createdAt', 'CreatedAt')),
+    updatedAt: toStringValue(pick(source, 'updatedAt', 'UpdatedAt')),
+  };
+}
+
+function normalizeSubmissionsResponse(payload: unknown): PagedSubmissionsResult {
+  const data = toRecord(unwrapApiData<unknown>(payload)) ?? {};
+  const items = toUnknownArray(pick(data, 'items', 'Items')).map(normalizeSubmissionEntity);
+
+  return {
+    items,
+    totalCount: toNumberValue(pick(data, 'totalCount', 'TotalCount')),
+    pageNumber: toNumberValue(pick(data, 'pageNumber', 'PageNumber'), 1),
+    pageSize: toNumberValue(pick(data, 'pageSize', 'PageSize'), items.length),
+    totalPages: toNumberValue(pick(data, 'totalPages', 'TotalPages')),
+  };
+}
+
+// GET /Grading/submissions — GetSubmissionsHandler.cs tự scope theo role trong JWT hiện tại
+// (Teacher chỉ thấy submission của lớp mình dạy, không cần/không được gửi TeacherId thủ
+// công) và đã OrderByDescending(CreatedAt) sẵn ở SubmissionRepository — không cần FE sort lại.
+export const gradingApi = {
+  getSubmissions: async (params?: GetSubmissionsParams): Promise<PagedSubmissionsResult> => {
+    const queryParams: Record<string, number> = {};
+    if (params?.assignmentId) queryParams.AssignmentId = params.assignmentId;
+    if (params?.classId) queryParams.ClassId = params.classId;
+    if (params?.studentId) queryParams.StudentId = params.studentId;
+    if (params?.pageNumber) queryParams.PageNumber = params.pageNumber;
+    if (params?.pageSize) queryParams.PageSize = params.pageSize;
+
+    const response = await api.get('/Grading/submissions', {
+      params: Object.keys(queryParams).length ? queryParams : undefined,
+    });
+    return normalizeSubmissionsResponse(response.data);
+  },
+};
 
 // POST api/submissions/virtual-lab — BE tự resolve studentId từ JWT (không còn
 // tin StudentId client gửi, xem 5.3b), tự re-compile server-side (không đọc

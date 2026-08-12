@@ -1,14 +1,24 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Plus, Trash2, GripVertical, RefreshCw } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Switch } from '@/components/ui/Switch';
+import { DialogHeader, DialogContent, DialogFooter, DialogTitle } from '@/components/ui/dialog';
+import { Plus, Trash2, GripVertical, RefreshCw, X, FileSpreadsheet, Download, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { CreateAssignmentRequest } from '@/services/dashboardApi';
 import {
   AssignmentFormFields,
   createDefaultAssignmentBasics,
   toAssignmentDueDate,
+  type AssignmentBasicsValue,
   type AssignmentClassOption,
 } from './AssignmentFormFields';
+import {
+  parseQuizExcelWorkbook,
+  downloadQuizExcelTemplate,
+  type QuizExcelParseResult,
+} from './quizExcelImport';
 
 export interface QuizQuestion {
   id: string;
@@ -19,7 +29,12 @@ export interface QuizQuestion {
 }
 
 interface QuizBuilderProps {
+  initialBasics?: AssignmentBasicsValue;
   initialQuestions?: QuizQuestion[];
+  initialTimeLimitMinutes?: number;
+  initialShuffleQuestions?: boolean;
+  heading?: string;
+  submitLabel?: string;
   classOptions?: AssignmentClassOption[];
   isClassesLoading?: boolean;
   classesError?: string | null;
@@ -30,8 +45,19 @@ interface QuizBuilderProps {
   onCancel?: () => void;
 }
 
+// Style thủ công cho <select> loại câu hỏi (inline trong header từng câu) — chưa cần đổi
+// sang Radix Select vì đây chỉ là 3 lựa chọn cố định, style theo đúng token nativeFieldClassName
+// dùng chung với AssignmentFormFields/CreateLabModal.
+const questionTypeSelectClassName =
+  'rounded-lg border border-input bg-background px-3 py-1.5 text-sm text-foreground outline-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/50 dark:bg-input/30';
+
 export const QuizBuilder: React.FC<QuizBuilderProps> = ({
+  initialBasics,
   initialQuestions = [],
+  initialTimeLimitMinutes = 45,
+  initialShuffleQuestions = true,
+  heading = 'Soạn câu hỏi Quiz',
+  submitLabel = 'Lưu Quiz',
   classOptions = [],
   isClassesLoading,
   classesError,
@@ -41,11 +67,21 @@ export const QuizBuilder: React.FC<QuizBuilderProps> = ({
   onSave,
   onCancel,
 }) => {
-  const [basics, setBasics] = useState(createDefaultAssignmentBasics);
+  const [basics, setBasics] = useState(initialBasics ?? createDefaultAssignmentBasics());
   const [questions, setQuestions] = useState<QuizQuestion[]>(initialQuestions);
-  const [timeLimitMinutes, setTimeLimitMinutes] = useState(45);
-  const [shuffleQuestions, setShuffleQuestions] = useState(true);
+  const [timeLimitMinutes, setTimeLimitMinutes] = useState(initialTimeLimitMinutes);
+  const [shuffleQuestions, setShuffleQuestions] = useState(initialShuffleQuestions);
   const [localError, setLocalError] = useState<string | null>(null);
+  const [excelImportResult, setExcelImportResult] = useState<QuizExcelParseResult | null>(null);
+  const [excelFileName, setExcelFileName] = useState<string | null>(null);
+
+  useEffect(() => {
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, []);
 
   const addQuestion = () => {
     const newQuestion: QuizQuestion = {
@@ -150,6 +186,44 @@ export const QuizBuilder: React.FC<QuizBuilderProps> = ({
     return null;
   };
 
+  const handleExcelFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file) return;
+
+    setExcelFileName(file.name);
+    setExcelImportResult(null);
+
+    const reader = new FileReader();
+    reader.onload = (loadEvent) => {
+      const data = loadEvent.target?.result as ArrayBuffer;
+      setExcelImportResult(parseQuizExcelWorkbook(data));
+    };
+    reader.onerror = () => {
+      setExcelImportResult({
+        questions: [],
+        rowStatuses: [],
+        errors: [{ row: 0, field: 'File', message: 'Không thể đọc file.' }],
+        hasFatalError: true,
+      });
+    };
+    reader.readAsArrayBuffer(file);
+  };
+
+  const closeExcelImport = () => {
+    setExcelImportResult(null);
+    setExcelFileName(null);
+  };
+
+  // Atomic import: any row error blocks the whole batch (Phase 9 default when no
+  // explicit partial-import requirement exists) — imported questions are appended,
+  // never overwrite existing manually-entered ones.
+  const confirmExcelImport = () => {
+    if (!excelImportResult || excelImportResult.errors.length > 0) return;
+    setQuestions([...questions, ...excelImportResult.questions]);
+    closeExcelImport();
+  };
+
   const handleSave = async () => {
     const classId = Number(basics.classId);
     const title = basics.title.trim();
@@ -195,13 +269,244 @@ export const QuizBuilder: React.FC<QuizBuilderProps> = ({
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center mb-6">
-        <div>
-          <h2 className="text-xl font-bold text-[#0f4c5c]">Soạn câu hỏi Quiz</h2>
-          <p className="text-sm text-slate-500">Tạo danh sách các câu hỏi trắc nghiệm hoặc điền khuyết.</p>
-        </div>
-        <div className="flex gap-3">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+      <div className="bg-card border border-border rounded-xl shadow-xl w-full max-w-4xl max-h-[90vh] flex flex-col">
+        <DialogHeader className="flex items-center justify-between gap-4 shrink-0">
+          <div className="min-w-0">
+            <DialogTitle>{heading}</DialogTitle>
+            <p className="text-sm text-muted-foreground mt-1">
+              Tạo danh sách các câu hỏi trắc nghiệm hoặc điền khuyết.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={onCancel}
+            className="w-9 h-9 flex items-center justify-center rounded-full hover:bg-accent text-muted-foreground hover:text-foreground transition-colors shrink-0"
+            aria-label="Đóng"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </DialogHeader>
+
+        <DialogContent className="flex-1 max-h-none space-y-6">
+          <AssignmentFormFields
+            value={basics}
+            onChange={setBasics}
+            classOptions={classOptions}
+            isClassesLoading={isClassesLoading}
+            classesError={classesError}
+            onRetryClasses={onRetryClasses}
+            descriptionLabel="Mô tả / hướng dẫn Quiz"
+            descriptionPlaceholder="Nhập hướng dẫn làm bài, phạm vi kiến thức hoặc ghi chú..."
+          />
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 rounded-lg border border-border bg-muted/30 p-4">
+            <label className="block">
+              <span className="text-sm font-medium text-foreground">Thời gian làm bài (phút)</span>
+              <Input
+                type="number"
+                min="1"
+                value={timeLimitMinutes}
+                onChange={(event) => setTimeLimitMinutes(Number(event.target.value))}
+                className="mt-2"
+              />
+            </label>
+
+            <label className="flex items-center gap-3 self-end rounded-lg bg-card px-4 py-3 border border-border">
+              <Switch checked={shuffleQuestions} onCheckedChange={setShuffleQuestions} />
+              <span className="text-sm font-medium text-foreground">Xáo trộn câu hỏi</span>
+            </label>
+          </div>
+
+          {(localError || error) && (
+            <p className="rounded-lg bg-destructive/10 border border-destructive/20 px-4 py-3 text-sm text-destructive">
+              {localError || error}
+            </p>
+          )}
+
+          <div className="space-y-6">
+            {questions.map((q, index) => (
+              <div key={q.id} className="bg-card rounded-xl border border-border overflow-hidden">
+                <div className="p-4 bg-muted/30 border-b border-border flex justify-between items-center">
+                  <div className="flex items-center gap-3">
+                    <GripVertical className="w-5 h-5 text-muted-foreground cursor-grab" />
+                    <span className="font-medium text-foreground">Câu {index + 1}</span>
+                    <select
+                      value={q.type}
+                      onChange={(e) => updateQuestion(q.id, { type: e.target.value as any })}
+                      className={questionTypeSelectClassName}
+                    >
+                      <option value="single_choice">Chọn 1 đáp án</option>
+                      <option value="multiple_choice">Chọn nhiều đáp án</option>
+                      <option value="fill_blank">Điền khuyết</option>
+                    </select>
+                  </div>
+                  <button onClick={() => removeQuestion(q.id)} className="text-muted-foreground hover:text-destructive p-1">
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
+                <div className="p-5">
+                  <Textarea
+                    value={q.text}
+                    onChange={(e) => updateQuestion(q.id, { text: e.target.value })}
+                    placeholder="Nhập nội dung câu hỏi..."
+                    className="min-h-[80px] mb-4"
+                  />
+
+                  {q.type !== 'fill_blank' ? (
+                    <div className="space-y-3">
+                      {q.options.map((option, optIdx) => (
+                        <div key={option.id} className="flex items-center gap-3">
+                          <input
+                            type={q.type === 'single_choice' ? 'radio' : 'checkbox'}
+                            checked={option.isCorrect}
+                            onChange={() => setCorrectOption(q.id, option.id)}
+                            name={`correct-${q.id}`}
+                            className="w-4 h-4 accent-[#6366f1] shrink-0"
+                          />
+                          <Input
+                            type="text"
+                            value={option.text}
+                            onChange={(e) => updateOption(q.id, option.id, e.target.value)}
+                            placeholder={`Lựa chọn ${optIdx + 1}`}
+                            className={cn(
+                              'flex-1',
+                              option.isCorrect && 'border-indigo-500/40 bg-indigo-500/5'
+                            )}
+                          />
+                          <button onClick={() => removeOption(q.id, option.id)} className="text-muted-foreground hover:text-destructive shrink-0">
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      ))}
+                      <Button type="button" variant="outline" size="sm" onClick={() => addOption(q.id)} className="mt-2 text-indigo-400 border-indigo-500/30 hover:bg-indigo-500/10 hover:text-indigo-300">
+                        <Plus className="w-4 h-4 mr-1" /> Thêm lựa chọn
+                      </Button>
+                    </div>
+                  ) : (
+                    <div>
+                      <label className="text-sm font-medium text-foreground block mb-2">Đáp án đúng (phân cách bằng dấu phẩy nếu nhiều đáp án):</label>
+                      <Input
+                        type="text"
+                        value={q.correctAnswer || ''}
+                        onChange={(e) => updateQuestion(q.id, { correctAnswer: e.target.value })}
+                        placeholder="VD: Arduino, Raspberry Pi"
+                      />
+                    </div>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <Button
+            type="button"
+            variant="outline"
+            onClick={addQuestion}
+            className="w-full border-dashed border-2 py-8 text-muted-foreground hover:text-indigo-400 hover:border-indigo-500/40 hover:bg-indigo-500/5 transition-all"
+          >
+            <Plus className="w-5 h-5 mr-2" /> Thêm câu hỏi mới
+          </Button>
+
+          <div className="flex flex-wrap items-center gap-3 rounded-lg border border-border bg-muted/30 p-4">
+            <span className="text-sm font-medium text-foreground mr-auto">
+              Nhập câu hỏi hàng loạt từ Excel
+            </span>
+            <Button type="button" variant="outline" size="sm" onClick={downloadQuizExcelTemplate}>
+              <Download className="w-4 h-4" /> Tải file mẫu
+            </Button>
+            <label className="inline-flex items-center gap-2 px-3 py-2 rounded-md border border-input bg-background hover:bg-accent text-sm cursor-pointer text-foreground">
+              <FileSpreadsheet className="w-4 h-4" />
+              Import Excel
+              <input
+                type="file"
+                accept=".xlsx,.xls"
+                onChange={handleExcelFileChange}
+                className="hidden"
+              />
+            </label>
+          </div>
+
+          {excelImportResult && (
+            <div className="rounded-xl border border-border bg-card overflow-hidden">
+              <div className="p-4 border-b border-border flex items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="text-sm font-medium text-foreground truncate">{excelFileName}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    {excelImportResult.hasFatalError
+                      ? 'Không đọc được file'
+                      : `${excelImportResult.rowStatuses.length} dòng — ${excelImportResult.errors.length === 0 ? 'tất cả hợp lệ' : `${excelImportResult.errors.length} lỗi`}`}
+                  </p>
+                </div>
+                <button type="button" onClick={closeExcelImport} className="text-muted-foreground hover:text-foreground shrink-0" aria-label="Đóng preview">
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              {!excelImportResult.hasFatalError && excelImportResult.rowStatuses.length > 0 && (
+                <div className="max-h-72 overflow-y-auto custom-scrollbar">
+                  <table className="w-full text-sm">
+                    <thead className="bg-muted/30 sticky top-0">
+                      <tr>
+                        <th className="p-2 text-left text-xs font-medium text-muted-foreground w-16">Dòng</th>
+                        <th className="p-2 text-left text-xs font-medium text-muted-foreground">Câu hỏi</th>
+                        <th className="p-2 text-left text-xs font-medium text-muted-foreground w-20">Trạng thái</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {excelImportResult.rowStatuses.map((status) => (
+                        <tr key={status.row} className="border-t border-border">
+                          <td className="p-2 text-muted-foreground">{status.row}</td>
+                          <td className="p-2 text-foreground">
+                            {status.question ? (
+                              status.question.text
+                            ) : (
+                              <span className="text-destructive">
+                                {status.errors.map((e) => `${e.field}: ${e.message}`).join('; ')}
+                              </span>
+                            )}
+                          </td>
+                          <td className="p-2">
+                            {status.errors.length === 0 ? (
+                              <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                            ) : (
+                              <AlertCircle className="w-4 h-4 text-destructive" />
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+
+              {excelImportResult.hasFatalError && (
+                <div className="p-4 text-sm text-destructive">
+                  {excelImportResult.errors.map((e, idx) => <p key={idx}>{e.message}</p>)}
+                </div>
+              )}
+
+              {!excelImportResult.hasFatalError && (
+                <div className="p-4 border-t border-border flex justify-end gap-3">
+                  <Button type="button" variant="outline" size="sm" onClick={closeExcelImport}>
+                    Hủy
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    onClick={confirmExcelImport}
+                    disabled={excelImportResult.errors.length > 0}
+                    className="bg-indigo-500 hover:bg-indigo-600 text-white border-0"
+                  >
+                    Import {excelImportResult.questions.length} câu hỏi
+                  </Button>
+                </div>
+              )}
+            </div>
+          )}
+        </DialogContent>
+
+        <DialogFooter className="shrink-0">
           <Button type="button" variant="outline" onClick={onCancel}>
             Hủy
           </Button>
@@ -209,139 +514,13 @@ export const QuizBuilder: React.FC<QuizBuilderProps> = ({
             type="button"
             onClick={handleSave}
             disabled={isSaving || isClassesLoading}
-            className="bg-blue-600 hover:bg-blue-700"
+            className="bg-indigo-500 hover:bg-indigo-600 text-white border-0"
           >
             {isSaving && <RefreshCw className="w-4 h-4 animate-spin" />}
-            Lưu Quiz
+            {submitLabel}
           </Button>
-        </div>
+        </DialogFooter>
       </div>
-
-      <AssignmentFormFields
-        value={basics}
-        onChange={setBasics}
-        classOptions={classOptions}
-        isClassesLoading={isClassesLoading}
-        classesError={classesError}
-        onRetryClasses={onRetryClasses}
-        descriptionLabel="Mô tả / hướng dẫn Quiz"
-        descriptionPlaceholder="Nhập hướng dẫn làm bài, phạm vi kiến thức hoặc ghi chú..."
-        accentClassName="focus:border-blue-500 focus:ring-blue-500/20"
-      />
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 rounded-xl border border-blue-100 bg-blue-50/50 p-4">
-        <label className="block">
-          <span className="text-sm font-semibold text-slate-700">Thời gian làm bài (phút)</span>
-          <input
-            type="number"
-            min="1"
-            value={timeLimitMinutes}
-            onChange={(event) => setTimeLimitMinutes(Number(event.target.value))}
-            className="mt-2 w-full rounded-xl border border-blue-100 bg-white px-4 py-3 text-sm outline-none transition-all focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
-          />
-        </label>
-
-        <label className="flex items-center gap-3 self-end rounded-xl bg-white px-4 py-3 border border-blue-100">
-          <input
-            type="checkbox"
-            checked={shuffleQuestions}
-            onChange={(event) => setShuffleQuestions(event.target.checked)}
-            className="w-4 h-4 text-blue-600 border-slate-300 rounded focus:ring-blue-500"
-          />
-          <span className="text-sm font-semibold text-slate-700">Xáo trộn câu hỏi</span>
-        </label>
-      </div>
-
-      {(localError || error) && (
-        <p className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-600">
-          {localError || error}
-        </p>
-      )}
-
-      <div className="space-y-6">
-        {questions.map((q, index) => (
-          <div key={q.id} className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-            <div className="p-4 bg-slate-50 border-b border-slate-200 flex justify-between items-center">
-              <div className="flex items-center gap-3">
-                <GripVertical className="w-5 h-5 text-slate-400 cursor-grab" />
-                <span className="font-semibold text-slate-700">Câu {index + 1}</span>
-                <select
-                  value={q.type}
-                  onChange={(e) => updateQuestion(q.id, { type: e.target.value as any })}
-                  className="bg-white border border-slate-200 rounded-lg px-3 py-1.5 text-sm outline-none focus:border-blue-500"
-                >
-                  <option value="single_choice">Chọn 1 đáp án</option>
-                  <option value="multiple_choice">Chọn nhiều đáp án</option>
-                  <option value="fill_blank">Điền khuyết</option>
-                </select>
-              </div>
-              <button onClick={() => removeQuestion(q.id)} className="text-slate-400 hover:text-red-500 p-1">
-                <Trash2 className="w-4 h-4" />
-              </button>
-            </div>
-            <div className="p-5">
-              <textarea
-                value={q.text}
-                onChange={(e) => updateQuestion(q.id, { text: e.target.value })}
-                placeholder="Nhập nội dung câu hỏi..."
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm min-h-[80px] mb-4 outline-none focus:border-blue-500 focus:bg-white transition-all"
-              />
-
-              {q.type !== 'fill_blank' ? (
-                <div className="space-y-3">
-                  {q.options.map((option, optIdx) => (
-                    <div key={option.id} className="flex items-center gap-3">
-                      <input
-                        type={q.type === 'single_choice' ? 'radio' : 'checkbox'}
-                        checked={option.isCorrect}
-                        onChange={() => setCorrectOption(q.id, option.id)}
-                        name={`correct-${q.id}`}
-                        className="w-4 h-4 text-blue-600 border-slate-300"
-                      />
-                      <input
-                        type="text"
-                        value={option.text}
-                        onChange={(e) => updateOption(q.id, option.id, e.target.value)}
-                        placeholder={`Lựa chọn ${optIdx + 1}`}
-                        className={cn(
-                          "flex-1 border rounded-lg px-3 py-2 text-sm outline-none transition-all",
-                          option.isCorrect ? "bg-blue-50 border-blue-200" : "bg-white border-slate-200 focus:border-slate-300"
-                        )}
-                      />
-                      <button onClick={() => removeOption(q.id, option.id)} className="text-slate-400 hover:text-red-500">
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
-                  ))}
-                  <Button type="button" variant="outline" size="sm" onClick={() => addOption(q.id)} className="mt-2 text-blue-600 border-blue-200 hover:bg-blue-50">
-                    <Plus className="w-4 h-4 mr-1" /> Thêm lựa chọn
-                  </Button>
-                </div>
-              ) : (
-                <div>
-                  <label className="text-sm font-medium text-slate-700 block mb-2">Đáp án đúng (phân cách bằng dấu phẩy nếu nhiều đáp án):</label>
-                  <input
-                    type="text"
-                    value={q.correctAnswer || ''}
-                    onChange={(e) => updateQuestion(q.id, { correctAnswer: e.target.value })}
-                    placeholder="VD: Arduino, Raspberry Pi"
-                    className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-blue-500"
-                  />
-                </div>
-              )}
-            </div>
-          </div>
-        ))}
-      </div>
-
-      <Button
-        type="button"
-        variant="outline"
-        onClick={addQuestion}
-        className="w-full border-dashed border-2 py-8 text-slate-500 hover:text-blue-600 hover:border-blue-300 hover:bg-blue-50 transition-all rounded-2xl"
-      >
-        <Plus className="w-5 h-5 mr-2" /> Thêm câu hỏi mới
-      </Button>
     </div>
   );
 };

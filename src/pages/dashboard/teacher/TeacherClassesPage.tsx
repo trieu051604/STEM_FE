@@ -4,6 +4,8 @@ import { Link } from 'react-router-dom';
 import { BookOpen, Users, Calendar, MapPin, Play, Loader2, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { TeacherCard } from '@/components/Dashboard/teacher/TeacherCard';
+import { TeacherPageHeader } from '@/components/Dashboard/teacher/TeacherPageHeader';
 import { teacherApi, TeacherClass } from '@/services/teacherStudentApi';
 import { format } from 'date-fns';
 import { vi } from 'date-fns/locale';
@@ -38,10 +40,10 @@ export default function TeacherClassesPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold">Lớp học của tôi</h1>
-        <p className="text-muted-foreground">Quản lý các lớp học mà bạn được phân công giảng dạy</p>
-      </div>
+      <TeacherPageHeader 
+        title="Lớp học của tôi"
+        description="Quản lý các lớp học mà bạn được phân công giảng dạy"
+      />
 
       {/* Search */}
       <div className="flex items-center gap-4">
@@ -58,13 +60,13 @@ export default function TeacherClassesPage() {
 
       {/* Classes Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {classes.map((cls) => (
-          <div key={cls.id} className="bg-card rounded-xl border border-border p-6 space-y-4">
+        {displayClasses.map((cls) => (
+          <TeacherCard key={cls.id} className="space-y-4">
             <div className="flex items-start justify-between">
-              <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center">
-                <BookOpen className="w-6 h-6 text-primary" />
+              <div className="w-12 h-12 rounded-lg bg-indigo-500/10 flex items-center justify-center">
+                <BookOpen className="w-6 h-6 text-indigo-500" />
               </div>
-              <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">
+              <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-500/10 text-green-500">
                 Đang hoạt động
               </span>
             </div>
@@ -95,18 +97,18 @@ export default function TeacherClassesPage() {
 
             <div className="flex gap-2 pt-2">
               <Link to={`/dashboard/teacher/classes/${cls.id}`} className="flex-1">
-                <Button className="w-full gap-2">
+                <Button className="w-full gap-2 bg-indigo-500 hover:bg-indigo-600 text-white">
                   <Play className="w-4 h-4" />
                   Vào lớp
                 </Button>
               </Link>
               <Link to={`/dashboard/teacher/classes/${cls.id}/students`}>
-                <Button variant="outline" size="icon">
+                <Button variant="outline" size="icon" className="border-border hover:bg-accent">
                   <Users className="w-4 h-4" />
                 </Button>
               </Link>
             </div>
-          </div>
+          </TeacherCard>
         ))}
       </div>
 
@@ -125,6 +127,7 @@ export default function TeacherClassesPage() {
           <Button
             variant="outline"
             size="sm"
+            className="border-border hover:bg-accent"
             onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
             disabled={currentPage === 1}
           >
@@ -136,6 +139,7 @@ export default function TeacherClassesPage() {
           <Button
             variant="outline"
             size="sm"
+            className="border-border hover:bg-accent"
             onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
             disabled={currentPage === totalPages}
           >

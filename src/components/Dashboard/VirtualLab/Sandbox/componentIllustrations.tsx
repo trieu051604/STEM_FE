@@ -6,7 +6,7 @@
 // L298N regression thật), chỉ đổi vị trí file. Không đổi kích thước
 // width/height trong ROBOT_KIT_FALLBACK_CARDS — đây vẫn là bounding box thật
 // dùng để tính pin-dot trong pinMaps.ts, không được đổi.
-import type { ReactNode } from 'react';
+import { createElement, type ReactNode } from 'react';
 import {
   CircuitBoard,
   RotateCw,
@@ -581,217 +581,62 @@ export function getFallbackIllustration(type: string, width: number, height: num
 // trên (canvas render trực tiếp qua createWokwiElement(), không qua
 // renderFallbackCard()) — cần 1 hình minh hoạ RIÊNG chỉ để hiển thị trong
 // popup, không đụng gì tới cách canvas render các linh kiện này (đã PASS,
-// không được đổi). Cũng phủ nốt vài fallback-card visual-only còn thiếu SVG
-// (Solenoid/Valve, Ball, Trash Object, Delivery Item, Water Tank, Fire
-// Extinguisher, Stair/Obstacle). viewBox cố định 0 0 44 44 — không liên quan
-// pinMaps.ts (chỉ dùng trong popup, không phải bounding box canvas).
+// không được đổi).
+// Cập nhật: Sử dụng Wokwi elements THẬT thay vì SVG để UI giống 100% với
+// linh kiện trong vùng mô phỏng.
 function getExtraIllustration(type: string): ReactNode | null {
-  const svgProps = { viewBox: '0 0 44 44', width: '100%', height: '100%', preserveAspectRatio: 'xMidYMid meet' as const };
+  const renderWokwi = (tagName: string, props: Record<string, any> = {}, scale: number = 0.5) => (
+    <div style={{ position: 'relative', width: '100%', height: '100%', overflow: 'hidden' }}>
+      {createElement(tagName, {
+        ...props,
+        style: {
+          position: 'absolute',
+          top: '50%',
+          left: '50%',
+          transform: `translate(-50%, -50%) scale(${scale})`,
+          pointerEvents: 'none',
+          ...(props.style || {}),
+        },
+      })}
+    </div>
+  );
 
   switch (type) {
     case 'led':
-      return (
-        <svg {...svgProps}>
-          <path d="M14 24 a8 8 0 1 1 16 0 v6 h-16 z" fill="#f87171" stroke="#b91c1c" strokeWidth={0.8} />
-          <rect x={14} y={30} width={16} height={4} fill="#e4e4e7" />
-          <line x1={19} y1={34} x2={16} y2={42} stroke="#a1a1aa" strokeWidth={2} />
-          <line x1={25} y1={34} x2={28} y2={42} stroke="#a1a1aa" strokeWidth={2} />
-        </svg>
-      );
+      return renderWokwi('wokwi-led', { color: 'red' }, 0.8);
     case 'buzzer':
-      return (
-        <svg {...svgProps}>
-          <circle cx={22} cy={20} r={15} fill="#27272a" stroke="#52525b" strokeWidth={1.5} />
-          <circle cx={22} cy={20} r={7} fill="#52525b" />
-          {Array.from({ length: 8 }).map((_, i) => {
-            const angle = (i * Math.PI) / 4;
-            return <circle key={i} cx={22 + 11 * Math.cos(angle)} cy={20 + 11 * Math.sin(angle)} r={0.9} fill="#18181b" />;
-          })}
-          <line x1={16} y1={34} x2={14} y2={42} stroke="#a1a1aa" strokeWidth={2} />
-          <line x1={28} y1={34} x2={30} y2={42} stroke="#a1a1aa" strokeWidth={2} />
-        </svg>
-      );
+      return renderWokwi('wokwi-buzzer', {}, 0.7);
     case 'rgb-led':
-      return (
-        <svg {...svgProps}>
-          <path d="M22 6 a10 10 0 0 1 10 10 v8 h-20 v-8 a10 10 0 0 1 10-10 z" fill="#3f3f46" />
-          <path d="M22 6 a10 10 0 0 0 -10 10 v8 h6.6 v-13 a10 10 0 0 1 3.4 -5 z" fill="#ef4444" />
-          <path d="M22 6 v18 h-3.3 v-16.6 a10 10 0 0 1 3.3 -1.4 z" fill="#22c55e" opacity={0.9} />
-          <path d="M22 6 a10 10 0 0 1 10 10 v8 h-6.6 v-13 a10 10 0 0 0 -3.4 -5 z" fill="#3b82f6" opacity={0.9} />
-          <rect x={13} y={24} width={18} height={4} fill="#e4e4e7" />
-          {[16, 20, 24, 28].map((x, i) => (
-            <line key={i} x1={x} y1={28} x2={x - 2 + i} y2={42} stroke="#a1a1aa" strokeWidth={1.6} />
-          ))}
-        </svg>
-      );
+      return renderWokwi('wokwi-rgb-led', {}, 0.7);
     case 'resistor':
-      return (
-        <svg {...svgProps}>
-          <line x1={2} y1={22} x2={11} y2={22} stroke="#a1a1aa" strokeWidth={2} />
-          <rect x={11} y={16} width={22} height={12} rx={6} fill="#f5deb3" stroke="#d6b370" strokeWidth={1} />
-          <rect x={16} y={16} width={3} height={12} fill="#78350f" />
-          <rect x={21} y={16} width={3} height={12} fill="#18181b" />
-          <rect x={26} y={16} width={3} height={12} fill="#dc2626" />
-          <line x1={33} y1={22} x2={42} y2={22} stroke="#a1a1aa" strokeWidth={2} />
-        </svg>
-      );
+      return renderWokwi('wokwi-resistor', { value: '1000' }, 0.6);
     case 'push_button':
-      return (
-        <svg {...svgProps}>
-          <rect x={8} y={8} width={28} height={28} rx={4} fill="#e4e4e7" stroke="#a1a1aa" strokeWidth={1} />
-          <circle cx={22} cy={22} r={9} fill="#3f3f46" />
-          <circle cx={22} cy={22} r={4} fill="#18181b" />
-          {[[10, 10], [34, 10], [10, 34], [34, 34]].map(([cx, cy], i) => (
-            <circle key={i} cx={cx} cy={cy} r={1.6} fill="#71717a" />
-          ))}
-        </svg>
-      );
+      return renderWokwi('wokwi-pushbutton', { color: 'blue' }, 0.8);
     case 'servo':
-      return (
-        <svg {...svgProps}>
-          <rect x={8} y={14} width={20} height={24} rx={2} fill="#2563eb" stroke="#1e40af" strokeWidth={1} />
-          <rect x={11} y={6} width={14} height={10} rx={1.5} fill="#93c5fd" />
-          <rect x={15} y={2} width={6} height={6} fill="#e5e7eb" />
-          <line x1={28} y1={30} x2={40} y2={26} stroke="#78350f" strokeWidth={1.6} />
-          <line x1={28} y1={33} x2={40} y2={32} stroke="#dc2626" strokeWidth={1.6} />
-          <line x1={28} y1={36} x2={40} y2={38} stroke="#f97316" strokeWidth={1.6} />
-        </svg>
-      );
+      return renderWokwi('wokwi-servo', {}, 0.5);
     case '7segment':
-      return (
-        <svg {...svgProps}>
-          <rect x={4} y={4} width={36} height={36} rx={2} fill="#18181b" stroke="#3f3f46" strokeWidth={1} />
-          <rect x={12} y={9} width={16} height={3} fill="#ef4444" />
-          <rect x={9} y={12} width={3} height={13} fill="#ef4444" />
-          <rect x={28} y={12} width={3} height={13} fill="#ef4444" />
-          <rect x={12} y={23.5} width={16} height={3} fill="#7f1d1d" />
-          <rect x={9} y={26} width={3} height={13} fill="#ef4444" />
-          <rect x={28} y={26} width={3} height={13} fill="#7f1d1d" />
-          <rect x={12} y={37} width={16} height={3} fill="#ef4444" />
-        </svg>
-      );
+      return renderWokwi('wokwi-7segment', {}, 0.6);
     case 'led-bar-graph':
-      return (
-        <svg {...svgProps}>
-          <rect x={3} y={15} width={38} height={14} rx={2} fill="#18181b" stroke="#3f3f46" strokeWidth={1} />
-          {Array.from({ length: 10 }).map((_, i) => (
-            <rect key={i} x={5.5 + i * 3.6} y={18} width={2.4} height={8} fill="#ef4444" opacity={0.4 + (i % 3) * 0.2} />
-          ))}
-        </svg>
-      );
+      return renderWokwi('wokwi-led-bar-graph', {}, 0.4);
     case 'ssd1306':
-      return (
-        <svg {...svgProps}>
-          <rect x={4} y={9} width={36} height={24} rx={2} fill="#18181b" stroke="#3f3f46" strokeWidth={1} />
-          <rect x={8} y={13} width={28} height={16} fill="#0369a1" opacity={0.35} />
-          {Array.from({ length: 4 }).map((_, r) =>
-            Array.from({ length: 8 }).map((__, c) => (
-              <rect key={`${r}-${c}`} x={10 + c * 3.2} y={15 + r * 3.2} width={1.6} height={1.6} fill="#38bdf8" opacity={0.8} />
-            ))
-          )}
-        </svg>
-      );
+      return renderWokwi('wokwi-ssd1306', {}, 0.4);
     case 'lcd1602':
     case 'lcd1602-i2c':
-      return (
-        <svg {...svgProps}>
-          <rect x={2} y={7} width={type === 'lcd1602-i2c' ? 32 : 40} height={26} rx={2} fill="#1d4ed8" stroke="#1e3a8a" strokeWidth={1} />
-          <rect x={5} y={10} width={type === 'lcd1602-i2c' ? 26 : 34} height={20} fill="#4ade80" />
-          {Array.from({ length: 2 }).map((_, r) =>
-            Array.from({ length: 6 }).map((__, c) => (
-              <rect
-                key={`${r}-${c}`}
-                x={7.5 + c * (type === 'lcd1602-i2c' ? 4 : 5)}
-                y={13 + r * 7}
-                width={2.4}
-                height={4}
-                fill="#166534"
-                opacity={0.75}
-              />
-            ))
-          )}
-          {type === 'lcd1602-i2c' && (
-            <>
-              <rect x={34} y={14} width={8} height={12} rx={1} fill="#7e22ce" />
-              {[16.5, 19.5, 22.5, 25.5].map((y, i) => (
-                <circle key={i} cx={38} cy={y} r={0.7} fill="#facc15" />
-              ))}
-            </>
-          )}
-        </svg>
-      );
+      return renderWokwi('wokwi-lcd1602', {}, 0.35);
     case 'lcd2004':
-      return (
-        <svg {...svgProps}>
-          <rect x={2} y={4} width={30} height={36} rx={2} fill="#1d4ed8" stroke="#1e3a8a" strokeWidth={1} />
-          <rect x={4} y={6} width={26} height={32} fill="#4ade80" />
-          {Array.from({ length: 4 }).map((_, r) =>
-            Array.from({ length: 6 }).map((__, c) => (
-              <rect key={`${r}-${c}`} x={5.5 + c * 4} y={8 + r * 7.4} width={2.6} height={4.4} fill="#166534" opacity={0.75} />
-            ))
-          )}
-          <rect x={34} y={12} width={8} height={16} rx={1} fill="#7e22ce" />
-          {[15, 18.5, 22, 25.5].map((y, i) => (
-            <circle key={i} cx={38} cy={y} r={0.7} fill="#facc15" />
-          ))}
-        </svg>
-      );
+      return renderWokwi('wokwi-lcd2004', {}, 0.3);
     case 'ili9341':
-      return (
-        <svg {...svgProps}>
-          <rect x={4} y={4} width={36} height={36} rx={2} fill="#18181b" stroke="#3f3f46" strokeWidth={1} />
-          <rect x={8} y={8} width={28} height={28} fill="#0f172a" />
-          <rect x={8} y={8} width={7} height={28} fill="#ef4444" opacity={0.7} />
-          <rect x={15} y={8} width={7} height={28} fill="#22c55e" opacity={0.7} />
-          <rect x={22} y={8} width={7} height={28} fill="#3b82f6" opacity={0.7} />
-          <rect x={29} y={8} width={7} height={28} fill="#facc15" opacity={0.7} />
-        </svg>
-      );
+      return renderWokwi('wokwi-ili9341', {}, 0.3);
     case 'flame-sensor':
-      return (
-        <svg {...svgProps}>
-          <rect x={4} y={4} width={36} height={36} rx={3} fill="#7c2d12" stroke="#431407" strokeWidth={1} />
-          <circle cx={15} cy={20} r={7} fill="#18181b" />
-          <circle cx={15} cy={20} r={3} fill="#3b0764" />
-          <path d="M29 30 c-4 2 -6 7 -3 11 c1 -3 3 -3 4 -1 c2 -3 1 -7 -1 -10 z" fill="#f97316" />
-          <circle cx={31} cy={10} r={1.6} fill="#22c55e" />
-        </svg>
-      );
+      return renderWokwi('wokwi-flame-sensor', {}, 0.5);
     case 'pir-motion-sensor':
-      return (
-        <svg {...svgProps}>
-          <rect x={4} y={22} width={36} height={16} rx={2} fill="#27272a" />
-          <path d="M6 24 a16 16 0 0 1 32 0 z" fill="#f5f5f4" opacity={0.92} />
-          {[14, 22, 30].map((x, i) => (
-            <line key={i} x1={x} y1={24 - i} x2={x} y2={10} stroke="#d4d4d8" strokeWidth={0.8} />
-          ))}
-        </svg>
-      );
+      return renderWokwi('wokwi-pir-motion-sensor', {}, 0.5);
     case 'gas-sensor':
-      return (
-        <svg {...svgProps}>
-          <rect x={6} y={28} width={32} height={10} rx={2} fill="#1d4ed8" />
-          <circle cx={22} cy={18} r={14} fill="#a1a1aa" stroke="#71717a" strokeWidth={1.5} />
-          <circle cx={22} cy={18} r={6} fill="#52525b" />
-          {Array.from({ length: 6 }).map((_, i) => {
-            const angle = (i * Math.PI) / 3;
-            return <circle key={i} cx={22 + 10 * Math.cos(angle)} cy={18 + 10 * Math.sin(angle)} r={0.9} fill="#3f3f46" />;
-          })}
-        </svg>
-      );
+      return renderWokwi('wokwi-mq2-gas-sensor', {}, 0.5);
     case 'dht22':
+      return renderWokwi('wokwi-dht22', {}, 0.5);
     case 'dht11':
-      return (
-        <svg {...svgProps}>
-          <rect x={8} y={4} width={28} height={30} rx={4} fill="#2563eb" stroke="#1e3a8a" strokeWidth={1} />
-          {[11, 16, 21, 26].map((y, i) => (
-            <line key={i} x1={12} y1={y} x2={32} y2={y} stroke="#93c5fd" strokeWidth={1.2} />
-          ))}
-          {[14, 20, 26, 32].map((x, i) => (
-            <rect key={i} x={x} y={34} width={2} height={6} fill="#a1a1aa" />
-          ))}
-        </svg>
-      );
+      return renderWokwi('wokwi-dht22', {}, 0.5);
     // color-sensor/solenoid-valve/ball/trash-object/delivery-item/water-tank/
     // fire-extinguisher/stair-obstacle: xử lý ở getFallbackIllustration() phía
     // trên (2026-07-28) — dùng đúng width/height card thật thay vì 44x44 cố
@@ -799,16 +644,23 @@ function getExtraIllustration(type: string): ReactNode | null {
     // getFallbackIllustration() trước, các case dưới đây không còn được gọi
     // tới cho 8 type này, chỉ giữ lại type CHƯA có fallback-card).
     case 'mpu6050':
-      return (
-        <svg {...svgProps}>
-          <rect x={4} y={12} width={36} height={20} rx={2} fill="#166534" stroke="#14532d" strokeWidth={1} />
-          <rect x={14} y={16} width={16} height={12} rx={1} fill="#18181b" />
-          <circle cx={22} cy={22} r={3} fill="#3f3f46" />
-          {Array.from({ length: 8 }).map((_, i) => (
-            <line key={i} x1={6 + i * 4.6} y1={32} x2={6 + i * 4.6} y2={38} stroke="#a1a1aa" strokeWidth={1.4} />
-          ))}
-        </svg>
-      );
+      return renderWokwi('wokwi-mpu6050', {}, 0.5);
+    case 'neopixel':
+      return renderWokwi('wokwi-neopixel', {}, 0.5);
+    case 'hc-sr04':
+      return renderWokwi('wokwi-hc-sr04', {}, 0.4);
+    case 'membrane-keypad':
+      return renderWokwi('wokwi-membrane-keypad', {}, 0.3);
+    case 'photoresistor-sensor':
+      return renderWokwi('wokwi-photoresistor-sensor', {}, 0.5);
+    case 'ntc-temperature-sensor':
+      return renderWokwi('wokwi-ntc-temperature-sensor', {}, 0.5);
+    case 'hx711':
+      return renderWokwi('wokwi-hx711', {}, 0.5);
+    case 'ir-receiver':
+      return renderWokwi('wokwi-ir-receiver', {}, 0.5);
+    case 'stepper-motor':
+      return renderWokwi('wokwi-stepper-motor', {}, 0.4);
     default:
       return null;
   }

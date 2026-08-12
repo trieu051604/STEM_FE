@@ -1,5 +1,8 @@
 import { FormEvent, useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { DialogHeader, DialogContent, DialogFooter, DialogTitle } from '@/components/ui/dialog';
 import { X, ExternalLink, RefreshCw } from 'lucide-react';
 import { WokwiLinkValidator } from './WokwiLinkValidator';
 import { CircuitBuilderTeacherMode } from './Sandbox/CircuitBuilderTeacherMode';
@@ -30,6 +33,17 @@ export interface LabAssignmentOption {
   classId?: number;
 }
 
+// Dữ liệu điền sẵn từ "bài tập mẫu" (src/data/virtualLabSampleExercises.ts) — KHÁC với
+// initialLab: không bật chế độ "đang sửa lab có sẵn" (isEditing vẫn false), Lưu vẫn gọi
+// labsApi.create(), không phải update(). Chỉ áp dụng khi mở modal để TẠO MỚI.
+export interface CreateLabTemplateData {
+  title: string;
+  description: string;
+  category: LabCategory;
+  starterCode: string;
+  circuitConfig: LabCircuitConfig;
+}
+
 interface CreateLabModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -42,6 +56,7 @@ interface CreateLabModalProps {
   componentsError?: string | null;
   onRetryComponents?: () => void;
   initialLab?: LabEntity | null;
+  templateData?: CreateLabTemplateData | null;
   isSaving?: boolean;
   error?: string | null;
 }
@@ -71,12 +86,39 @@ const defaultFormData = {
   classIds: [] as number[],
   status: 'published' as LabStatus,
   linkedAssignmentId: '',
-  simulationMode: 'wokwi_iframe' as LabSimulationMode,
+  simulationMode: 'custom_sandbox' as LabSimulationMode,
   starterCode: defaultStarterCode,
   circuitConfig: defaultCircuitConfig,
 };
 
-function getInitialFormData(initialLab?: LabEntity | null) {
+// Native <select>/<input multiple> chưa có primitive Radix tương đương cho multi-select,
+// nên style thủ công theo đúng token của Input/Select (border-input, bg-background,
+// dark:bg-input/30, focus ring) để đồng bộ hình ảnh với các control khác trong modal.
+const nativeFieldClassName =
+  'flex h-10 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground outline-none transition-colors focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/50 dark:bg-input/30 dark:border-input';
+
+function getInitialFormData(
+  initialLab?: LabEntity | null,
+  templateData?: CreateLabTemplateData | null
+) {
+  if (!initialLab && templateData) {
+    return {
+      title: templateData.title,
+      category: templateData.category,
+      description: templateData.description,
+      thumbnailUrl: '',
+      wokwiValue: '',
+      classIds: [] as number[],
+      // Để 'draft' — giáo viên chọn lớp + xuất bản sau khi xem lại mẫu đã điền, tránh bắt
+      // buộc chọn lớp ngay lúc chỉ mới "dùng thử mẫu".
+      status: 'draft' as LabStatus,
+      linkedAssignmentId: '',
+      simulationMode: 'custom_sandbox' as LabSimulationMode,
+      starterCode: templateData.starterCode,
+      circuitConfig: templateData.circuitConfig,
+    };
+  }
+
   if (!initialLab) return defaultFormData;
 
   return {
@@ -111,6 +153,7 @@ export const CreateLabModal = ({
   componentsError,
   onRetryComponents,
   initialLab,
+  templateData,
   isSaving,
   error,
 }: CreateLabModalProps) => {
@@ -123,7 +166,7 @@ export const CreateLabModal = ({
   useEffect(() => {
     if (!isOpen) return;
 
-    const initialFormData = getInitialFormData(initialLab);
+    const initialFormData = getInitialFormData(initialLab, templateData);
     setFormData(initialFormData);
     setIsWokwiValid(
       initialFormData.simulationMode === 'wokwi_iframe' &&
@@ -140,7 +183,16 @@ export const CreateLabModal = ({
         : null
     );
     setLocalError(null);
-  }, [initialLab, isOpen]);
+  }, [initialLab, templateData, isOpen]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
@@ -213,91 +265,41 @@ export const CreateLabModal = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
-      <div className="bg-white rounded-2xl w-full max-w-6xl shadow-xl flex flex-col max-h-[90vh]">
-        <div className="flex items-center justify-between p-6 border-b border-border">
-          <h2 className="text-2xl font-bold text-[#0f4c5c]">
-            {isEditing ? 'Cập nhật phòng lab' : 'Tạo phòng thí nghiệm mới'}
-          </h2>
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+      <div className="bg-card border border-border rounded-xl shadow-xl w-full max-w-6xl max-h-[90vh] flex flex-col">
+        <DialogHeader className="flex items-center justify-between gap-4 shrink-0">
+          <div className="min-w-0">
+            <DialogTitle>
+              {isEditing ? 'Cập nhật phòng lab' : 'Tạo phòng thí nghiệm mới'}
+            </DialogTitle>
+            {!isEditing && templateData && (
+              <p className="text-xs font-medium text-indigo-400 mt-1">
+                Đã điền sẵn từ mẫu — kiểm tra lại rồi chọn lớp trước khi lưu.
+              </p>
+            )}
+          </div>
           <button
             type="button"
             onClick={onClose}
-            className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-slate-100 text-slate-500 transition-colors"
+            className="w-9 h-9 flex items-center justify-center rounded-full hover:bg-accent text-muted-foreground hover:text-foreground transition-colors shrink-0"
             aria-label="Đóng"
           >
             <X className="w-5 h-5" />
           </button>
-        </div>
+        </DialogHeader>
 
-        <div className="p-6 overflow-y-auto space-y-8">
-          <div className="space-y-4">
-            <h3 className="font-bold text-[#0f4c5c] text-lg border-b pb-2">
-              1. Chọn chế độ mô phỏng
-            </h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <button
-                type="button"
-                onClick={() => setFormData({ ...formData, simulationMode: 'wokwi_iframe' })}
-                className={`p-4 rounded-xl border-2 text-left transition-colors ${
-                  isWokwiMode
-                    ? 'border-[#0f4c5c] bg-cyan-50/30'
-                    : 'border-slate-200 hover:border-slate-300'
-                }`}
-              >
-                <div className="flex items-center gap-3 mb-2">
-                  <div
-                    className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
-                      isWokwiMode ? 'border-[#0f4c5c]' : 'border-slate-300'
-                    }`}
-                  >
-                    {isWokwiMode && <div className="w-2.5 h-2.5 rounded-full bg-[#0f4c5c]" />}
-                  </div>
-                  <h4 className="font-bold text-slate-800">Nhúng Wokwi</h4>
-                </div>
-                <p className="text-sm text-slate-500 pl-8">
-                  Project Wokwi có sẵn, nhanh và hỗ trợ nhiều loại board.
-                </p>
-              </button>
-
-              <button
-                type="button"
-                onClick={() =>
-                  setFormData({ ...formData, simulationMode: 'custom_sandbox' })
-                }
-                className={`p-4 rounded-xl border-2 text-left transition-colors ${
-                  !isWokwiMode
-                    ? 'border-[#0f4c5c] bg-cyan-50/30'
-                    : 'border-slate-200 hover:border-slate-300'
-                }`}
-              >
-                <div className="flex items-center gap-3 mb-2">
-                  <div
-                    className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
-                      !isWokwiMode ? 'border-[#0f4c5c]' : 'border-slate-300'
-                    }`}
-                  >
-                    {!isWokwiMode && <div className="w-2.5 h-2.5 rounded-full bg-[#0f4c5c]" />}
-                  </div>
-                  <h4 className="font-bold text-slate-800">Sandbox nội bộ</h4>
-                </div>
-                <p className="text-sm text-slate-500 pl-8">
-                  Arduino Uno, học sinh chỉnh code và chạy mô phỏng trong trình duyệt.
-                </p>
-              </button>
-            </div>
-          </div>
-
+        <DialogContent className="flex-1 max-h-none space-y-8">
           {isWokwiMode ? (
-            <div className="bg-blue-50 border border-blue-100 rounded-xl p-5 space-y-3">
-              <h3 className="font-bold text-blue-900">Tạo mạch mô phỏng trên Wokwi</h3>
-              <p className="text-sm text-blue-800">
+            <div className="bg-blue-500/10 border border-blue-500/20 rounded-xl p-5 space-y-3">
+              <h3 className="font-semibold text-blue-300">Tạo mạch mô phỏng trên Wokwi</h3>
+              <p className="text-sm text-blue-200/80">
                 Dán link project Public hoặc Unlisted để StemFlow kiểm tra và nhúng vào lab.
               </p>
               <a
                 href="https://wokwi.com"
                 target="_blank"
                 rel="noreferrer"
-                className="inline-flex items-center gap-1.5 text-sm font-semibold text-blue-700 hover:text-blue-900 transition-colors"
+                className="inline-flex items-center gap-1.5 text-sm font-semibold text-blue-300 hover:text-blue-200 transition-colors"
               >
                 Mở Wokwi.com <ExternalLink className="w-4 h-4" />
               </a>
@@ -314,30 +316,29 @@ export const CreateLabModal = ({
           )}
 
           <form id="create-lab-form" onSubmit={handleSubmit} className="space-y-4">
-            <h3 className="font-bold text-[#0f4c5c] flex items-center gap-2">
-              <span className="bg-[#0f4c5c] text-white w-6 h-6 rounded-full flex items-center justify-center text-xs">
-                2
+            <h3 className="font-semibold text-foreground flex items-center gap-2">
+              <span className="bg-indigo-500 text-white w-6 h-6 rounded-full flex items-center justify-center text-xs shrink-0">
+                1
               </span>
               Nhập thông tin phòng lab
             </h3>
 
             <div className="space-y-1.5">
-              <label className="text-sm font-semibold text-slate-700">Tên lab</label>
-              <input
+              <label className="text-sm font-medium text-foreground">Tên lab</label>
+              <Input
                 required
                 type="text"
                 value={formData.title}
                 onChange={(event) =>
                   setFormData({ ...formData, title: event.target.value })
                 }
-                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                 placeholder="VD: Đèn LED nhấp nháy..."
               />
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-1.5">
-                <label className="text-sm font-semibold text-slate-700">Môn học</label>
+                <label className="text-sm font-medium text-foreground">Môn học</label>
                 <select
                   value={formData.category}
                   onChange={(event) =>
@@ -346,7 +347,7 @@ export const CreateLabModal = ({
                       category: event.target.value as LabCategory,
                     })
                   }
-                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                  className={nativeFieldClassName}
                 >
                   {categories.map((category) => (
                     <option key={category.value} value={category.value}>
@@ -357,13 +358,13 @@ export const CreateLabModal = ({
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-sm font-semibold text-slate-700">Trạng thái</label>
+                <label className="text-sm font-medium text-foreground">Trạng thái</label>
                 <select
                   value={formData.status}
                   onChange={(event) =>
                     setFormData({ ...formData, status: event.target.value as LabStatus })
                   }
-                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                  className={nativeFieldClassName}
                 >
                   <option value="published">Xuất bản</option>
                   <option value="draft">Bản nháp</option>
@@ -372,33 +373,32 @@ export const CreateLabModal = ({
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-sm font-semibold text-slate-700">Mô tả hướng dẫn</label>
-              <textarea
+              <label className="text-sm font-medium text-foreground">Mô tả hướng dẫn</label>
+              <Textarea
                 value={formData.description}
                 onChange={(event) =>
                   setFormData({ ...formData, description: event.target.value })
                 }
-                className="flex min-h-[90px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                className="min-h-[90px]"
                 placeholder="Nhập hướng dẫn làm thí nghiệm cho học sinh..."
               />
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-sm font-semibold text-slate-700">Ảnh thumbnail URL</label>
-              <input
+              <label className="text-sm font-medium text-foreground">Ảnh thumbnail URL</label>
+              <Input
                 type="url"
                 value={formData.thumbnailUrl}
                 onChange={(event) =>
                   setFormData({ ...formData, thumbnailUrl: event.target.value })
                 }
-                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
                 placeholder="https://..."
               />
             </div>
 
             {isWokwiMode ? (
               <div className="space-y-1.5">
-                <label className="text-sm font-semibold text-slate-700">
+                <label className="text-sm font-medium text-foreground">
                   Link/ID project Wokwi
                 </label>
                 <WokwiLinkValidator
@@ -412,16 +412,16 @@ export const CreateLabModal = ({
               </div>
             ) : (
               <div className="space-y-1.5">
-                <label className="text-sm font-semibold text-slate-700">
+                <label className="text-sm font-medium text-foreground">
                   Starter code cho học sinh
                 </label>
-                <textarea
+                <Textarea
                   value={formData.starterCode}
                   onChange={(event) =>
                     setFormData({ ...formData, starterCode: event.target.value })
                   }
                   spellCheck={false}
-                  className="flex min-h-[150px] w-full rounded-md border border-input bg-slate-950 px-3 py-2 font-mono text-sm text-slate-100 ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                  className="min-h-[150px] font-mono text-sm bg-slate-950 text-slate-100 border-slate-800 dark:bg-slate-950"
                 />
               </div>
             )}
@@ -429,11 +429,11 @@ export const CreateLabModal = ({
             <div className="h-px bg-border my-4" />
 
             <div className="space-y-1.5">
-              <label className="text-sm font-semibold text-slate-700">Gán cho lớp</label>
+              <label className="text-sm font-medium text-foreground">Gán cho lớp</label>
               <select
                 multiple
                 value={formData.classIds.map(String)}
-                className="flex min-h-[90px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                className={`${nativeFieldClassName} min-h-[90px] h-auto py-2`}
                 onChange={(event) => {
                   const values = Array.from(event.target.selectedOptions, (option) =>
                     Number(option.value)
@@ -453,7 +453,7 @@ export const CreateLabModal = ({
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-sm font-semibold text-slate-700">
+              <label className="text-sm font-medium text-foreground">
                 Gắn bài đánh giá sau lab
               </label>
               <select
@@ -461,7 +461,7 @@ export const CreateLabModal = ({
                 onChange={(event) =>
                   setFormData({ ...formData, linkedAssignmentId: event.target.value })
                 }
-                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                className={nativeFieldClassName}
               >
                 <option value="">Bỏ qua</option>
                 {filteredAssignments.map((assignment) => (
@@ -473,14 +473,14 @@ export const CreateLabModal = ({
             </div>
 
             {(localError || error) && (
-              <p className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-600">
+              <p className="rounded-lg bg-destructive/10 border border-destructive/20 px-4 py-3 text-sm text-destructive">
                 {localError || error}
               </p>
             )}
           </form>
-        </div>
+        </DialogContent>
 
-        <div className="p-6 border-t border-border bg-slate-50 rounded-b-2xl flex items-center justify-end gap-3">
+        <DialogFooter className="shrink-0">
           <Button type="button" variant="outline" onClick={onClose} disabled={isSaving}>
             Hủy
           </Button>
@@ -488,12 +488,12 @@ export const CreateLabModal = ({
             type="submit"
             form="create-lab-form"
             disabled={(isWokwiMode && !isWokwiValid) || isSaving}
-            className="bg-[#0f4c5c] hover:bg-[#0a3540] text-white"
+            className="bg-indigo-500 hover:bg-indigo-600 text-white border-0"
           >
             {isSaving && <RefreshCw className="w-4 h-4 animate-spin" />}
             {isEditing ? 'Lưu thay đổi' : 'Lưu phòng lab'}
           </Button>
-        </div>
+        </DialogFooter>
       </div>
     </div>
   );

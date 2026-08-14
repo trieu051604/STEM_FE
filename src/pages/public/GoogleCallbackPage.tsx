@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '@/stores/authStore';
 import { Loader2, AlertCircle } from 'lucide-react';
@@ -8,8 +8,16 @@ export const GoogleCallbackPage = () => {
   const { googleLogin } = useAuthStore();
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
+  const hasRunRef = useRef(false);
 
   useEffect(() => {
+    // React.StrictMode (main.tsx) cố ý chạy effect 2 lần lúc mount ở dev mode — không chặn
+    // thì googleLogin() bị gọi 2 lần liên tiếp với CÙNG idToken, khiến BE nhận 2 request gần
+    // như đồng thời và có thể race condition ở bước tạo refresh token, khiến 1 trong 2 request
+    // ngẫu nhiên trả lỗi dù token hợp lệ.
+    if (hasRunRef.current) return;
+    hasRunRef.current = true;
+
     const handleCallback = async () => {
       // Parse hash fragment (implicit flow) or query params
       const hash = window.location.hash.substring(1);

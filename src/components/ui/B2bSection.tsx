@@ -18,7 +18,7 @@ const B2B_ADVANTAGES = [
     title: 'Triển khai Cloud 0 đồng',
     desc: 'Chỉ cần máy tính kết nối Internet. Không cài đặt phần mềm phức tạp, không đòi hỏi cấu hình phần cứng mạnh, tương thích hoàn toàn Chromebook, Windows, Mac.',
     icon: 'Server',
-    color: 'text-blue-500 bg-blue-500/10'
+    color: 'text-brand-500 bg-brand-500/10'
   }
 ];
 
@@ -40,12 +40,12 @@ export function B2bSection() {
           {/* Left Side: Rich Text Copy */}
           <div className="space-y-8">
             <div className="space-y-4">
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 text-xs font-bold uppercase tracking-wider">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-brand-100 dark:bg-brand-900/30 text-brand-700 dark:text-brand-400 text-xs font-bold uppercase tracking-wider">
                 Dành cho Trường học & Tổ chức Giáo dục
               </div>
               <h2 className="text-4xl md:text-5xl font-black tracking-tight text-slate-950 dark:text-white leading-tight">
                 Giải pháp toàn diện cho <br />
-                <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-indigo-600 dark:from-blue-400 dark:to-indigo-400">
+                <span className="text-transparent bg-clip-text bg-gradient-to-r from-brand-600 to-brand-600 dark:from-brand-400 dark:to-brand-400">
                   Nhà trường thời đại số
                 </span>
               </h2>
@@ -73,7 +73,7 @@ export function B2bSection() {
             <div className="pt-2">
               <a 
                 href="mailto:contact@stemflow.vn" 
-                className="inline-flex items-center gap-2 bg-slate-900 hover:bg-slate-800 dark:bg-blue-600 dark:hover:bg-blue-500 text-white px-6 py-3.5 rounded-xl font-bold transition-all shadow-md active:scale-95 duration-100"
+                className="inline-flex items-center gap-2 bg-slate-900 hover:bg-slate-800 dark:bg-brand-600 dark:hover:bg-brand-500 text-white px-6 py-3.5 rounded-xl font-bold transition-all shadow-md active:scale-95 duration-100"
               >
                 <Icon name="Mail" size={18} />
                 Liên hệ đăng ký trải nghiệm School Kit
@@ -84,7 +84,7 @@ export function B2bSection() {
           {/* Right Side: Beautiful HTML Mockup representing Classroom Management Panel */}
           <div className="relative">
             {/* Background glowing decorations */}
-            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-80 h-80 bg-indigo-500/10 dark:bg-blue-600/10 rounded-full blur-[100px] pointer-events-none"></div>
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-80 h-80 bg-indigo-500/10 dark:bg-brand-600/10 rounded-full blur-[100px] pointer-events-none"></div>
             
             {/* The Dashboard Mockup */}
             <div className="relative bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-850 rounded-2xl overflow-hidden shadow-2xl flex flex-col h-[420px]">
@@ -197,7 +197,7 @@ export function B2bSection() {
             {TRUST_LOGOS.map((logo, index) => (
               <div 
                 key={index}
-                className="flex items-center justify-center gap-2.5 text-slate-650 dark:text-slate-350 hover:text-blue-500 dark:hover:text-blue-400 transition-colors group cursor-default"
+                className="flex items-center justify-center gap-2.5 text-slate-650 dark:text-slate-350 hover:text-brand-500 dark:hover:text-brand-400 transition-colors group cursor-default"
               >
                 <Icon name={logo.icon} className="transition-transform group-hover:scale-110 duration-200" size={20} />
                 <span className="text-sm font-bold tracking-tight text-left leading-tight max-w-[160px] truncate-2-lines">

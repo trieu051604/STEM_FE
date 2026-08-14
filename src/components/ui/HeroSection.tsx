@@ -22,7 +22,7 @@ export function HeroSection() {
       <div className="absolute inset-0 z-0 bg-[radial-gradient(#334155_1px,transparent_1px)] [background-size:24px_24px] opacity-35"></div>
       
       {/* Glowing Ambient Blurs */}
-      <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-blue-600/10 rounded-full blur-[120px] pointer-events-none"></div>
+      <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-brand-600/10 rounded-full blur-[120px] pointer-events-none"></div>
       <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-emerald-500/5 rounded-full blur-[120px] pointer-events-none"></div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
@@ -31,12 +31,12 @@ export function HeroSection() {
           {/* Left Side Copy */}
           <div className="space-y-6">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-slate-900 border border-slate-800 text-blue-400 text-xs font-mono">
-              <span className="w-2.5 h-2.5 rounded-full bg-blue-500 animate-pulse"></span>
+              <span className="w-2.5 h-2.5 rounded-full bg-brand-500 animate-pulse"></span>
               v2.0 Simulation Engine
             </div>
             <h1 className="text-5xl md:text-6xl font-extrabold text-white leading-[1.1] tracking-tight">
               Biến ý tưởng thành hiện thực. <br />
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-emerald-400">
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-brand-400 to-brand-500">
                 Không lo cháy nổ.
               </span>
             </h1>
@@ -46,7 +46,7 @@ export function HeroSection() {
             <div className="flex flex-col sm:flex-row gap-4 pt-2">
               <Link 
                 to="/register" 
-                className="inline-flex justify-center items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white px-8 py-3.5 rounded-xl font-semibold shadow-[0_0_20px_rgba(37,99,235,0.4)] transition-all active:scale-[0.98]"
+                className="inline-flex justify-center items-center gap-2 bg-brand-600 hover:bg-brand-500 text-white px-8 py-3.5 rounded-xl font-semibold shadow-[0_0_20px_rgba(99,102,241,0.4)] transition-all active:scale-[0.98]"
               >
                 Mở Lab Miễn phí
                 <Icon name="ArrowRight" size={18} />

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { CheckCircle2, XCircle, Mail, Loader2, Sparkles, ArrowLeft } from 'lucide-react';
 import { Icon } from '@/components/ui/Icon';
@@ -14,13 +14,15 @@ export function EmailVerificationPage() {
   
   const token = searchParams.get('token');
   const email = searchParams.get('email') || '';
+  const hasCalledVerify = useRef(false);
 
   useEffect(() => {
-    if (token) {
+    if (token && !hasCalledVerify.current) {
+      hasCalledVerify.current = true;
       const verifyToken = async () => {
         setStatus('pending');
         try {
-          await api.get(`/auth/verify-email?token=${token}`);
+          await api.post('/Auth/verify-email', { email, token });
           setStatus('success');
         } catch (error: any) {
           setStatus('error');
@@ -31,10 +33,10 @@ export function EmailVerificationPage() {
         }
       };
       verifyToken();
-    } else {
+    } else if (!token) {
       setStatus('none');
     }
-  }, [token]);
+  }, [token, email]);
 
   return (
     <div className="min-h-screen grid lg:grid-cols-2 bg-slate-950 font-sans selection:bg-blue-500/30 relative text-slate-100">

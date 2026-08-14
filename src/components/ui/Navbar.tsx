@@ -10,8 +10,8 @@ export function Navbar() {
           
           {/* Logo */}
           <div className="font-bold text-2xl tracking-tight text-white flex items-center gap-2 select-none">
-            <Icon name="Cpu" className="text-blue-500 animate-pulse" />
-            <span>Stem<span className="text-blue-500">Flow</span></span>
+            <Icon name="Cpu" className="text-brand-500 animate-pulse" />
+            <span>Stem<span className="text-brand-500">Flow</span></span>
           </div>
           
           {/* Middle Navigation Links */}
@@ -32,7 +32,7 @@ export function Navbar() {
             </Link>
             <Link 
               to="/register" 
-              className="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-xl text-sm font-semibold transition-all shadow-md shadow-blue-600/10 active:scale-95 duration-100"
+              className="bg-brand-600 hover:bg-brand-500 text-white px-4 py-2 rounded-xl text-sm font-semibold transition-all shadow-md shadow-brand-600/10 active:scale-95 duration-100"
             >
               Đăng ký
             </Link>

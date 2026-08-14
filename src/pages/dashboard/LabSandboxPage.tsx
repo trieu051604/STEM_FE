@@ -3,7 +3,9 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { AlertCircle, ArrowLeft, CheckCircle2, Loader2, RefreshCw, Send, XCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuthStore } from '@/stores/authStore';
-import { labsApi, virtualLabProjectsApi, diagramsApi, submissionsApi } from '@/services/dashboardApi';
+import { labsApi, virtualLabProjectsApi, diagramsApi, submissionsApi, assignmentsApi, gradingApi, resubmitRequestsApi } from '@/services/dashboardApi';
+import type { ResubmitRequestEntity } from '@/services/dashboardApi';
+import { Textarea } from '@/components/ui/textarea';
 import { virtualLabHub } from '@/services/virtualLabHub';
 import type { LabCircuitComponent, LabEntity, DiagramValidationResult, SimulationEventEntity, AutoGradeResultEntity, ComponentGlueRegistryEntity, SensorScenarioConfig } from '@/services/dashboardApi';
 import { CodeEditorPanel } from '@/components/Dashboard/VirtualLab/Sandbox/CodeEditorPanel';
@@ -98,6 +100,16 @@ export const LabSandboxPage = () => {
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
   const [partStates, setPartStates] = useState<Record<string, PartVisualState>>({});
   const [linkedAssignmentId, setLinkedAssignmentId] = useState<number | null>(null);
+  const [assignmentDueDate, setAssignmentDueDate] = useState<string | null>(null);
+  const [submissionAttempts, setSubmissionAttempts] = useState<{
+    count: number;
+    allowResubmit: boolean;
+    resubmitLimit: number | null;
+  } | null>(null);
+  const [latestResubmitRequest, setLatestResubmitRequest] = useState<ResubmitRequestEntity | null>(null);
+  const [resubmitReasonInput, setResubmitReasonInput] = useState('');
+  const [isRequestingResubmit, setIsRequestingResubmit] = useState(false);
+  const [resubmitRequestError, setResubmitRequestError] = useState<string | null>(null);
   const [lastSimulationEvents, setLastSimulationEvents] = useState<SimulationEventEntity[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -686,6 +698,103 @@ export const LabSandboxPage = () => {
     }
   };
 
+  // Deadline + số lần nộp — chỉ để hiển thị/disable nút cho UX, BE
+  // (SubmitVirtualLabAsync) vẫn là source of truth thật sự enforce cả 2 rule
+  // này (xem VirtualLabRuntimeService.cs) — FE không tự quyết định gì cả.
+  const [approvedResubmitRequests, setApprovedResubmitRequests] = useState<ResubmitRequestEntity[]>([]);
+
+  const reloadResubmitRequests = useCallback(() => {
+    if (!linkedAssignmentId) return;
+    void resubmitRequestsApi.list({ assignmentId: linkedAssignmentId }).then((requests) => {
+      setApprovedResubmitRequests(requests.filter((item) => item.status === 'approved'));
+      const pending = requests.find((item) => item.status === 'pending');
+      const mostRecent = requests
+        .slice()
+        .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0];
+      setLatestResubmitRequest(pending ?? mostRecent ?? null);
+    }).catch(() => {});
+  }, [linkedAssignmentId]);
+
+  useEffect(() => {
+    if (!linkedAssignmentId) {
+      setAssignmentDueDate(null);
+      setSubmissionAttempts(null);
+      setApprovedResubmitRequests([]);
+      setLatestResubmitRequest(null);
+      return;
+    }
+
+    let cancelled = false;
+    void assignmentsApi.getById(linkedAssignmentId).then((assignment) => {
+      if (!cancelled) setAssignmentDueDate(assignment.dueDate ?? null);
+    }).catch(() => {});
+
+    void gradingApi.getSubmissions({ assignmentId: linkedAssignmentId }).then((result) => {
+      if (cancelled) return;
+      // count từ list submission của chính Student (BE tự scope theo JWT) —
+      // đủ để hiển thị "Lần nộp: N", không cần attemptNumber riêng ở đây.
+      setSubmissionAttempts((prev) => ({
+        count: result.totalCount,
+        allowResubmit: prev?.allowResubmit ?? true,
+        resubmitLimit: prev?.resubmitLimit ?? null,
+      }));
+    }).catch(() => {});
+
+    void assignmentsApi.getById(linkedAssignmentId).then((assignment) => {
+      if (cancelled) return;
+      setSubmissionAttempts((prev) => ({
+        count: prev?.count ?? 0,
+        allowResubmit: assignment.allowResubmit,
+        resubmitLimit: assignment.resubmitLimit ?? null,
+      }));
+    }).catch(() => {});
+
+    reloadResubmitRequests();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [linkedAssignmentId, reloadResubmitRequests]);
+
+  // Cộng dồn approved ResubmitRequest lên trên cấu hình gốc — PHẢI khớp chính xác
+  // công thức ResubmitEligibility.cs bên BE (BE vẫn là source of truth thật sự
+  // enforce; tính lại ở đây chỉ để UI không hiện "bị chặn" sai khi đã được duyệt).
+  const effectiveDueDateMs = (() => {
+    const base = assignmentDueDate ? new Date(assignmentDueDate).getTime() : null;
+    const granted = approvedResubmitRequests
+      .map((item) => (item.grantedNewDueDate ? new Date(item.grantedNewDueDate).getTime() : null))
+      .filter((value): value is number => value != null);
+    const all = [base, ...granted].filter((value): value is number => value != null);
+    return all.length > 0 ? Math.max(...all) : null;
+  })();
+  const isPastDeadline = effectiveDueDateMs != null && Date.now() > effectiveDueDateMs;
+
+  const isResubmitBlocked = (() => {
+    if (!submissionAttempts) return false;
+    const extraAttempts = approvedResubmitRequests.reduce((sum, item) => sum + (item.grantedExtraAttempts ?? 0), 0);
+    const effectiveMax = !submissionAttempts.allowResubmit
+      ? 1 + extraAttempts
+      : submissionAttempts.resubmitLimit == null
+        ? Infinity
+        : submissionAttempts.resubmitLimit + extraAttempts;
+    return submissionAttempts.count >= effectiveMax;
+  })();
+
+  const handleRequestResubmit = async () => {
+    if (!linkedAssignmentId) return;
+    setIsRequestingResubmit(true);
+    setResubmitRequestError(null);
+    try {
+      const created = await resubmitRequestsApi.create(linkedAssignmentId, resubmitReasonInput.trim() || undefined);
+      setLatestResubmitRequest(created);
+      setResubmitReasonInput('');
+    } catch (error) {
+      setResubmitRequestError(getErrorMessage(error, 'Không gửi được yêu cầu — vui lòng thử lại.'));
+    } finally {
+      setIsRequestingResubmit(false);
+    }
+  };
+
   const handleSubmit = async () => {
     if (!projectId || !linkedAssignmentId) return;
 
@@ -709,6 +818,8 @@ export const LabSandboxPage = () => {
         `Đã nộp bài — đạt ${result.autoCheck.passedChecks}/${result.autoCheck.totalChecks} tiêu chí` +
           (result.autoScore != null ? `, điểm tự động: ${result.autoScore}.` : '.')
       );
+      setSubmissionAttempts((prev) => (prev ? { ...prev, count: prev.count + 1 } : prev));
+      reloadResubmitRequests();
       if (projectId) {
         virtualLabHub.submitted(projectId, result.submissionId || 0).catch(() => {});
       }
@@ -991,19 +1102,82 @@ export const LabSandboxPage = () => {
             Sensor Scenario
           </Button>
           {linkedAssignmentId ? (
-          <Button
-            type="button"
-            disabled={isSubmitting}
-            onClick={() => void handleSubmit()}
-            className="bg-amber-500 hover:bg-amber-600 text-white border-0 font-semibold px-6 disabled:opacity-60"
-          >
-            {isSubmitting ? (
-              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-            ) : (
-              <Send className="w-4 h-4 mr-2" />
+          <div className="flex flex-col items-end gap-1">
+            <Button
+              type="button"
+              disabled={isSubmitting || isPastDeadline || isResubmitBlocked}
+              onClick={() => void handleSubmit()}
+              className="bg-amber-500 hover:bg-amber-600 text-white border-0 font-semibold px-6 disabled:opacity-60"
+            >
+              {isSubmitting ? (
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              ) : (
+                <Send className="w-4 h-4 mr-2" />
+              )}
+              {isSubmitting ? 'Đang nộp...' : 'Nộp bài'}
+            </Button>
+            <p className="text-[11px] text-muted-foreground text-right">
+              {assignmentDueDate && (
+                <span className={isPastDeadline ? 'text-destructive font-medium' : ''}>
+                  {isPastDeadline ? 'Đã hết hạn nộp' : `Hạn: ${new Date(assignmentDueDate).toLocaleString('vi-VN')}`}
+                </span>
+              )}
+              {submissionAttempts && submissionAttempts.count > 0 && (
+                <span className="ml-1">
+                  · Lần nộp: {submissionAttempts.count}
+                  {submissionAttempts.resubmitLimit != null ? `/${submissionAttempts.resubmitLimit}` : ''}
+                </span>
+              )}
+            </p>
+            {isResubmitBlocked && !isPastDeadline && (
+              <p className="text-[11px] text-destructive">Đã hết lượt nộp lại cho bài này.</p>
             )}
-            {isSubmitting ? 'Đang nộp...' : 'Nộp bài'}
-          </Button>
+            {(isPastDeadline || isResubmitBlocked) && (
+              <div className="mt-1 w-64 rounded-lg border border-border/60 bg-muted/30 p-2">
+                {latestResubmitRequest?.status === 'pending' ? (
+                  <p className="text-[11px] text-amber-500 font-medium">
+                    Yêu cầu nộp lại đang chờ giáo viên duyệt.
+                  </p>
+                ) : latestResubmitRequest?.status === 'approved' ? (
+                  <p className="text-[11px] text-emerald-500 font-medium">
+                    Yêu cầu đã được duyệt — bạn có thể nộp lại.
+                  </p>
+                ) : (
+                  <>
+                    {latestResubmitRequest?.status === 'rejected' && (
+                      <p className="text-[11px] text-destructive mb-1">
+                        Yêu cầu trước đã bị từ chối
+                        {latestResubmitRequest.reviewNote ? `: ${latestResubmitRequest.reviewNote}` : '.'}
+                      </p>
+                    )}
+                    <Textarea
+                      value={resubmitReasonInput}
+                      onChange={(e) => setResubmitReasonInput(e.target.value)}
+                      placeholder="Lý do xin nộp lại (không bắt buộc)"
+                      className="min-h-[50px] text-xs"
+                      disabled={isRequestingResubmit}
+                    />
+                    {resubmitRequestError && (
+                      <p className="text-[11px] text-destructive mt-1">{resubmitRequestError}</p>
+                    )}
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      disabled={isRequestingResubmit}
+                      onClick={() => void handleRequestResubmit()}
+                      className="mt-1 w-full text-xs"
+                    >
+                      {isRequestingResubmit ? (
+                        <Loader2 className="w-3 h-3 mr-1 animate-spin" />
+                      ) : null}
+                      Yêu cầu nộp lại
+                    </Button>
+                  </>
+                )}
+              </div>
+            )}
+          </div>
         ) : (
           <p className="text-xs text-muted-foreground max-w-[220px] text-right">
             Lab này chưa gắn bài đánh giá — không thể nộp bài.

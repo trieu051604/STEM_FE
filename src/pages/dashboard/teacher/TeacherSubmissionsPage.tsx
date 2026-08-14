@@ -1,8 +1,13 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
+<<<<<<< HEAD
 import { useSearchParams } from 'react-router-dom';
 import { CheckCircle, Clock, User, Search, FileText, AlertCircle, RefreshCw, Eye } from 'lucide-react';
+=======
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import { CheckCircle, Clock, User, Search, FileText, AlertCircle, RefreshCw } from 'lucide-react';
+>>>>>>> 6925b68 (save)
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { gradingApi } from '@/services/dashboardApi';
@@ -14,6 +19,7 @@ import { Pagination } from '@/components/ui/pagination';
 const ITEMS_PER_PAGE = 10;
 
 export default function TeacherSubmissionsPage() {
+  const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const highlightId = searchParams.get('submissionId');
@@ -201,10 +207,11 @@ export default function TeacherSubmissionsPage() {
                 <tr
                   key={submission.id}
                   ref={String(submission.id) === highlightId ? highlightRef : undefined}
+                  onClick={() => navigate(`/dashboard/submissions/${submission.id}`)}
                   className={
                     String(submission.id) === highlightId
-                      ? 'border-b border-border/50 bg-indigo-500/10'
-                      : 'border-b border-border/50 hover:bg-muted/30'
+                      ? 'border-b border-border/50 bg-indigo-500/10 cursor-pointer'
+                      : 'border-b border-border/50 hover:bg-muted/30 cursor-pointer'
                   }
                 >
                   <td className="py-4 px-6">

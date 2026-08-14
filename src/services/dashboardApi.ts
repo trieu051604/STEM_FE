@@ -1968,6 +1968,15 @@ export const labsApi = {
     const response = await api.post(`/labs/${id}/progress/complete`);
     return normalizeLabProgress(response.data);
   },
+  // GET /labs/my-progress — đọc thuần (không mutate), khác startProgress/completeProgress.
+  // Dùng để render trạng thái nhiều lab cùng lúc mà không âm thầm "start" progress cho
+  // lab Student chưa từng mở.
+  getMyProgress: async (classId?: number): Promise<LabProgressResponse[]> => {
+    const response = await api.get('/labs/my-progress', {
+      params: classId ? { classId } : undefined,
+    });
+    return toUnknownArray(unwrapApiData<unknown>(response.data)).map(normalizeLabProgress);
+  },
   getStats: async (id: string): Promise<LabStatsEntity> => {
     const response = await api.get(`/labs/${id}/stats`);
     return normalizeLabStats(unwrapApiData<unknown>(response.data));
@@ -2223,6 +2232,94 @@ export interface SubmissionEntity {
   updatedAt: string;
 }
 
+export interface SubmissionDetailEntity extends SubmissionEntity {
+  attemptNumber: number;
+  feedback: string | null;
+  contentJson: string;
+  autoGradeResultJson: string | null;
+}
+
+export interface SubmissionSnapshot {
+  sessionId: string | null;
+  sourceCode: string;
+  diagramJson: string | null;
+  compileResult: unknown;
+  simulationSummary: {
+    eventCount: number;
+    events: unknown[];
+  } | null;
+}
+
+// Parse SubmissionDetailEntity.contentJson — shape do VirtualLabRuntimeService.SubmitVirtualLabAsync
+// tự dựng lúc submit (xem VirtualLabRuntimeService.cs), KHÔNG phải DTO backend chính thức nên
+// phải parse thủ công + phòng thủ (submission Report/Quiz thường không có shape này).
+export function parseVirtualLabSubmissionSnapshot(contentJson: string): SubmissionSnapshot | null {
+  try {
+    const parsed = JSON.parse(contentJson);
+    const inner = toRecord(parsed?.virtualLabSubmission);
+    if (!inner) return null;
+
+    const diagram = inner.diagram;
+    const simSummary = toRecord(inner.simulationSummary);
+
+    return {
+      sessionId: typeof inner.sessionId === 'string' ? inner.sessionId : null,
+      sourceCode: typeof inner.sourceCode === 'string' ? inner.sourceCode : '',
+      diagramJson: diagram !== undefined ? JSON.stringify(diagram) : null,
+      compileResult: inner.compileResult ?? null,
+      simulationSummary: simSummary
+        ? {
+            eventCount: toNumberValue(pick(simSummary, 'eventCount')),
+            events: toUnknownArray(pick(simSummary, 'events')),
+          }
+        : null,
+    };
+  } catch {
+    return null;
+  }
+}
+
+function normalizeSubmissionDetailEntity(value: unknown): SubmissionDetailEntity {
+  const source = toRecord(value) ?? {};
+  return {
+    ...normalizeSubmissionEntity(value),
+    attemptNumber: toNumberValue(pick(source, 'attemptNumber', 'AttemptNumber'), 1),
+    feedback: (pick(source, 'feedback', 'Feedback') as string | null | undefined) ?? null,
+    contentJson: toStringValue(pick(source, 'contentJson', 'ContentJson'), '{}'),
+    autoGradeResultJson: (pick(source, 'autoGradeResultJson', 'AutoGradeResultJson') as string | null | undefined) ?? null,
+  };
+}
+
+export interface GradeSubmissionPayload {
+  score: number;
+  feedback?: string;
+}
+
+export interface SubmissionCommentEntity {
+  id: number;
+  submissionId: number;
+  authorId: number;
+  authorName: string;
+  authorRole: string;
+  body: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+function normalizeSubmissionComment(value: unknown): SubmissionCommentEntity {
+  const source = toRecord(value) ?? {};
+  return {
+    id: toNumberValue(pick(source, 'id', 'Id')),
+    submissionId: toNumberValue(pick(source, 'submissionId', 'SubmissionId')),
+    authorId: toNumberValue(pick(source, 'authorId', 'AuthorId')),
+    authorName: toStringValue(pick(source, 'authorName', 'AuthorName')),
+    authorRole: toStringValue(pick(source, 'authorRole', 'AuthorRole')),
+    body: toStringValue(pick(source, 'body', 'Body')),
+    createdAt: toStringValue(pick(source, 'createdAt', 'CreatedAt')),
+    updatedAt: toStringValue(pick(source, 'updatedAt', 'UpdatedAt')),
+  };
+}
+
 export interface GetSubmissionsParams {
   assignmentId?: number;
   classId?: number;
@@ -2365,6 +2462,7 @@ export const gradingApi = {
     return normalizeSubmissionsResponse(response.data);
   },
 
+<<<<<<< HEAD
   getSubmissionDetail: async (submissionId: number): Promise<SubmissionDetailResponse> => {
     const response = await api.get(`/Grading/submissions/${submissionId}`);
     return normalizeSubmissionDetailResponse(response.data);
@@ -2376,6 +2474,125 @@ export const gradingApi = {
       feedback,
     });
     return response.data;
+=======
+  // GET /Grading/submissions/{id} — trả full ContentJson (snapshot code/diagram/simulation
+  // tại thời điểm nộp), dùng cho Teacher review VÀ Student xem lại bài của chính mình
+  // (backend tự enforce CanViewSubmission theo JWT — 2 role dùng chung 1 endpoint).
+  getSubmissionDetail: async (submissionId: number): Promise<SubmissionDetailEntity> => {
+    const response = await api.get(`/Grading/submissions/${submissionId}`);
+    return normalizeSubmissionDetailEntity(unwrapApiData<unknown>(response.data));
+  },
+
+  // POST lần đầu (submission.Score == null), PUT khi đã có điểm — GradeSubmissionHandler.cs
+  // throw nếu POST lần 2, nên FE phải tự chọn đúng verb dựa vào submission.score hiện tại.
+  gradeSubmission: async (submissionId: number, payload: GradeSubmissionPayload): Promise<SubmissionDetailEntity> => {
+    const response = await api.post(`/Grading/submissions/${submissionId}/grade`, {
+      score: payload.score,
+      feedback: payload.feedback,
+    });
+    return normalizeSubmissionDetailEntity(unwrapApiData<unknown>(response.data));
+  },
+
+  updateSubmissionGrade: async (submissionId: number, payload: GradeSubmissionPayload): Promise<SubmissionDetailEntity> => {
+    const response = await api.put(`/Grading/submissions/${submissionId}/grade`, {
+      score: payload.score,
+      feedback: payload.feedback,
+    });
+    return normalizeSubmissionDetailEntity(unwrapApiData<unknown>(response.data));
+  },
+
+  getComments: async (submissionId: number): Promise<SubmissionCommentEntity[]> => {
+    const response = await api.get(`/Grading/submissions/${submissionId}/comments`);
+    return toUnknownArray(unwrapApiData<unknown>(response.data)).map(normalizeSubmissionComment);
+  },
+
+  createComment: async (submissionId: number, body: string): Promise<SubmissionCommentEntity> => {
+    const response = await api.post(`/Grading/submissions/${submissionId}/comments`, { body });
+    return normalizeSubmissionComment(unwrapApiData<unknown>(response.data));
+  },
+
+  updateComment: async (submissionId: number, commentId: number, body: string): Promise<SubmissionCommentEntity> => {
+    const response = await api.put(`/Grading/submissions/${submissionId}/comments/${commentId}`, { body });
+    return normalizeSubmissionComment(unwrapApiData<unknown>(response.data));
+  },
+
+  deleteComment: async (submissionId: number, commentId: number): Promise<void> => {
+    await api.delete(`/Grading/submissions/${submissionId}/comments/${commentId}`);
+  },
+};
+
+export type ResubmitRequestStatus = 'pending' | 'approved' | 'rejected';
+
+export interface ResubmitRequestEntity {
+  id: number;
+  assignmentId: number;
+  assignmentTitle: string;
+  classId: number;
+  classCode: string;
+  studentId: number;
+  studentName: string;
+  reason: string | null;
+  status: ResubmitRequestStatus;
+  grantedExtraAttempts: number | null;
+  grantedNewDueDate: string | null;
+  reviewNote: string | null;
+  reviewedById: number | null;
+  reviewedByName: string;
+  reviewedAt: string | null;
+  createdAt: string;
+}
+
+function normalizeResubmitRequest(value: unknown): ResubmitRequestEntity {
+  const source = toRecord(value) ?? {};
+  const status = toStringValue(pick(source, 'status', 'Status')).toLowerCase();
+  return {
+    id: toNumberValue(pick(source, 'id', 'Id')),
+    assignmentId: toNumberValue(pick(source, 'assignmentId', 'AssignmentId')),
+    assignmentTitle: toStringValue(pick(source, 'assignmentTitle', 'AssignmentTitle')),
+    classId: toNumberValue(pick(source, 'classId', 'ClassId')),
+    classCode: toStringValue(pick(source, 'classCode', 'ClassCode')),
+    studentId: toNumberValue(pick(source, 'studentId', 'StudentId')),
+    studentName: toStringValue(pick(source, 'studentName', 'StudentName')),
+    reason: (pick(source, 'reason', 'Reason') as string | null | undefined) ?? null,
+    status: (status === 'approved' || status === 'rejected' ? status : 'pending') as ResubmitRequestStatus,
+    grantedExtraAttempts: toNullableNumber(pick(source, 'grantedExtraAttempts', 'GrantedExtraAttempts')),
+    grantedNewDueDate: (pick(source, 'grantedNewDueDate', 'GrantedNewDueDate') as string | null | undefined) ?? null,
+    reviewNote: (pick(source, 'reviewNote', 'ReviewNote') as string | null | undefined) ?? null,
+    reviewedById: toNullableNumber(pick(source, 'reviewedById', 'ReviewedById')),
+    reviewedByName: toStringValue(pick(source, 'reviewedByName', 'ReviewedByName')),
+    reviewedAt: (pick(source, 'reviewedAt', 'ReviewedAt') as string | null | undefined) ?? null,
+    createdAt: toStringValue(pick(source, 'createdAt', 'CreatedAt')),
+  };
+}
+
+// api/resubmit-requests — Student xin nộp lại khi đã hết ResubmitLimit/quá DueDate;
+// Teacher Approve cấp thêm quyền CHỈ cho đúng student đó (không đổi cấu hình chung
+// của Assignment) — xem ResubmitEligibility.cs (backend) để hiểu effective limit/deadline.
+export const resubmitRequestsApi = {
+  list: async (params?: { assignmentId?: number; status?: ResubmitRequestStatus }): Promise<ResubmitRequestEntity[]> => {
+    const response = await api.get('/resubmit-requests', {
+      params: {
+        ...(params?.assignmentId ? { assignmentId: params.assignmentId } : {}),
+        ...(params?.status ? { status: params.status } : {}),
+      },
+    });
+    return toUnknownArray(unwrapApiData<unknown>(response.data)).map(normalizeResubmitRequest);
+  },
+  create: async (assignmentId: number, reason?: string): Promise<ResubmitRequestEntity> => {
+    const response = await api.post('/resubmit-requests', { assignmentId, reason });
+    return normalizeResubmitRequest(unwrapApiData<unknown>(response.data));
+  },
+  approve: async (
+    id: number,
+    payload: { extraAttempts?: number; newDueDate?: string; note?: string }
+  ): Promise<ResubmitRequestEntity> => {
+    const response = await api.post(`/resubmit-requests/${id}/approve`, payload);
+    return normalizeResubmitRequest(unwrapApiData<unknown>(response.data));
+  },
+  reject: async (id: number, note?: string): Promise<ResubmitRequestEntity> => {
+    const response = await api.post(`/resubmit-requests/${id}/reject`, { note });
+    return normalizeResubmitRequest(unwrapApiData<unknown>(response.data));
+>>>>>>> 6925b68 (save)
   },
 };
 

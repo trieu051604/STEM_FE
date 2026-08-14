@@ -18,6 +18,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { studentApi, StudentAssignment } from '@/services/teacherStudentApi';
+import { gradingApi, SubmissionEntity } from '@/services/dashboardApi';
 import { formatDistanceToNow, format, isAfter, isBefore, parseISO } from 'date-fns';
 import { vi } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
@@ -25,6 +26,16 @@ import { cn } from '@/lib/utils';
 const ITEMS_PER_PAGE = 10;
 
 type FilterStatus = 'all' | 'pending' | 'submitted' | 'graded' | 'overdue';
+
+// AssignmentResponse (GET /assignments/student) không mang Score/Feedback/GradedAt/trạng
+// thái nộp bài (đã audit source thật — DTO chỉ có SubmissionCount, không có nội dung
+// submission) — assignment.score/.status/.feedback từ API đó luôn rỗng dù đã chấm.
+// Nguồn thật cho các field này là GET /Grading/submissions (tự scope theo JWT Student,
+// 1 request duy nhất, không N+1 theo từng assignment) — join client-side theo
+// assignmentId, ưu tiên submission MỚI NHẤT (theo createdAt) nếu có nhiều lần nộp.
+type AssignmentWithSubmission = StudentAssignment & {
+  submission: SubmissionEntity | null;
+};
 
 export default function StudentAssignmentsPage() {
   const navigate = useNavigate();
@@ -47,10 +58,28 @@ export default function StudentAssignmentsPage() {
     placeholderData: (previousData) => previousData,
   });
 
+  // Nguồn thật cho trạng thái nộp/điểm/feedback — xem comment ở AssignmentWithSubmission.
+  const { data: submissionsData } = useQuery({
+    queryKey: ['student-own-submissions'],
+    queryFn: () => gradingApi.getSubmissions({ pageSize: 100 }),
+  });
+
+  const latestSubmissionByAssignment = useMemo(() => {
+    const map = new Map<number, SubmissionEntity>();
+    for (const submission of submissionsData?.items ?? []) {
+      const existing = map.get(submission.assignmentId);
+      if (!existing || new Date(submission.createdAt) > new Date(existing.createdAt)) {
+        map.set(submission.assignmentId, submission);
+      }
+    }
+    return map;
+  }, [submissionsData]);
+
   const assignments = data?.items || [];
   const totalCount = data?.total || 0;
   const totalPages = Math.ceil(totalCount / ITEMS_PER_PAGE);
 
+<<<<<<< HEAD
   // Determine actual status based on due date and submission
   const getAssignmentWithOverdueStatus = (assignment: StudentAssignment): StudentAssignment => {
     if (assignment.status === 'pending' || assignment.status === 'submitted') {
@@ -59,8 +88,29 @@ export default function StudentAssignmentsPage() {
       if (isBefore(dueDate, now)) {
         return { ...assignment, status: 'overdue' as const };
       }
+=======
+  // Trạng thái thật = submission (nếu có) > overdue (quá hạn, chưa nộp) > pending.
+  const getAssignmentWithOverdueStatus = (assignment: StudentAssignment): AssignmentWithSubmission => {
+    const submission = latestSubmissionByAssignment.get(assignment.id) ?? null;
+
+    if (submission) {
+      const realStatus = submission.score != null ? 'graded' : 'submitted';
+      return {
+        ...assignment,
+        status: realStatus,
+        score: submission.score ?? undefined,
+        submission,
+      };
+>>>>>>> 6925b68 (save)
     }
-    return assignment;
+
+    const dueDate = parseISO(assignment.dueDate);
+    const now = new Date();
+    if (isBefore(dueDate, now)) {
+      return { ...assignment, status: 'overdue' as const, score: undefined, submission: null };
+    }
+
+    return { ...assignment, status: 'pending' as const, score: undefined, submission: null };
   };
 
   // Get status badge with improved logic
@@ -104,7 +154,7 @@ export default function StudentAssignmentsPage() {
   // Apply status override for overdue check
   const processedAssignments = useMemo(() => {
     return assignments.map(getAssignmentWithOverdueStatus);
-  }, [assignments]);
+  }, [assignments, latestSubmissionByAssignment]);
 
   // Client-side search filter (in case backend doesn't support search)
   const filteredAssignments = useMemo(() => {
@@ -152,6 +202,7 @@ export default function StudentAssignmentsPage() {
     };
   };
 
+<<<<<<< HEAD
   const getScoreDisplay = (assignment: StudentAssignment) => {
     // Show highest score if available, otherwise show the original score
     const displayScore = assignment.highestScore ?? assignment.score;
@@ -167,6 +218,19 @@ export default function StudentAssignmentsPage() {
               Lần {assignment.lastAttemptNumber}
             </span>
           )}
+=======
+  // Score luôn theo thang 0-100 thật (khớp GradeSubmissionHandler.ValidateRequest ở BE,
+  // không dùng Assignment.MaxScore — field đó không thực sự được backend enforce cho
+  // Submission.Score).
+  const getScoreDisplay = (assignment: AssignmentWithSubmission) => {
+    if (assignment.submission?.score != null) {
+      return (
+        <div className="text-center">
+          <span className="text-lg font-bold text-green-600 dark:text-green-400">
+            {assignment.submission.score}
+          </span>
+          <span className="text-muted-foreground">/100</span>
+>>>>>>> 6925b68 (save)
         </div>
       );
     }
@@ -464,6 +528,7 @@ export default function StudentAssignmentsPage() {
                           {getStatusBadge(assignment)}
                         </td>
                         <td className="py-4 px-4 sm:px-6 text-right">
+<<<<<<< HEAD
                           {(() => {
                             const canSubmit = canSubmitAssignment(assignment);
                             const { text, isDetail } = getSubmitButtonText(assignment);
@@ -488,6 +553,18 @@ export default function StudentAssignmentsPage() {
                               </Link>
                             );
                           })()}
+=======
+                          {assignment.submission ? (
+                            <Link to={`/dashboard/submissions/${assignment.submission.id}`}>
+                              <Button variant="outline" size="sm" className="gap-2">
+                                <CheckCircle className="w-4 h-4" />
+                                <span className="hidden sm:inline">Xem kết quả</span>
+                              </Button>
+                            </Link>
+                          ) : (
+                            <span className="text-xs text-muted-foreground">Chưa nộp</span>
+                          )}
+>>>>>>> 6925b68 (save)
                         </td>
                       </tr>
                     );

@@ -36,7 +36,7 @@ const roleSidebarItems: Record<UserRole, SidebarItem[]> = {
     { label: 'Lớp học', path: '/dashboard/student/classes', icon: 'BookOpen' },
     { label: 'Lịch học', path: '/dashboard/student/schedule', icon: 'Calendar' },
     { label: 'Bài tập', path: '/dashboard/student/assignments', icon: 'ClipboardList' },
-    { label: 'Phòng Lab Ảo', path: '/dashboard/student/virtual-labs', icon: 'FlaskConical' },
+    { label: 'Phòng Lab Ảo', path: '/dashboard/virtual-lab', icon: 'FlaskConical' },
     { label: 'Thông báo', path: '/dashboard/notifications', icon: 'Bell' },
     { label: 'Hồ sơ', path: '/dashboard/profile', icon: 'User' },
   ],

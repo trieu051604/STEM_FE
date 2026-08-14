@@ -538,15 +538,6 @@ const studentApi = {
     return response.data.data;
   },
 
-  // Submit virtual lab project
-  submitVirtualLab: async (labId: number, code: string, description?: string): Promise<void> => {
-    await api.post('/virtual-lab-submissions', { 
-      virtualLabId: labId, 
-      code, 
-      description 
-    });
-  },
-
   // ========== QUIZZES ==========
 
   // Get quizzes for student

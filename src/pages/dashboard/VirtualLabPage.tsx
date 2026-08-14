@@ -434,8 +434,12 @@ export const VirtualLabPage = () => {
   return (
     <div className="space-y-8 pb-12">
       <TeacherPageHeader
-        title="Quản lý Phòng Thí Nghiệm"
-        description="Kiến tạo và điều phối các không gian thực hành STEM chuyên sâu dành cho học sinh."
+        title={canManageLabs ? 'Quản lý Phòng Thí Nghiệm' : 'Phòng Lab Ảo'}
+        description={
+          canManageLabs
+            ? 'Kiến tạo và điều phối các không gian thực hành STEM chuyên sâu dành cho học sinh.'
+            : 'Các phòng lab ảo đã được giáo viên giao cho lớp của bạn.'
+        }
         action={
           canManageLabs && (
             <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto">
@@ -456,7 +460,9 @@ export const VirtualLabPage = () => {
         }
       />
 
-      <LabStatsHeader stats={aggregateStats} loading={isLoading} error={error} />
+      {canManageLabs && (
+        <LabStatsHeader stats={aggregateStats} loading={isLoading} error={error} />
+      )}
 
       <div className="flex items-center justify-end gap-2 text-sm font-semibold text-muted-foreground">
         Sắp xếp theo:

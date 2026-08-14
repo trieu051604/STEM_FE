@@ -5,7 +5,8 @@ import { ArrowLeft, BookOpen, User, Calendar, MapPin, Clock, Play, CheckCircle, 
 import { Button } from '@/components/ui/button';
 import { Icon } from '@/components/ui/Icon';
 import { WeeklyScheduleGrid } from '@/components/WeeklyScheduleGrid';
-import { studentApi, StudentClassDetail, StudentAssignment, StudentVirtualLab } from '@/services/teacherStudentApi';
+import { studentApi, StudentClassDetail, StudentAssignment } from '@/services/teacherStudentApi';
+import { labsApi } from '@/services/dashboardApi';
 import { scheduleApi, type ScheduleResponse } from '@/services/schoolAdminApi';
 import { attendanceApi, type AttendanceRecord, type AttendanceStatus } from '@/services/dashboardApi';
 import { format, formatDistanceToNow } from 'date-fns';
@@ -348,15 +349,43 @@ function ScheduleTab({ classId, classInfo, refreshKey }: { classId: number; clas
 }
 
 // VirtualLabs Tab Component
+//
+// Trước đây gọi studentApi.getVirtualLabs() -> GET /api/VirtualLabs/student — hệ thống
+// Virtual Lab LEGACY, tách biệt hoàn toàn với hệ thống Lab thật (đã xác nhận qua audit:
+// response luôn {totalCount:0,items:[]}). Sidebar "Phòng Lab Ảo" (/dashboard/virtual-lab)
+// đã được vá sang labsApi (GET /api/labs) từ trước — tab này là consumer legacy còn sót
+// lại, giờ đổi sang CÙNG nguồn dữ liệu thật, filter theo classId thay vì gọi lại toàn bộ.
+type LabProgressStatus = 'not_started' | 'in_progress' | 'completed';
+
 function VirtualLabsTab({ classId }: { classId: number }) {
-  const { data: virtualLabs, isLoading } = useQuery({
-    queryKey: ['student-class-virtual-labs', classId],
-    queryFn: () => studentApi.getVirtualLabs({ pageSize: 50, classId }),
+  const { data: labsResponse, isLoading: isLabsLoading } = useQuery({
+    queryKey: ['student-class-labs', classId],
+    queryFn: () => labsApi.getAll({ classId, pageSize: 100 }),
   });
 
-  const labs = virtualLabs?.items || [];
+  // Đọc thuần (không mutate) — xem comment ở labsApi.getMyProgress. Không dùng
+  // startProgress ở đây vì gọi hàng loạt cho cả danh sách sẽ tự "start" progress
+  // cho những lab Student chưa từng mở.
+  const { data: progressList, isLoading: isProgressLoading } = useQuery({
+    queryKey: ['student-class-lab-progress', classId],
+    queryFn: () => labsApi.getMyProgress(classId),
+  });
 
-  const getStatusBadge = (status: string) => {
+  const isLoading = isLabsLoading || isProgressLoading;
+
+  // Phase 7: filter theo classId thật (ID), không dựa vào classCode/title —
+  // phòng trường hợp API sau này không tự scope hết theo query param.
+  const labs = (labsResponse?.items ?? []).filter((lab) => lab.classIds.includes(classId));
+
+  const progressByLabId = new Map(progressList?.map((progress) => [progress.labId, progress]) ?? []);
+
+  const getLabStatus = (labId: string): LabProgressStatus => {
+    const progress = progressByLabId.get(labId);
+    if (!progress) return 'not_started';
+    return progress.completedAt ? 'completed' : 'in_progress';
+  };
+
+  const getStatusBadge = (status: LabProgressStatus) => {
     switch (status) {
       case 'not_started':
         return <span className="px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300">Chưa làm</span>;
@@ -376,6 +405,10 @@ function VirtualLabsTab({ classId }: { classId: number }) {
       </div>
     );
   }
+
+  const notStartedCount = labs.filter((lab) => getLabStatus(lab.id) === 'not_started').length;
+  const inProgressCount = labs.filter((lab) => getLabStatus(lab.id) === 'in_progress').length;
+  const completedCount = labs.filter((lab) => getLabStatus(lab.id) === 'completed').length;
 
   return (
     <div className="space-y-6">
@@ -398,7 +431,7 @@ function VirtualLabsTab({ classId }: { classId: number }) {
               <Cpu className="w-5 h-5 text-gray-600 dark:text-gray-400" />
             </div>
             <div>
-              <p className="text-2xl font-bold">{labs.filter(l => l.status === 'not_started').length}</p>
+              <p className="text-2xl font-bold">{notStartedCount}</p>
               <p className="text-sm text-muted-foreground">Chưa làm</p>
             </div>
           </div>
@@ -409,7 +442,7 @@ function VirtualLabsTab({ classId }: { classId: number }) {
               <Play className="w-5 h-5 text-blue-600 dark:text-blue-400" />
             </div>
             <div>
-              <p className="text-2xl font-bold">{labs.filter(l => l.status === 'in_progress').length}</p>
+              <p className="text-2xl font-bold">{inProgressCount}</p>
               <p className="text-sm text-muted-foreground">Đang làm</p>
             </div>
           </div>
@@ -420,7 +453,7 @@ function VirtualLabsTab({ classId }: { classId: number }) {
               <CheckCircle className="w-5 h-5 text-green-600 dark:text-green-400" />
             </div>
             <div>
-              <p className="text-2xl font-bold">{labs.filter(l => l.status === 'completed').length}</p>
+              <p className="text-2xl font-bold">{completedCount}</p>
               <p className="text-sm text-muted-foreground">Hoàn thành</p>
             </div>
           </div>
@@ -430,42 +463,34 @@ function VirtualLabsTab({ classId }: { classId: number }) {
       {/* Labs Grid */}
       {labs.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {labs.map((lab) => (
-            <div key={lab.id} className="bg-card rounded-xl border border-border overflow-hidden hover:shadow-md transition-shadow">
-              <div className="h-32 bg-gradient-to-br from-purple-500/10 to-blue-500/10 flex items-center justify-center relative">
-                <FlaskConical className="w-12 h-12 text-purple-600 dark:text-purple-400" />
-                <div className="absolute top-3 right-3">
-                  {getStatusBadge(lab.status)}
+          {labs.map((lab) => {
+            const status = getLabStatus(lab.id);
+            return (
+              <div key={lab.id} className="bg-card rounded-xl border border-border overflow-hidden hover:shadow-md transition-shadow">
+                <div className="h-32 bg-gradient-to-br from-purple-500/10 to-blue-500/10 flex items-center justify-center relative">
+                  <FlaskConical className="w-12 h-12 text-purple-600 dark:text-purple-400" />
+                  <div className="absolute top-3 right-3">
+                    {getStatusBadge(status)}
+                  </div>
+                </div>
+                <div className="p-4 space-y-3">
+                  <div>
+                    <h3 className="font-semibold line-clamp-1">{lab.title}</h3>
+                    <p className="text-sm text-muted-foreground line-clamp-2 mt-1">{lab.description}</p>
+                  </div>
+                  {/* Lab-level entity không có "score" — điểm thuộc về Submission,
+                      không phải Lab (xem VIRTUAL_LAB_PLAN Submission workflow). */}
+                  <Link to={`/dashboard/virtual-lab/${lab.id}`} className="block">
+                    <Button className="w-full gap-2" variant={status === 'completed' ? 'outline' : 'default'}>
+                      {status === 'not_started' && <><Cpu className="w-4 h-4" /> Bắt đầu</>}
+                      {status === 'in_progress' && <><Play className="w-4 h-4" /> Tiếp tục</>}
+                      {status === 'completed' && <><CheckCircle className="w-4 h-4" /> Xem lại</>}
+                    </Button>
+                  </Link>
                 </div>
               </div>
-              <div className="p-4 space-y-3">
-                <div>
-                  <h3 className="font-semibold line-clamp-1">{lab.title}</h3>
-                  <p className="text-sm text-muted-foreground line-clamp-2 mt-1">{lab.description}</p>
-                </div>
-                <div className="flex items-center justify-between">
-                  {lab.score !== undefined && (
-                    <span className="text-sm font-medium text-green-600 dark:text-green-400">
-                      Điểm: {lab.score}/100
-                    </span>
-                  )}
-                  {lab.dueDate && (
-                    <span className="text-xs text-muted-foreground flex items-center gap-1">
-                      <Clock className="w-3 h-3" />
-                      {formatDistanceToNow(new Date(lab.dueDate), { addSuffix: true, locale: vi })}
-                    </span>
-                  )}
-                </div>
-                <Link to={`/dashboard/student/simulations/${lab.id}`} className="block">
-                  <Button className="w-full gap-2" variant={lab.status === 'completed' ? 'outline' : 'default'}>
-                    {lab.status === 'not_started' && <><Cpu className="w-4 h-4" /> Bắt đầu</>}
-                    {lab.status === 'in_progress' && <><Play className="w-4 h-4" /> Tiếp tục</>}
-                    {lab.status === 'completed' && <><CheckCircle className="w-4 h-4" /> Xem lại</>}
-                  </Button>
-                </Link>
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       ) : (
         <div className="text-center py-12 bg-card rounded-xl border border-border">

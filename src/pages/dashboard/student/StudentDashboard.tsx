@@ -400,7 +400,7 @@ export function StudentDashboard() {
               Lịch học
             </Button>
           </Link>
-          <Link to="/dashboard/student/virtual-labs">
+          <Link to="/dashboard/virtual-lab">
             <Button variant="outline" className="gap-2">
               <span className="w-4 h-4">🧪</span>
               Virtual Labs

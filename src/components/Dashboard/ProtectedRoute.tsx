@@ -11,6 +11,7 @@ import { LabSandboxPage } from '@/pages/dashboard/LabSandboxPage';
 import { ClassMonitorPage } from '@/pages/dashboard/ClassMonitorPage';
 import { AttendancePage } from '@/pages/dashboard/AttendancePage';
 import { NotificationsPage } from '@/pages/dashboard/NotificationsPage';
+import SubmissionDetailPage from '@/pages/dashboard/SubmissionDetailPage';
 import { StudentDashboard } from '@/pages/dashboard/student/StudentDashboard';
 import TeacherClassesPage from '@/pages/dashboard/teacher/TeacherClassesPage';
 import TeacherAssignmentsPage from '@/pages/dashboard/teacher/TeacherAssignmentsPage';
@@ -23,7 +24,6 @@ import StudentClassDetailPage from '@/pages/dashboard/student/StudentClassDetail
 import StudentSchedulePage from '@/pages/dashboard/student/StudentSchedulePage';
 import StudentSimulationsPage from '@/pages/dashboard/student/StudentSimulationsPage';
 import StudentProfilePage from '@/pages/dashboard/student/StudentProfilePage';
-import StudentAllVirtualLabsPage from '@/pages/dashboard/student/StudentAllVirtualLabsPage';
 import { TeacherSchedulePage } from '@/pages/dashboard/teacher/TeacherSchedulePage';
 import { TeacherSessionAttendance } from '@/pages/dashboard/teacher/TeacherSessionAttendance';
 import {
@@ -137,7 +137,11 @@ export const dashboardRoutes = [
       { path: 'teacher/assignments', element: <TeacherAssignmentsPage /> },
       { path: 'teacher/assignments/:id', element: <TeacherAssignmentsPage /> },
       { path: 'teacher/submissions', element: <TeacherSubmissionsPage /> },
+<<<<<<< HEAD
       { path: 'teacher/submissions/:id/grade', element: <TeacherGradeSubmissionPage /> },
+=======
+      { path: 'submissions/:submissionId', element: <SubmissionDetailPage /> },
+>>>>>>> 6925b68 (save)
       { path: 'teacher/schedule', element: <TeacherSchedulePage /> },
       { path: 'teacher/schedule/attendance', element: <TeacherSessionAttendance /> },
       { path: 'student/classes', element: <StudentClassesPage /> },
@@ -148,7 +152,12 @@ export const dashboardRoutes = [
       { path: 'student/schedule', element: <StudentSchedulePage /> },
       { path: 'student/simulations', element: <StudentSimulationsPage /> },
       { path: 'student/simulations/:id', element: <StudentSimulationsPage /> },
-      { path: 'student/virtual-labs', element: <StudentAllVirtualLabsPage /> },
+      // Legacy entry point — StudentAllVirtualLabsPage called the disconnected
+      // legacy VirtualLabs system (/api/VirtualLabs/student, always empty). The
+      // real Lab system (Teacher publish flow + Student Sandbox) lives at
+      // /dashboard/virtual-lab. Redirect instead of deleting the route so old
+      // bookmarks/links still land somewhere useful.
+      { path: 'student/virtual-labs', element: <Navigate to="/dashboard/virtual-lab" replace /> },
       { path: 'student/profile', element: <StudentProfilePage /> },
       // Login History (School Admin)
       { 

@@ -79,16 +79,6 @@ export default function StudentAssignmentsPage() {
   const totalCount = data?.total || 0;
   const totalPages = Math.ceil(totalCount / ITEMS_PER_PAGE);
 
-<<<<<<< HEAD
-  // Determine actual status based on due date and submission
-  const getAssignmentWithOverdueStatus = (assignment: StudentAssignment): StudentAssignment => {
-    if (assignment.status === 'pending' || assignment.status === 'submitted') {
-      const dueDate = parseISO(assignment.dueDate);
-      const now = new Date();
-      if (isBefore(dueDate, now)) {
-        return { ...assignment, status: 'overdue' as const };
-      }
-=======
   // Trạng thái thật = submission (nếu có) > overdue (quá hạn, chưa nộp) > pending.
   const getAssignmentWithOverdueStatus = (assignment: StudentAssignment): AssignmentWithSubmission => {
     const submission = latestSubmissionByAssignment.get(assignment.id) ?? null;
@@ -101,7 +91,6 @@ export default function StudentAssignmentsPage() {
         score: submission.score ?? undefined,
         submission,
       };
->>>>>>> 6925b68 (save)
     }
 
     const dueDate = parseISO(assignment.dueDate);
@@ -202,26 +191,6 @@ export default function StudentAssignmentsPage() {
     };
   };
 
-<<<<<<< HEAD
-  const getScoreDisplay = (assignment: StudentAssignment) => {
-    // Show highest score if available, otherwise show the original score
-    const displayScore = assignment.highestScore ?? assignment.score;
-    if (displayScore !== undefined && displayScore !== null) {
-      return (
-        <div className="text-center">
-          <span className="text-lg font-bold text-green-600 dark:text-green-400">
-            {displayScore}
-          </span>
-          <span className="text-muted-foreground">/{assignment.maxScore}</span>
-          {assignment.lastAttemptNumber && assignment.lastAttemptNumber > 1 && (
-            <span className="block text-xs text-muted-foreground">
-              Lần {assignment.lastAttemptNumber}
-            </span>
-          )}
-=======
-  // Score luôn theo thang 0-100 thật (khớp GradeSubmissionHandler.ValidateRequest ở BE,
-  // không dùng Assignment.MaxScore — field đó không thực sự được backend enforce cho
-  // Submission.Score).
   const getScoreDisplay = (assignment: AssignmentWithSubmission) => {
     if (assignment.submission?.score != null) {
       return (
@@ -230,7 +199,11 @@ export default function StudentAssignmentsPage() {
             {assignment.submission.score}
           </span>
           <span className="text-muted-foreground">/100</span>
->>>>>>> 6925b68 (save)
+          {assignment.submission.attemptNumber && assignment.submission.attemptNumber > 1 && (
+            <span className="block text-xs text-muted-foreground">
+              Lần {assignment.submission.attemptNumber}
+            </span>
+          )}
         </div>
       );
     }
@@ -528,15 +501,25 @@ export default function StudentAssignmentsPage() {
                           {getStatusBadge(assignment)}
                         </td>
                         <td className="py-4 px-4 sm:px-6 text-right">
-<<<<<<< HEAD
                           {(() => {
                             const canSubmit = canSubmitAssignment(assignment);
                             const { text, isDetail } = getSubmitButtonText(assignment);
-                            
+
+                            if (assignment.submission) {
+                              return (
+                                <Link to={`/dashboard/submissions/${assignment.submission.id}`}>
+                                  <Button variant="outline" size="sm" className="gap-2">
+                                    <CheckCircle className="w-4 h-4" />
+                                    <span className="hidden sm:inline">Xem kết quả</span>
+                                  </Button>
+                                </Link>
+                              );
+                            }
+
                             return (
                               <Link to={`/dashboard/student/assignments/${assignment.id}/submit`}>
-                                <Button 
-                                  size="sm" 
+                                <Button
+                                  size="sm"
                                   variant={isDetail ? 'outline' : 'default'}
                                   disabled={!canSubmit}
                                   className={cn(!canSubmit && 'opacity-50 cursor-not-allowed')}
@@ -553,18 +536,6 @@ export default function StudentAssignmentsPage() {
                               </Link>
                             );
                           })()}
-=======
-                          {assignment.submission ? (
-                            <Link to={`/dashboard/submissions/${assignment.submission.id}`}>
-                              <Button variant="outline" size="sm" className="gap-2">
-                                <CheckCircle className="w-4 h-4" />
-                                <span className="hidden sm:inline">Xem kết quả</span>
-                              </Button>
-                            </Link>
-                          ) : (
-                            <span className="text-xs text-muted-foreground">Chưa nộp</span>
-                          )}
->>>>>>> 6925b68 (save)
                         </td>
                       </tr>
                     );

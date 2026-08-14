@@ -137,11 +137,8 @@ export const dashboardRoutes = [
       { path: 'teacher/assignments', element: <TeacherAssignmentsPage /> },
       { path: 'teacher/assignments/:id', element: <TeacherAssignmentsPage /> },
       { path: 'teacher/submissions', element: <TeacherSubmissionsPage /> },
-<<<<<<< HEAD
       { path: 'teacher/submissions/:id/grade', element: <TeacherGradeSubmissionPage /> },
-=======
       { path: 'submissions/:submissionId', element: <SubmissionDetailPage /> },
->>>>>>> 6925b68 (save)
       { path: 'teacher/schedule', element: <TeacherSchedulePage /> },
       { path: 'teacher/schedule/attendance', element: <TeacherSessionAttendance /> },
       { path: 'student/classes', element: <StudentClassesPage /> },

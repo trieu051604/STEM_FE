@@ -2462,19 +2462,6 @@ export const gradingApi = {
     return normalizeSubmissionsResponse(response.data);
   },
 
-<<<<<<< HEAD
-  getSubmissionDetail: async (submissionId: number): Promise<SubmissionDetailResponse> => {
-    const response = await api.get(`/Grading/submissions/${submissionId}`);
-    return normalizeSubmissionDetailResponse(response.data);
-  },
-
-  gradeSubmission: async (submissionId: number, score: number, feedback?: string): Promise<any> => {
-    const response = await api.post(`/Grading/submissions/${submissionId}/grade`, {
-      score,
-      feedback,
-    });
-    return response.data;
-=======
   // GET /Grading/submissions/{id} — trả full ContentJson (snapshot code/diagram/simulation
   // tại thời điểm nộp), dùng cho Teacher review VÀ Student xem lại bài của chính mình
   // (backend tự enforce CanViewSubmission theo JWT — 2 role dùng chung 1 endpoint).
@@ -2592,7 +2579,6 @@ export const resubmitRequestsApi = {
   reject: async (id: number, note?: string): Promise<ResubmitRequestEntity> => {
     const response = await api.post(`/resubmit-requests/${id}/reject`, { note });
     return normalizeResubmitRequest(unwrapApiData<unknown>(response.data));
->>>>>>> 6925b68 (save)
   },
 };
 

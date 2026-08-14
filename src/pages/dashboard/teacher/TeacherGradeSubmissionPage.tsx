@@ -24,7 +24,7 @@ export default function TeacherGradeSubmissionPage() {
 
   const gradeMutation = useMutation({
     mutationFn: ({ score, feedback }: { score: number; feedback?: string }) =>
-      gradingApi.gradeSubmission(submissionId, score, feedback),
+      gradingApi.gradeSubmission(submissionId, { score, feedback }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['submission-detail', submissionId] });
       queryClient.invalidateQueries({ queryKey: ['teacher-grading-submissions'] });

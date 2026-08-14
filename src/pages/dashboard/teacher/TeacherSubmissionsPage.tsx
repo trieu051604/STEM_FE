@@ -1,13 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
-<<<<<<< HEAD
-import { useSearchParams } from 'react-router-dom';
-import { CheckCircle, Clock, User, Search, FileText, AlertCircle, RefreshCw, Eye } from 'lucide-react';
-=======
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { CheckCircle, Clock, User, Search, FileText, AlertCircle, RefreshCw } from 'lucide-react';
->>>>>>> 6925b68 (save)
+import { useQuery } from '@tanstack/react-query';
+import { CheckCircle, Clock, User, Search, FileText, AlertCircle, RefreshCw, Eye } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { gradingApi } from '@/services/dashboardApi';
@@ -21,7 +15,6 @@ const ITEMS_PER_PAGE = 10;
 export default function TeacherSubmissionsPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const navigate = useNavigate();
   const highlightId = searchParams.get('submissionId');
   const highlightRef = useRef<HTMLTableRowElement | null>(null);
 

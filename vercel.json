@@ -1,5 +1,8 @@
 {
   "rewrites": [
-    { "source": "/(.*)", "destination": "/index.html" }
+    {
+      "source": "/backend/:path*",
+      "destination": "http://34.21.246.26/:path*"
+    }
   ]
 }

@@ -55,7 +55,7 @@ export const SimulationAssignmentForm: React.FC<SimulationAssignmentFormProps> =
   onSave,
   onCancel,
 }) => {
-  const [basics, setBasics] = useState(createDefaultAssignmentBasics);
+  const [basics, setBasics] = useState(createDefaultAssignmentBasics());
   const [studentMode, setStudentMode] = useState<'code_only' | 'circuit_build'>('code_only');
   const [selectedComponentIds, setSelectedComponentIds] = useState<string[]>([]);
   const [scenarios, setScenarios] = useState<TestScenario[]>([]);

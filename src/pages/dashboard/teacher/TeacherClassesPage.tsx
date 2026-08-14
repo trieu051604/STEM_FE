@@ -60,7 +60,7 @@ export default function TeacherClassesPage() {
 
       {/* Classes Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {displayClasses.map((cls) => (
+        {classes.map((cls) => (
           <TeacherCard key={cls.id} className="space-y-4">
             <div className="flex items-start justify-between">
               <div className="w-12 h-12 rounded-lg bg-indigo-500/10 flex items-center justify-center">

@@ -26,6 +26,7 @@ interface MySubmission {
   maxScore: number;
   contentJson?: string;
   feedback?: string;
+  fileUrl?: string;
 }
 
 interface ReviewQuizSubmissionProps {

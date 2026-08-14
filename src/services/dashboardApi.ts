@@ -2232,11 +2232,19 @@ export interface SubmissionEntity {
   updatedAt: string;
 }
 
+export interface RubricCriterionEntity {
+  name: string;
+  maxPoints: number;
+  description?: string;
+}
+
 export interface SubmissionDetailEntity extends SubmissionEntity {
   attemptNumber: number;
   feedback: string | null;
   contentJson: string;
   autoGradeResultJson: string | null;
+  maxScore: number;
+  rubricCriteria?: RubricCriterionEntity[];
 }
 
 export interface SubmissionSnapshot {
@@ -2287,7 +2295,22 @@ function normalizeSubmissionDetailEntity(value: unknown): SubmissionDetailEntity
     feedback: (pick(source, 'feedback', 'Feedback') as string | null | undefined) ?? null,
     contentJson: toStringValue(pick(source, 'contentJson', 'ContentJson'), '{}'),
     autoGradeResultJson: (pick(source, 'autoGradeResultJson', 'AutoGradeResultJson') as string | null | undefined) ?? null,
+    maxScore: toNumberValue(pick(source, 'maxScore', 'MaxScore'), 100),
+    rubricCriteria: normalizeRubricCriteriaToEntity(pick(source, 'rubricCriteria', 'RubricCriteria')),
   };
+}
+
+function normalizeRubricCriteriaToEntity(value: unknown): RubricCriterionEntity[] | undefined {
+  const arr = toUnknownArray(value);
+  if (!arr.length) return undefined;
+  return arr.map(item => {
+    const s = toRecord(item) ?? {};
+    return {
+      name: toStringValue(pick(s, 'name', 'Name'), ''),
+      maxPoints: toNumberValue(pick(s, 'maxPoints', 'MaxPoints'), 0),
+      description: toStringValue(pick(s, 'description', 'Description'), undefined),
+    };
+  });
 }
 
 export interface GradeSubmissionPayload {

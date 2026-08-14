@@ -615,8 +615,8 @@ export interface ScheduleResponse {
   className: string;
   startTime: string;
   endTime: string;
-  createdAt: string;
-  updatedAt: string;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface CreateScheduleRequest {

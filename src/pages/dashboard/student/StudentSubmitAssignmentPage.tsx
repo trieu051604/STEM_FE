@@ -432,8 +432,8 @@ export default function StudentSubmitAssignmentPage() {
             className="prose prose-sm dark:prose-invert max-w-none text-muted-foreground [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5 [&_li]:my-1 [&_code]:bg-muted [&_code]:px-1 [&_code]:py-0.5 [&_code]:rounded"
             dangerouslySetInnerHTML={{
               __html: assignment.assignmentType === 'text_report'
-                ? (assignment.description || assignment.reportDetail?.instructions)
-                : assignment.description
+                ? (assignment.description || assignment.reportDetail?.instructions || '')
+                : (assignment.description || '')
             }}
           />
         </div>

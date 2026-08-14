@@ -11,7 +11,9 @@ import {
   createDefaultAssignmentBasics,
   toAssignmentDueDate,
   type AssignmentClassOption,
+  type AssignmentBasicsValue,
 } from './AssignmentFormFields';
+import type { AssignmentStatus } from '@/services/dashboardApi';
 
 interface ReportAssignmentFormProps {
   classOptions?: AssignmentClassOption[];
@@ -54,7 +56,7 @@ export const ReportAssignmentForm: React.FC<ReportAssignmentFormProps> = ({
   initialData,
 }) => {
   // Initialize from initialData if provided (for edit mode)
-  const [basics, setBasics] = useState(() => {
+  const [basics, setBasics] = useState<AssignmentBasicsValue>(() => {
     if (initialData) {
       return {
         classId: initialData.classId ? String(initialData.classId) : '',
@@ -63,11 +65,11 @@ export const ReportAssignmentForm: React.FC<ReportAssignmentFormProps> = ({
         dueDate: initialData.dueDate ?? '',
         maxScore: initialData.maxScore ?? 100,
         allowResubmit: initialData.allowResubmit ?? false,
-        resubmitLimit: initialData.resubmitLimit ?? undefined,
-        status: initialData.status ?? 'draft',
+        resubmitLimit: initialData.resubmitLimit != null ? String(initialData.resubmitLimit) : '',
+        status: (initialData.status ?? 'draft') as AssignmentStatus,
       };
     }
-    return createDefaultAssignmentBasics;
+    return createDefaultAssignmentBasics();
   });
 
   // Separate detailed instructions field
@@ -143,7 +145,7 @@ export const ReportAssignmentForm: React.FC<ReportAssignmentFormProps> = ({
       allowResubmit: basics.allowResubmit,
       resubmitLimit:
         basics.allowResubmit && basics.resubmitLimit ? Number(basics.resubmitLimit) : null,
-      status: basics.status,
+      status: basics.status as 'draft' | 'published' | 'closed',
       rubricId: rubricId,
       rubricCriteria: rubric.length > 0 ? rubric.map(c => ({
         name: c.name,

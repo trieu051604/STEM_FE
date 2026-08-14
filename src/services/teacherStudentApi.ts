@@ -181,6 +181,7 @@ export interface StudentAssignment {
   className: string;
   classId?: number;
   dueDate: string;
+  assignmentType?: 'quiz' | 'text_report' | 'practical_simulation';
   status: 'pending' | 'submitted' | 'graded' | 'overdue';
   score?: number;
   maxScore: number;
@@ -188,6 +189,13 @@ export interface StudentAssignment {
   submissionContent?: string;
   submittedAt?: string;
   feedback?: string;
+  // Submission tracking
+  hasSubmitted?: boolean;
+  highestScore?: number;
+  lastAttemptNumber?: number;
+  canResubmit?: boolean;
+  allowResubmit?: boolean;
+  resubmitLimit?: number;
 }
 
 export interface StudentCourse {
@@ -374,13 +382,34 @@ const studentApi = {
     pageSize: number;
   }> => {
     const response = await api.get('/assignments/student', { params });
-    return response.data.data || { items: [], total: 0, page: 1, pageSize: 10 };
-  },
-
-  // Get assignment detail
-  getAssignmentDetail: async (assignmentId: number): Promise<StudentAssignment> => {
-    const response = await api.get(`/assignments/${assignmentId}`);
-    return response.data.data;
+    const data = response.data.data;
+    console.log('[DEBUG] Assignments response:', data);
+    
+    // Map backend response to frontend interface
+    const items: StudentAssignment[] = (data?.items || []).map((item: any) => ({
+      id: item.id,
+      title: item.title,
+      className: item.classCode || item.courseTitle || 'Chưa gán lớp',
+      classId: item.classId,
+      dueDate: item.dueDate,
+      status: item.status?.toLowerCase() || 'pending',
+      score: item.score,
+      maxScore: item.maxScore,
+      description: item.description,
+      hasSubmitted: item.hasSubmitted,
+      highestScore: item.highestScore,
+      lastAttemptNumber: item.lastAttemptNumber,
+      canResubmit: item.canResubmit,
+      allowResubmit: item.allowResubmit,
+      resubmitLimit: item.resubmitLimit,
+    }));
+    
+    return {
+      items,
+      total: data?.totalCount || 0,
+      page: data?.pageNumber || 1,
+      pageSize: data?.pageSize || 10,
+    };
   },
 
   // Submit assignment
@@ -541,6 +570,129 @@ const studentApi = {
   submitQuiz: async (quizId: number, answers: { questionId: number; answer: number }[]): Promise<{ score: number; maxScore: number }> => {
     const response = await api.post(`/quizzes/${quizId}/submit`, { answers });
     return response.data.data;
+  },
+
+  // ========== ASSIGNMENT SUBMISSIONS ==========
+
+  // Get assignment detail (full with quiz questions for students)
+  getAssignmentDetailWithQuiz: async (assignmentId: number): Promise<any> => {
+    const response = await api.get(`/assignments/${assignmentId}`);
+    return response.data.data;
+  },
+
+  // Submit quiz assignment
+  submitQuizAssignment: async (assignmentId: number, answers: { questionId: string; answer: any }[]): Promise<{
+    submissionId: number;
+    attemptNumber: number;
+    score: number;
+    maxScore: number;
+    correctCount: number;
+    totalQuestions: number;
+    isAutoGraded: boolean;
+    results: { questionId: string; isCorrect: boolean; studentAnswer: any; correctAnswer: any }[];
+  }> => {
+    const response = await api.post(`/assignments/${assignmentId}/submit-quiz`, { answers });
+    return response.data.data;
+  },
+
+  // Submit report assignment
+  submitReportAssignment: async (assignmentId: number, data: { content?: string; fileId?: number; fileUrl?: string }): Promise<{
+    submissionId: number;
+    attemptNumber: number;
+    status: string;
+    submittedAt: string;
+  }> => {
+    const response = await api.post(`/assignments/${assignmentId}/submit-report`, data);
+    return response.data.data;
+  },
+
+  // Upload file for assignments
+  uploadFile: async (file: File, type: string = 'general'): Promise<{
+    success: boolean;
+    url: string;
+    fileName: string;
+    originalName: string;
+    fileId?: number;
+    message: string;
+  }> => {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('type', type);
+
+    // Use the appropriate endpoint based on type
+    const endpoint = type === 'submissions' ? '/upload/assignment' : '/upload';
+
+    const response = await api.post(endpoint, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+    return response.data;
+  },
+
+  // Submit simulation assignment
+  submitSimulationAssignment: async (assignmentId: number, data: { circuit?: any; code?: string; description?: string }): Promise<{
+    submissionId: number;
+    attemptNumber: number;
+    score: number;
+    maxScore: number;
+    isCorrect: boolean;
+    validationMessage: string;
+    isAutoGraded: boolean;
+  }> => {
+    const response = await api.post(`/assignments/${assignmentId}/submit-simulation`, data);
+    return response.data.data;
+  },
+
+  // Get my submission for an assignment
+  getMySubmission: async (assignmentId: number): Promise<{
+    submissionId: number;
+    assignmentId: number;
+    assignmentTitle: string;
+    assignmentType: string;
+    status: string;
+    attemptNumber: number;
+    score?: number;
+    maxScore: number;
+    contentJson?: string;
+    fileId?: number;
+    fileUrl?: string;
+    feedback?: string;
+    gradedAt?: string;
+    submittedAt: string;
+    canResubmit: boolean;
+    remainingAttempts?: number;
+  } | null> => {
+    try {
+      const response = await api.get(`/assignments/${assignmentId}/my-submission`);
+      return response.data.data;
+    } catch (error: any) {
+      if (error?.response?.status === 404) {
+        return null;
+      }
+      throw error;
+    }
+  },
+
+  // Get all my submissions (paged)
+  getMySubmissions: async (params?: { pageNumber?: number; pageSize?: number; assignmentId?: number }): Promise<{
+    items: {
+      submissionId: number;
+      assignmentId: number;
+      assignmentTitle: string;
+      assignmentType: string;
+      status: string;
+      attemptNumber: number;
+      score?: number;
+      maxScore: number;
+      submittedAt: string;
+    }[];
+    totalCount: number;
+    pageNumber: number;
+    pageSize: number;
+  }> => {
+    const response = await api.get('/assignments/my-submissions', { params });
+    return response.data.data || { items: [], totalCount: 0, pageNumber: 1, pageSize: 20 };
   },
 
   // ========== PROFILE ==========

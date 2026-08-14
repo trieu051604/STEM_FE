@@ -820,7 +820,10 @@ export const LabSandboxPage = () => {
         break;
       }
       case 'add_component': {
-        if (change.component?.type) {
+        const isSupportedComponentType = change.component?.type
+          ? componentGlueRegistry.some((entry) => entry.componentType === change.component!.type)
+          : false;
+        if (change.component?.type && isSupportedComponentType) {
           const newPart: LabCircuitComponent = {
             id: change.component.id || `${change.component.type}-${Date.now()}`,
             type: change.component.type,
@@ -856,7 +859,7 @@ export const LabSandboxPage = () => {
       default:
         break;
     }
-  }, [code, sandboxComponents, sandboxConnections]);
+  }, [code, sandboxComponents, sandboxConnections, componentGlueRegistry]);
 
   const handleUndoAiChange = useCallback(() => {
     const snapshot = aiUndoSnapshotRef.current;

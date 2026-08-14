@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/Switch';
 import { RubricEditor, RubricCriteria } from './RubricEditor';
 import { RefreshCw } from 'lucide-react';
@@ -21,6 +22,24 @@ interface ReportAssignmentFormProps {
   error?: string | null;
   onSave?: (request: CreateAssignmentRequest) => Promise<void> | void;
   onCancel?: () => void;
+  initialData?: {
+    title?: string;
+    classId?: number;
+    description?: string;
+    dueDate?: string;
+    maxScore?: number;
+    allowResubmit?: boolean;
+    resubmitLimit?: number | null;
+    status?: string;
+    rubricId?: number | null;
+    rubricCriteria?: { name: string; maxPoints: number; description?: string }[];
+    reportDetail?: {
+      instructions?: string;
+      allowedSubmissionTypes?: string[];
+      allowedFileExtensions?: string[];
+      maxFileSizeMb?: number;
+    };
+  };
 }
 
 export const ReportAssignmentForm: React.FC<ReportAssignmentFormProps> = ({
@@ -32,19 +51,57 @@ export const ReportAssignmentForm: React.FC<ReportAssignmentFormProps> = ({
   error,
   onSave,
   onCancel,
+  initialData,
 }) => {
-  const [basics, setBasics] = useState(createDefaultAssignmentBasics);
-  const [allowFile, setAllowFile] = useState(true);
-  const [allowVideo, setAllowVideo] = useState(false);
-  const [allowedExtensions, setAllowedExtensions] = useState('.pdf,.doc,.docx,.ppt,.pptx,.xlsx,.zip');
-  const [maxSize, setMaxSize] = useState(10); // MB
-  const [rubric, setRubric] = useState<RubricCriteria[]>([]);
+  // Initialize from initialData if provided (for edit mode)
+  const [basics, setBasics] = useState(() => {
+    if (initialData) {
+      return {
+        classId: initialData.classId ? String(initialData.classId) : '',
+        title: initialData.title ?? '',
+        description: initialData.description ?? '',
+        dueDate: initialData.dueDate ?? '',
+        maxScore: initialData.maxScore ?? 100,
+        allowResubmit: initialData.allowResubmit ?? false,
+        resubmitLimit: initialData.resubmitLimit ?? undefined,
+        status: initialData.status ?? 'draft',
+      };
+    }
+    return createDefaultAssignmentBasics;
+  });
+
+  // Separate detailed instructions field
+  const [instructions, setInstructions] = useState(
+    initialData?.reportDetail?.instructions ?? initialData?.description ?? ''
+  );
+
+  const [allowFile, setAllowFile] = useState(
+    initialData?.reportDetail?.allowedSubmissionTypes?.includes('file') ?? true
+  );
+  const [allowVideo, setAllowVideo] = useState(
+    initialData?.reportDetail?.allowedSubmissionTypes?.includes('video') ?? false
+  );
+  const [allowedExtensions, setAllowedExtensions] = useState(
+    initialData?.reportDetail?.allowedFileExtensions?.join(',') ?? '.pdf,.doc,.docx,.ppt,.pptx,.xlsx,.zip'
+  );
+  const [maxSize, setMaxSize] = useState(initialData?.reportDetail?.maxFileSizeMb ?? 10);
+  const [rubric, setRubric] = useState<RubricCriteria[]>(() => {
+    if (initialData?.rubricCriteria && initialData.rubricCriteria.length > 0) {
+      return initialData.rubricCriteria.map((c, index) => ({
+        id: String(index + 1),
+        name: c.name,
+        maxPoints: c.maxPoints,
+        description: c.description,
+      }));
+    }
+    return [];
+  });
+  const [rubricId, setRubricId] = useState<number | null>(initialData?.rubricId ?? null);
   const [localError, setLocalError] = useState<string | null>(null);
 
   const handleSave = async () => {
     const classId = Number(basics.classId);
     const title = basics.title.trim();
-    const instructions = basics.description.trim();
     const submissionTypes = [
       ...(allowFile ? ['file'] : []),
       ...(allowVideo ? ['video'] : []),
@@ -64,8 +121,8 @@ export const ReportAssignmentForm: React.FC<ReportAssignmentFormProps> = ({
       return;
     }
 
-    if (!instructions) {
-      setLocalError('Vui lòng nhập đề bài hoặc hướng dẫn nộp báo cáo.');
+    if (!instructions.trim()) {
+      setLocalError('Vui lòng nhập hướng dẫn chi tiết.');
       return;
     }
 
@@ -79,7 +136,7 @@ export const ReportAssignmentForm: React.FC<ReportAssignmentFormProps> = ({
     await onSave?.({
       classId,
       title,
-      description: instructions,
+      description: basics.description.trim(),
       assignmentType: 'text_report',
       dueDate: toAssignmentDueDate(basics.dueDate),
       maxScore: Number.isFinite(basics.maxScore) && basics.maxScore > 0 ? basics.maxScore : 100,
@@ -87,8 +144,14 @@ export const ReportAssignmentForm: React.FC<ReportAssignmentFormProps> = ({
       resubmitLimit:
         basics.allowResubmit && basics.resubmitLimit ? Number(basics.resubmitLimit) : null,
       status: basics.status,
+      rubricId: rubricId,
+      rubricCriteria: rubric.length > 0 ? rubric.map(c => ({
+        name: c.name,
+        maxPoints: c.maxPoints,
+        description: c.description,
+      })) : undefined,
       reportDetail: {
-        instructions,
+        instructions: instructions.trim(),
         allowedSubmissionTypes: submissionTypes,
         allowedFileExtensions: fileExtensions,
         maxFileSizeMb: Number.isFinite(maxSize) && maxSize > 0 ? maxSize : 50,
@@ -100,7 +163,7 @@ export const ReportAssignmentForm: React.FC<ReportAssignmentFormProps> = ({
     <div className="space-y-6">
       <div className="flex justify-between items-center mb-6">
         <div>
-          <h2 className="text-xl font-bold text-foreground">Tạo Bài tập Báo cáo</h2>
+          <h2 className="text-xl font-bold text-foreground">{initialData ? 'Chỉnh sửa Bài tập Báo cáo' : 'Tạo Bài tập Báo cáo'}</h2>
           <p className="text-sm text-muted-foreground">Giáo viên chấm điểm dựa trên file nộp và tiêu chí.</p>
         </div>
         <div className="flex gap-3">
@@ -127,9 +190,24 @@ export const ReportAssignmentForm: React.FC<ReportAssignmentFormProps> = ({
           isClassesLoading={isClassesLoading}
           classesError={classesError}
           onRetryClasses={onRetryClasses}
-          descriptionLabel="Đề bài / Hướng dẫn chi tiết"
-          descriptionPlaceholder="Nhập yêu cầu bài tập báo cáo..."
+          descriptionLabel="Mô tả ngắn"
+          descriptionPlaceholder="Nhập mô tả ngắn về bài tập..."
         />
+
+        <div className="rounded-xl border border-border p-5">
+          <label className="text-sm font-medium text-foreground block mb-2">
+            Hướng dẫn chi tiết <span className="text-destructive">*</span>
+          </label>
+          <p className="text-xs text-muted-foreground mb-3">
+            Nội dung này sẽ hiển thị cho sinh viên khi nộp bài
+          </p>
+          <Textarea
+            value={instructions}
+            onChange={(e) => setInstructions(e.target.value)}
+            placeholder="Nhập hướng dẫn chi tiết bài tập báo cáo (yêu cầu, nội dung, tiêu chí đánh giá...)"
+            className="min-h-[200px] whitespace-pre-wrap"
+          />
+        </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-5 bg-muted/30 rounded-xl border border-border">
           <div>

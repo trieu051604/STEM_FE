@@ -15,8 +15,10 @@ import { StudentDashboard } from '@/pages/dashboard/student/StudentDashboard';
 import TeacherClassesPage from '@/pages/dashboard/teacher/TeacherClassesPage';
 import TeacherAssignmentsPage from '@/pages/dashboard/teacher/TeacherAssignmentsPage';
 import TeacherSubmissionsPage from '@/pages/dashboard/teacher/TeacherSubmissionsPage';
+import TeacherGradeSubmissionPage from '@/pages/dashboard/teacher/TeacherGradeSubmissionPage';
 import StudentClassesPage from '@/pages/dashboard/student/StudentClassesPage';
 import StudentAssignmentsPage from '@/pages/dashboard/student/StudentAssignmentsPage';
+import StudentSubmitAssignmentPage from '@/pages/dashboard/student/StudentSubmitAssignmentPage';
 import StudentClassDetailPage from '@/pages/dashboard/student/StudentClassDetailPage';
 import StudentSchedulePage from '@/pages/dashboard/student/StudentSchedulePage';
 import StudentSimulationsPage from '@/pages/dashboard/student/StudentSimulationsPage';
@@ -135,12 +137,14 @@ export const dashboardRoutes = [
       { path: 'teacher/assignments', element: <TeacherAssignmentsPage /> },
       { path: 'teacher/assignments/:id', element: <TeacherAssignmentsPage /> },
       { path: 'teacher/submissions', element: <TeacherSubmissionsPage /> },
+      { path: 'teacher/submissions/:id/grade', element: <TeacherGradeSubmissionPage /> },
       { path: 'teacher/schedule', element: <TeacherSchedulePage /> },
       { path: 'teacher/schedule/attendance', element: <TeacherSessionAttendance /> },
       { path: 'student/classes', element: <StudentClassesPage /> },
       { path: 'student/classes/:classId', element: <StudentClassDetailPage /> },
       { path: 'student/assignments', element: <StudentAssignmentsPage /> },
       { path: 'student/assignments/:id', element: <StudentAssignmentsPage /> },
+      { path: 'student/assignments/:id/submit', element: <StudentSubmitAssignmentPage /> },
       { path: 'student/schedule', element: <StudentSchedulePage /> },
       { path: 'student/simulations', element: <StudentSimulationsPage /> },
       { path: 'student/simulations/:id', element: <StudentSimulationsPage /> },

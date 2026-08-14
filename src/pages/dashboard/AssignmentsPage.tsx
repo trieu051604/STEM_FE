@@ -1,6 +1,8 @@
 import { FormEvent, useCallback, useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import toast from 'react-hot-toast';
 import { useAuthStore } from '@/stores/authStore';
-import { assignmentsApi, classesApi, usersApi } from '@/services/dashboardApi';
+import { assignmentsApi, classesApi, usersApi, gradingApi } from '@/services/dashboardApi';
 import type {
   AssignmentEntity,
   AssignmentStatus,
@@ -8,6 +10,7 @@ import type {
   ClassEntity,
   CreateAssignmentRequest,
   SimulationValidateResponse,
+  SubmissionEntity,
   UpdateAssignmentRequest,
 } from '@/services/dashboardApi';
 import { motion } from 'framer-motion';
@@ -19,6 +22,7 @@ import {
   ChevronRight,
   ClipboardList,
   Clock,
+  Download,
   FileText,
   Plus,
   RefreshCw,
@@ -39,9 +43,11 @@ import { SimulationAssignmentForm } from '@/components/Dashboard/SimulationAssig
 import { fromAssignmentDueDate } from '@/components/Dashboard/AssignmentFormFields';
 import type { AssignmentBasicsValue, AssignmentClassOption } from '@/components/Dashboard/AssignmentFormFields';
 import type { QuizQuestion } from '@/components/Dashboard/QuizBuilder';
+import { formatDistanceToNow } from 'date-fns';
+import { vi } from 'date-fns/locale';
 
 type AssignmentFilter = 'all' | 'quiz' | 'text_report' | 'practical_simulation' | 'submitted';
-type AssignmentFormMode = 'create' | 'create_quiz' | 'create_report' | 'create_simulation' | 'edit';
+type AssignmentFormMode = 'create' | 'create_quiz' | 'create_report' | 'create_simulation' | 'edit' | 'edit_report';
 type ManagedClassOption = {
   id: number;
   classCode?: string;
@@ -272,6 +278,7 @@ function parseJsonText(value: string) {
 
 export const AssignmentsPage = () => {
   const { user, token, updateUser } = useAuthStore();
+  const navigate = useNavigate();
   const canManageAssignments = user?.role === 'teacher' || user?.role === 'school_admin';
 
   const [assignments, setAssignments] = useState<AssignmentEntity[]>([]);
@@ -293,6 +300,8 @@ export const AssignmentsPage = () => {
   const [detailAssignment, setDetailAssignment] = useState<AssignmentEntity | null>(null);
   const [isDetailLoading, setIsDetailLoading] = useState(false);
   const [detailError, setDetailError] = useState<string | null>(null);
+  const [submissions, setSubmissions] = useState<SubmissionEntity[]>([]);
+  const [isSubmissionsLoading, setIsSubmissionsLoading] = useState(false);
   const [simulationBaseDiagram, setSimulationBaseDiagram] = useState<unknown>(null);
   const [simulationCircuitText, setSimulationCircuitText] = useState('');
   const [simulationValidateResult, setSimulationValidateResult] =
@@ -434,7 +443,10 @@ export const AssignmentsPage = () => {
   };
 
   const openEditForm = (assignment: AssignmentEntity) => {
-    setFormMode('edit');
+    // Set form mode based on assignment type
+    const mode: AssignmentFormMode = 
+      assignment.assignmentType === 'text_report' ? 'edit_report' : 'edit';
+    setFormMode(mode);
     setEditingAssignment(assignment);
     setFormTitle(assignment.title);
     setFormClassId(String(assignment.classId));
@@ -466,6 +478,23 @@ export const AssignmentsPage = () => {
   };
 
   const handleUpdateQuizAssignment = async (request: CreateAssignmentRequest) => {
+    if (!editingAssignment) return;
+
+    setIsSaving(true);
+    setFormError(null);
+
+    try {
+      await assignmentsApi.update(editingAssignment.id, request);
+      closeForm();
+      await fetchAssignments(searchQuery);
+    } catch (err) {
+      setFormError(getErrorMessage(err, 'Không lưu được bài tập.'));
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleUpdateReportAssignment = async (request: CreateAssignmentRequest) => {
     if (!editingAssignment) return;
 
     setIsSaving(true);
@@ -519,17 +548,16 @@ export const AssignmentsPage = () => {
   };
 
   const handleDeleteAssignment = async (assignment: AssignmentEntity) => {
-    const confirmed = window.confirm(`Xóa bài tập "${assignment.title}"?`);
-    if (!confirmed) return;
-
     setDeletingId(assignment.id);
     setError(null);
 
     try {
       await assignmentsApi.delete(assignment.id);
       await fetchAssignments(searchQuery);
+      toast.success(`Đã xóa bài tập "${assignment.title}"`);
     } catch (err) {
       setError(getErrorMessage(err, 'Không xóa được bài tập.'));
+      toast.error(getErrorMessage(err, 'Không xóa được bài tập.'));
     } finally {
       setDeletingId(null);
     }
@@ -538,6 +566,7 @@ export const AssignmentsPage = () => {
   const openAssignmentDetails = async (assignment: AssignmentEntity) => {
     setDetailAssignment(assignment);
     setDetailError(null);
+    setSubmissions([]);
     setSimulationBaseDiagram(null);
     setSimulationCircuitText('');
     setSimulationValidateResult(null);
@@ -553,6 +582,20 @@ export const AssignmentsPage = () => {
         setSimulationBaseDiagram(baseDiagram);
         setSimulationCircuitText(formatJson(baseDiagram));
       }
+
+      // Fetch submissions for this assignment
+      setIsSubmissionsLoading(true);
+      try {
+        const submissionsResponse = await gradingApi.getSubmissions({
+          assignmentId: assignment.id,
+          pageSize: 100,
+        });
+        setSubmissions(submissionsResponse.items || []);
+      } catch (subErr) {
+        console.error('Failed to fetch submissions:', subErr);
+      } finally {
+        setIsSubmissionsLoading(false);
+      }
     } catch (err) {
       setDetailError(getErrorMessage(err, 'Không tải được chi tiết bài tập.'));
     } finally {
@@ -563,6 +606,7 @@ export const AssignmentsPage = () => {
   const closeAssignmentDetails = () => {
     setDetailAssignment(null);
     setDetailError(null);
+    setSubmissions([]);
     setSimulationBaseDiagram(null);
     setSimulationCircuitText('');
     setSimulationValidateResult(null);
@@ -855,6 +899,39 @@ export const AssignmentsPage = () => {
               </div>
             )}
 
+            {formMode === 'edit_report' && editingAssignment && (
+              <div className="bg-card border border-border p-8 rounded-3xl relative">
+                <ReportAssignmentForm
+                  classOptions={assignmentClassOptions}
+                  isClassesLoading={isClassesLoading}
+                  classesError={classesError}
+                  onRetryClasses={fetchManageableClasses}
+                  isSaving={isSaving}
+                  error={formError}
+                  onCancel={closeForm}
+                  onSave={handleUpdateReportAssignment}
+                  initialData={{
+                    title: editingAssignment.title,
+                    classId: editingAssignment.classId,
+                    description: editingAssignment.description ?? '',
+                    dueDate: editingAssignment.dueDate ?? undefined,
+                    maxScore: editingAssignment.maxScore,
+                    allowResubmit: editingAssignment.allowResubmit,
+                    resubmitLimit: editingAssignment.resubmitLimit,
+                    status: editingAssignment.status,
+                    rubricId: editingAssignment.rubricId,
+                    rubricCriteria: editingAssignment.rubricCriteria,
+                    reportDetail: {
+                      instructions: editingAssignment.reportDetail?.instructions ?? editingAssignment.description ?? '',
+                      allowedSubmissionTypes: editingAssignment.reportDetail?.allowedSubmissionTypes,
+                      allowedFileExtensions: editingAssignment.reportDetail?.allowedFileExtensions,
+                      maxFileSizeMb: editingAssignment.reportDetail?.maxFileSizeMb,
+                    },
+                  }}
+                />
+              </div>
+            )}
+
             {formMode === 'edit' && (
               <form
                 onSubmit={handleSaveAssignment}
@@ -953,9 +1030,9 @@ export const AssignmentsPage = () => {
       )}
 
       {detailAssignment && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 p-4 overflow-y-auto overflow-x-hidden pt-20 pb-10 custom-scrollbar">
-          <div className="w-full max-w-4xl rounded-3xl bg-card border border-border shadow-xl overflow-hidden">
-            <div className="flex items-start justify-between gap-4 border-b border-border p-6">
+        <div className="fixed inset-0 z-50 flex items-start justify-center bg-slate-950/40 p-4 overflow-y-auto overflow-x-hidden pt-10 pb-10 custom-scrollbar">
+          <div className="w-full max-w-4xl rounded-3xl bg-card border border-border shadow-xl overflow-hidden my-10">
+            <div className="flex items-start justify-between gap-4 border-b border-border p-6 sticky top-0 bg-card z-10">
               <div className="space-y-3">
                 <AssignmentTypeBadge type={detailAssignmentType ?? undefined} />
                 <div>
@@ -978,7 +1055,7 @@ export const AssignmentsPage = () => {
               </button>
             </div>
 
-            <div className="p-6 space-y-6">
+            <div className="p-6 space-y-6 max-h-[calc(100vh-200px)] overflow-y-auto custom-scrollbar">
               {isDetailLoading && (
                 <div className="flex items-center justify-center gap-3 rounded-2xl bg-muted/30 p-8 text-muted-foreground">
                   <RefreshCw className="w-5 h-5 animate-spin" />
@@ -1021,11 +1098,13 @@ export const AssignmentsPage = () => {
                     </div>
                   </div>
 
-                  {detailAssignment.description && (
+                  {(detailAssignment.description || (detailAssignmentType === 'text_report' && detailAssignment.reportDetail?.instructions)) && (
                     <div className="rounded-2xl border border-border bg-card p-5">
                       <h3 className="font-bold text-foreground mb-2">Mô tả</h3>
                       <p className="text-sm text-muted-foreground whitespace-pre-line">
-                        {detailAssignment.description}
+                        {detailAssignmentType === 'text_report' 
+                          ? (detailAssignment.reportDetail?.instructions || detailAssignment.description)
+                          : detailAssignment.description}
                       </p>
                     </div>
                   )}
@@ -1214,6 +1293,129 @@ export const AssignmentsPage = () => {
                       )}
                     </div>
                   )}
+
+                  {/* Submissions List */}
+                  <div className="rounded-2xl border border-border bg-card p-5">
+                    <h3 className="font-bold text-foreground mb-4 flex items-center gap-2">
+                      <FileText className="w-5 h-5" />
+                      Bài nộp của học sinh
+                      <span className="ml-auto text-sm font-normal text-muted-foreground">
+                        {submissions.length} bài nộp
+                      </span>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={async () => {
+                          if (detailAssignment) {
+                            setIsSubmissionsLoading(true);
+                            try {
+                              const submissionsResponse = await gradingApi.getSubmissions({
+                                assignmentId: detailAssignment.id,
+                                pageSize: 100,
+                              });
+                              setSubmissions(submissionsResponse.items || []);
+                            } catch (subErr) {
+                              console.error('Failed to refresh submissions:', subErr);
+                            } finally {
+                              setIsSubmissionsLoading(false);
+                            }
+                          }
+                        }}
+                        disabled={isSubmissionsLoading}
+                        className="ml-2 h-8 w-8 p-0"
+                      >
+                        <RefreshCw className={`w-4 h-4 ${isSubmissionsLoading ? 'animate-spin' : ''}`} />
+                      </Button>
+                    </h3>
+
+                    {isSubmissionsLoading && (
+                      <div className="flex items-center justify-center gap-3 py-8 text-muted-foreground">
+                        <RefreshCw className="w-5 h-5 animate-spin" />
+                        Đang tải danh sách bài nộp...
+                      </div>
+                    )}
+
+                    {!isSubmissionsLoading && submissions.length === 0 && (
+                      <div className="text-center py-10 text-muted-foreground">
+                        <FileText className="w-12 h-12 mx-auto mb-3 opacity-30" />
+                        <p className="font-medium mb-1">Chưa có bài nộp nào</p>
+                        <p className="text-sm">Học sinh trong lớp chưa nộp bài tập này</p>
+                      </div>
+                    )}
+
+                    {!isSubmissionsLoading && submissions.length > 0 && (
+                      <div className="space-y-3">
+                        {submissions.map((submission) => (
+                          <div
+                            key={submission.id}
+                            className="flex items-center justify-between p-4 rounded-xl bg-muted/30 border border-border hover:bg-muted/50 transition-colors"
+                          >
+                            <div className="flex items-center gap-3">
+                              <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-semibold">
+                                {submission.studentName?.charAt(0).toUpperCase()}
+                              </div>
+                              <div>
+                                <p className="font-medium text-foreground">{submission.studentName}</p>
+                                <p className="text-xs text-muted-foreground">
+                                  Nộp {formatDistanceToNow(new Date(submission.createdAt), { addSuffix: true, locale: vi })}
+                                </p>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              {submission.attemptNumber > 1 && (
+                                <span className="px-2 py-1 rounded-full text-xs bg-muted text-muted-foreground">
+                                  Lần {submission.attemptNumber}
+                                </span>
+                              )}
+                              {submission.status === 'graded' && (
+                                <span className="px-3 py-1 rounded-full text-xs font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                                  {submission.score ?? submission.finalScore}/{detailAssignment?.maxScore} điểm
+                                </span>
+                              )}
+                              {submission.status === 'submitted' && (
+                                <span className="px-3 py-1 rounded-full text-xs font-medium bg-amber-500/10 text-amber-400 border border-amber-500/20">
+                                  Chờ chấm
+                                </span>
+                              )}
+                              {submission.fileUrl && (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => window.open(submission.fileUrl, '_blank')}
+                                  className="gap-2 text-indigo-400 hover:text-indigo-300"
+                                >
+                                  <Download className="w-4 h-4" />
+                                  Tải file
+                                </Button>
+                              )}
+                              {/* Grading button - only for Report and Lab with submitted status */}
+                              {(submission.assignmentType === 'text_report' || submission.assignmentType === 'practical_simulation') && submission.status === 'submitted' && (
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => navigate(`/dashboard/teacher/submissions/${submission.id}/grade`)}
+                                  className="gap-2 text-amber-400 border-amber-500/20 hover:bg-amber-500/10"
+                                >
+                                  Chấm điểm
+                                </Button>
+                              )}
+                              {/* View button for Quiz or already graded */}
+                              {(submission.assignmentType === 'quiz' || submission.status === 'graded') && (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => navigate(`/dashboard/teacher/submissions/${submission.id}/grade`)}
+                                  className="gap-2"
+                                >
+                                  {submission.status === 'graded' ? 'Đã chấm' : 'Xem'}
+                                </Button>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 </>
               )}
             </div>

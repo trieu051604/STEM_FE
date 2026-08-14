@@ -1,19 +1,24 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
-import { ArrowLeft, BookOpen, User, Calendar, MapPin, Clock, Play, CheckCircle, FileText, Cpu, Loader2, FlaskConical } from 'lucide-react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { ArrowLeft, BookOpen, User, Calendar, MapPin, Clock, Play, CheckCircle, FileText, Cpu, Loader2, FlaskConical, ClipboardCheck, XCircle, ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Icon } from '@/components/ui/Icon';
 import { WeeklyScheduleGrid } from '@/components/WeeklyScheduleGrid';
 import { studentApi, StudentClassDetail, StudentAssignment, StudentVirtualLab } from '@/services/teacherStudentApi';
 import { scheduleApi, type ScheduleResponse } from '@/services/schoolAdminApi';
+import { attendanceApi, type AttendanceRecord, type AttendanceStatus } from '@/services/dashboardApi';
 import { format, formatDistanceToNow } from 'date-fns';
 import { vi } from 'date-fns/locale';
+import { useAuthStore } from '@/stores/authStore';
 
 export default function StudentClassDetailPage() {
   const { classId } = useParams<{ classId: string }>();
-  const [activeTab, setActiveTab] = useState<'overview' | 'assignments' | 'schedule' | 'virtualLabs'>('overview');
+  const { user } = useAuthStore();
+  const queryClient = useQueryClient();
+  const [activeTab, setActiveTab] = useState<'overview' | 'assignments' | 'schedule' | 'virtualLabs' | 'attendance'>('overview');
   const [refreshKey, setRefreshKey] = useState(0);
+  const [updatingSlotId, setUpdatingSlotId] = useState<number | null>(null);
 
   const { data: classDetail, isLoading } = useQuery({
     queryKey: ['student-class-detail', classId],
@@ -112,6 +117,17 @@ export default function StudentClassDetailPage() {
           <FlaskConical className="w-4 h-4 inline mr-2" />
           Phòng Lab Ảo
         </button>
+        <button
+          onClick={() => setActiveTab('attendance')}
+          className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
+            activeTab === 'attendance'
+              ? 'border-primary text-primary'
+              : 'border-transparent text-muted-foreground hover:text-foreground'
+          }`}
+        >
+          <ClipboardCheck className="w-4 h-4 inline mr-2" />
+          Điểm danh
+        </button>
       </div>
 
       {/* Tab Content */}
@@ -119,6 +135,7 @@ export default function StudentClassDetailPage() {
       {activeTab === 'assignments' && <AssignmentsTab classDetail={classDetail} />}
       {activeTab === 'schedule' && <ScheduleTab classId={Number(classId)} classInfo={{ classCode: classDetail.classCode, className: classDetail.className }} refreshKey={refreshKey} />}
       {activeTab === 'virtualLabs' && <VirtualLabsTab classId={Number(classId)} />}
+      {activeTab === 'attendance' && <AttendanceTab classId={Number(classId)} user={user || undefined} queryClient={queryClient} />}
     </div>
   );
 }
@@ -316,12 +333,12 @@ function AssignmentsTab({ classDetail }: { classDetail: StudentClassDetail }) {
 }
 
 // Schedule Tab Component
-function ScheduleTab({ classId, classInfo, refreshKey }: { classId: number; classInfo?: { classCode: string; className: string }; refreshKey?: number }) {
+function ScheduleTab({ classId, classInfo, refreshKey }: { classId: number; classInfo?: { id?: number; classCode: string; className: string }; refreshKey?: number }) {
   return (
     <div className="bg-card rounded-xl border border-border p-6">
       <WeeklyScheduleGrid
         classId={classId}
-        classInfo={classInfo}
+        classInfo={classInfo as { id: number; classCode: string; className: string } | undefined}
         isAdmin={false}
         isStudentView={false}
         key={`schedule-${classId}-${refreshKey || 0}`}
@@ -457,6 +474,269 @@ function VirtualLabsTab({ classId }: { classId: number }) {
           <p className="text-muted-foreground">Phòng lab sẽ xuất hiện khi được giao bởi giáo viên</p>
         </div>
       )}
+    </div>
+  );
+}
+
+// Attendance Tab Component
+function AttendanceTab({ classId, user, queryClient }: { classId: number; user?: { role: string }; queryClient: ReturnType<typeof useQueryClient> }) {
+  const [updatingSlotId, setUpdatingSlotId] = useState<number | null>(null);
+
+  // Fetch attendance data for the current student
+  // Note: Do NOT pass studentId - backend will use current user's ID from token
+  const { data: attendanceData, isLoading: attendanceLoading } = useQuery({
+    queryKey: ['student-attendance', classId],
+    queryFn: () => attendanceApi.getAttendance({
+      classId: Number(classId),
+      pageSize: 100,
+      pageNumber: 1,
+    }),
+    staleTime: 0,
+  });
+
+  // Fetch schedule data
+  const { data: scheduleData, isLoading: scheduleLoading } = useQuery({
+    queryKey: ['class-schedule', classId],
+    queryFn: () => scheduleApi.getByClassId(Number(classId)),
+    staleTime: 0,
+  });
+
+  // Update attendance mutation
+  const updateAttendanceMutation = useMutation({
+    mutationFn: async ({ recordId, status }: { recordId: number; status: AttendanceStatus }) => {
+      console.log('Updating attendance:', recordId, status);
+      await attendanceApi.updateAttendance(recordId, status);
+    },
+    onSuccess: () => {
+      console.log('Update success, invalidating queries');
+      queryClient.invalidateQueries({ queryKey: ['student-attendance', classId] });
+      setUpdatingSlotId(null);
+    },
+  });
+
+  const attendance = attendanceData?.items || [];
+  const schedules = scheduleData || [];
+
+  // Debug logging
+  console.log('DEBUG attendance:', attendance);
+  console.log('DEBUG schedules:', schedules);
+
+  // Build attendance map by scheduleId (supports multiple slots per day)
+  const attendanceByScheduleId = new Map<number, typeof attendance[0]>();
+  attendance.forEach(a => {
+    if (a.scheduleId) {
+      attendanceByScheduleId.set(a.scheduleId, a);
+    }
+  });
+
+  // Get all scheduled slots
+  const scheduledSlots = schedules.map(s => {
+    const dateStr = s.startTime.split('T')[0];
+    const timeStr = s.startTime.includes('T') ? s.startTime.split('T')[1]?.substring(0, 5) : s.startTime;
+    const att = attendanceByScheduleId.get(s.id) || null;
+    console.log('DEBUG slot:', s.id, '-> attendance:', att);
+    return {
+      id: s.id,
+      date: dateStr,
+      time: timeStr || '--:--',
+      startTime: s.startTime,
+      attendance: att
+    };
+  });
+
+  // Sort by startTime
+  const sortedSlots = [...scheduledSlots].sort((a, b) => 
+    new Date(a.startTime).getTime() - new Date(b.startTime).getTime()
+  );
+
+  // Get status badge
+  const getStatusBadge = (status: AttendanceStatus | null | undefined) => {
+    if (!status) return null;
+    switch (status) {
+      case 'Present':
+        return <span className="px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">Có mặt</span>;
+      case 'Absent':
+        return <span className="px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400">Vắng mặt</span>;
+      case 'Late':
+        return <span className="px-2 py-1 rounded-full text-xs font-medium bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">Đi muộn</span>;
+      case 'Excused':
+        return <span className="px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400">Có phép</span>;
+      default:
+        return null;
+    }
+  };
+
+  // Calculate stats
+  const totalScheduledDays = sortedSlots.length;
+  const totalAttendanceRecords = attendance.length;
+  const presentDays = attendance.filter(a => a.status === 'Present').length;
+  const absentDays = attendance.filter(a => a.status === 'Absent').length;
+  const lateDays = attendance.filter(a => a.status === 'Late').length;
+  const excusedDays = attendance.filter(a => a.status === 'Excused').length;
+  
+  // Attendance rate based on actual attendance records (not scheduled days)
+  const attendanceRate = totalAttendanceRecords > 0 
+    ? Math.round((presentDays / totalAttendanceRecords) * 100) 
+    : 0;
+
+  if (attendanceLoading || scheduleLoading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* Stats Cards */}
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+        <div className="bg-card rounded-xl border border-border p-4">
+          <div className="text-center">
+            <p className="text-3xl font-bold text-primary">{attendanceRate}%</p>
+            <p className="text-sm text-muted-foreground">Tỷ lệ điểm danh</p>
+            <p className="text-xs text-muted-foreground mt-1">
+              ({totalAttendanceRecords}/{totalScheduledDays} buổi đã điểm danh)
+            </p>
+          </div>
+        </div>
+        <div className="bg-card rounded-xl border border-border p-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-lg bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
+              <CheckCircle className="w-5 h-5 text-green-600 dark:text-green-400" />
+            </div>
+            <div>
+              <p className="text-2xl font-bold">{presentDays}</p>
+              <p className="text-sm text-muted-foreground">Có mặt</p>
+            </div>
+          </div>
+        </div>
+        <div className="bg-card rounded-xl border border-border p-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-lg bg-red-100 dark:bg-red-900/30 flex items-center justify-center">
+              <XCircle className="w-5 h-5 text-red-600 dark:text-red-400" />
+            </div>
+            <div>
+              <p className="text-2xl font-bold">{absentDays}</p>
+              <p className="text-sm text-muted-foreground">Vắng mặt</p>
+            </div>
+          </div>
+        </div>
+        <div className="bg-card rounded-xl border border-border p-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-lg bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center">
+              <Clock className="w-5 h-5 text-amber-600 dark:text-amber-400" />
+            </div>
+            <div>
+              <p className="text-2xl font-bold">{lateDays}</p>
+              <p className="text-sm text-muted-foreground">Đi muộn</p>
+            </div>
+          </div>
+        </div>
+        <div className="bg-card rounded-xl border border-border p-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-lg bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
+              <ClipboardCheck className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+            </div>
+            <div>
+              <p className="text-2xl font-bold">{excusedDays}</p>
+              <p className="text-sm text-muted-foreground">Có phép</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Attendance Table */}
+      <div className="bg-card rounded-xl border border-border overflow-hidden">
+        <div className="p-4 border-b border-border">
+          <h3 className="font-semibold">Chi tiết điểm danh</h3>
+        </div>
+        {sortedSlots.length > 0 ? (
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead className="bg-muted/50">
+                <tr>
+                  <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">STT</th>
+                  <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">Ngày</th>
+                  <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">Giờ</th>
+                  <th className="px-4 py-3 text-center text-sm font-medium text-muted-foreground">Trạng thái</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {sortedSlots.map((slot, index) => (
+                  <tr key={slot.id} className="hover:bg-muted/30 transition-colors">
+                    <td className="px-4 py-3 text-sm">{index + 1}</td>
+                    <td className="px-4 py-3 text-sm font-medium">
+                      {format(new Date(slot.date), 'EEEE, dd/MM/yyyy', { locale: vi })}
+                    </td>
+                    <td className="px-4 py-3 text-sm text-muted-foreground">
+                      {slot.time}
+                    </td>
+                    <td className="px-4 py-3 text-center">
+                      {slot.attendance ? (
+                        <div className="flex items-center justify-center gap-2">
+                          {slot.attendance.status ? (
+                            getStatusBadge(slot.attendance.status)
+                          ) : (
+                            <span className="text-muted-foreground text-sm italic">Chưa điểm danh</span>
+                          )}
+                          {/* Teacher can update attendance */}
+                          {(user?.role === 'teacher' || user?.role === 'school_admin') && slot.attendance && (
+                            <div className="relative">
+                              {updatingSlotId === slot.id ? (
+                                <div className="flex items-center gap-1">
+                                  <select
+                                    className="text-xs border rounded px-1 py-0.5 bg-background"
+                                    value={slot.attendance.status || ''}
+                                    onChange={(e) => {
+                                      const newStatus = e.target.value as AttendanceStatus;
+                                      updateAttendanceMutation.mutate({
+                                        recordId: slot.attendance!.id,
+                                        status: newStatus,
+                                      });
+                                    }}
+                                    autoFocus
+                                  >
+                                    <option value="Present">Có mặt</option>
+                                    <option value="Absent">Vắng mặt</option>
+                                    <option value="Late">Đi muộn</option>
+                                    <option value="Excused">Có phép</option>
+                                  </select>
+                                  <button
+                                    onClick={() => setUpdatingSlotId(null)}
+                                    className="text-xs text-muted-foreground hover:text-foreground"
+                                  >
+                                    ✕
+                                  </button>
+                                </div>
+                              ) : (
+                                <button
+                                  onClick={() => setUpdatingSlotId(slot.id)}
+                                  className="text-xs text-muted-foreground hover:text-foreground ml-1"
+                                  title="Cập nhật điểm danh"
+                                >
+                                  <ChevronDown className="w-4 h-4" />
+                                </button>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        <span className="text-muted-foreground text-sm">—</span>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <div className="text-center py-12">
+            <ClipboardCheck className="w-12 h-12 mx-auto mb-4 text-muted-foreground opacity-50" />
+            <p className="text-muted-foreground">Chưa có lịch học</p>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

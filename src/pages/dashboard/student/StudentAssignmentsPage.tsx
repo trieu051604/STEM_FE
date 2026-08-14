@@ -51,7 +51,7 @@ export default function StudentAssignmentsPage() {
   const totalCount = data?.total || 0;
   const totalPages = Math.ceil(totalCount / ITEMS_PER_PAGE);
 
-  // Determine actual status based on due date for pending items
+  // Determine actual status based on due date and submission
   const getAssignmentWithOverdueStatus = (assignment: StudentAssignment): StudentAssignment => {
     if (assignment.status === 'pending' || assignment.status === 'submitted') {
       const dueDate = parseISO(assignment.dueDate);
@@ -61,6 +61,44 @@ export default function StudentAssignmentsPage() {
       }
     }
     return assignment;
+  };
+
+  // Get status badge with improved logic
+  const getStatusBadge = (assignment: StudentAssignment) => {
+    // If has highest score (from backend), show graded
+    if (assignment.highestScore !== undefined && assignment.highestScore !== null) {
+      return (
+        <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">
+          Đã chấm
+        </span>
+      );
+    }
+    
+    // If submitted but no score yet
+    if (assignment.hasSubmitted) {
+      return (
+        <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400">
+          Đã nộp
+        </span>
+      );
+    }
+    
+    // Check overdue
+    const dueInfo = formatDueDate(assignment.dueDate);
+    if (dueInfo.isOverdue) {
+      return (
+        <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400">
+          Quá hạn
+        </span>
+      );
+    }
+    
+    // Default pending
+    return (
+      <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">
+        Chờ nộp
+      </span>
+    );
   };
 
   // Apply status override for overdue check
@@ -86,37 +124,6 @@ export default function StudentAssignmentsPage() {
     return filteredAssignments.filter((a) => a.status === filterStatus);
   }, [filteredAssignments, filterStatus]);
 
-  const getStatusBadge = (status: string) => {
-    switch (status) {
-      case 'pending':
-        return (
-          <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">
-            Chờ nộp
-          </span>
-        );
-      case 'submitted':
-        return (
-          <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400">
-            Đã nộp
-          </span>
-        );
-      case 'graded':
-        return (
-          <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">
-            Đã chấm
-          </span>
-        );
-      case 'overdue':
-        return (
-          <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400">
-            Quá hạn
-          </span>
-        );
-      default:
-        return null;
-    }
-  };
-
   const getStatusIcon = (status: string) => {
     switch (status) {
       case 'pending':
@@ -132,7 +139,8 @@ export default function StudentAssignmentsPage() {
     }
   };
 
-  const formatDueDate = (dueDate: string) => {
+  const formatDueDate = (dueDate: string | null | undefined) => {
+    if (!dueDate) return { relative: 'Không có hạn nộp', absolute: '-', isOverdue: false };
     const date = parseISO(dueDate);
     const now = new Date();
     const isOverdue = isBefore(date, now);
@@ -145,17 +153,48 @@ export default function StudentAssignmentsPage() {
   };
 
   const getScoreDisplay = (assignment: StudentAssignment) => {
-    if (assignment.score !== undefined && assignment.score !== null) {
+    // Show highest score if available, otherwise show the original score
+    const displayScore = assignment.highestScore ?? assignment.score;
+    if (displayScore !== undefined && displayScore !== null) {
       return (
         <div className="text-center">
           <span className="text-lg font-bold text-green-600 dark:text-green-400">
-            {assignment.score}
+            {displayScore}
           </span>
           <span className="text-muted-foreground">/{assignment.maxScore}</span>
+          {assignment.lastAttemptNumber && assignment.lastAttemptNumber > 1 && (
+            <span className="block text-xs text-muted-foreground">
+              Lần {assignment.lastAttemptNumber}
+            </span>
+          )}
         </div>
       );
     }
     return <span className="text-muted-foreground">-/-</span>;
+  };
+
+  // Check if student can submit
+  const canSubmitAssignment = (assignment: StudentAssignment): boolean => {
+    // Can always submit if not yet submitted
+    if (!assignment.hasSubmitted) {
+      return true;
+    }
+    // Can resubmit if allowed and under limit
+    if (assignment.canResubmit) {
+      return true;
+    }
+    return false;
+  };
+
+  // Get submit button text
+  const getSubmitButtonText = (assignment: StudentAssignment): { text: string; isDetail: boolean } => {
+    if (!assignment.hasSubmitted) {
+      return { text: 'Nộp bài', isDetail: false };
+    }
+    if (assignment.canResubmit) {
+      return { text: 'Nộp lại', isDetail: false };
+    }
+    return { text: 'Chi tiết', isDetail: true };
   };
 
   const handleSearch = (value: string) => {
@@ -422,23 +461,33 @@ export default function StudentAssignmentsPage() {
                           {getScoreDisplay(assignment)}
                         </td>
                         <td className="py-4 px-4 sm:px-6">
-                          {getStatusBadge(assignment.status)}
+                          {getStatusBadge(assignment)}
                         </td>
                         <td className="py-4 px-4 sm:px-6 text-right">
-                          {assignment.status === 'pending' || assignment.status === 'overdue' ? (
-                            <Link to={`/dashboard/student/assignments/${assignment.id}/submit`}>
-                              <Button size="sm" className="gap-2">
-                                <Upload className="w-4 h-4" />
-                                <span className="hidden sm:inline">Nộp bài</span>
-                              </Button>
-                            </Link>
-                          ) : (
-                            <Link to={`/dashboard/student/assignments/${assignment.id}`}>
-                              <Button variant="outline" size="sm">
-                                Chi tiết
-                              </Button>
-                            </Link>
-                          )}
+                          {(() => {
+                            const canSubmit = canSubmitAssignment(assignment);
+                            const { text, isDetail } = getSubmitButtonText(assignment);
+                            
+                            return (
+                              <Link to={`/dashboard/student/assignments/${assignment.id}/submit`}>
+                                <Button 
+                                  size="sm" 
+                                  variant={isDetail ? 'outline' : 'default'}
+                                  disabled={!canSubmit}
+                                  className={cn(!canSubmit && 'opacity-50 cursor-not-allowed')}
+                                >
+                                  {canSubmit ? (
+                                    <>
+                                      <Upload className="w-4 h-4" />
+                                      <span className="hidden sm:inline ml-1">{text}</span>
+                                    </>
+                                  ) : (
+                                    <span>{text}</span>
+                                  )}
+                                </Button>
+                              </Link>
+                            );
+                          })()}
                         </td>
                       </tr>
                     );

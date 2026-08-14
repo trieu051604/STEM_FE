@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { useSearchParams } from 'react-router-dom';
-import { CheckCircle, Clock, User, Search, FileText, AlertCircle, RefreshCw } from 'lucide-react';
+import { CheckCircle, Clock, User, Search, FileText, AlertCircle, RefreshCw, Eye } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { gradingApi } from '@/services/dashboardApi';
@@ -14,6 +15,7 @@ const ITEMS_PER_PAGE = 10;
 
 export default function TeacherSubmissionsPage() {
   const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
   const highlightId = searchParams.get('submissionId');
   const highlightRef = useRef<HTMLTableRowElement | null>(null);
 
@@ -191,6 +193,7 @@ export default function TeacherSubmissionsPage() {
                 <th className="text-left py-4 px-6 font-medium text-foreground">Thời gian nộp</th>
                 <th className="text-center py-4 px-6 font-medium text-foreground">Điểm</th>
                 <th className="text-left py-4 px-6 font-medium text-foreground">Trạng thái</th>
+                <th className="text-center py-4 px-6 font-medium text-foreground">Hành động</th>
               </tr>
             </thead>
             <tbody>
@@ -225,6 +228,20 @@ export default function TeacherSubmissionsPage() {
                     )}
                   </td>
                   <td className="py-4 px-6">{getStatusBadge(submission.status)}</td>
+                  <td className="py-4 px-6 text-center">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => navigate(`/dashboard/teacher/submissions/${submission.id}/grade`)}
+                      className="gap-2"
+                    >
+                      <Eye className="w-4 h-4" />
+                      {/* Only Report and Lab need manual grading */}
+                      {(submission.assignmentType === 'text_report' || submission.assignmentType === 'practical_simulation')
+                        ? (submission.status === 'graded' ? 'Xem' : 'Chấm')
+                        : 'Xem'}
+                    </Button>
+                  </td>
                 </tr>
               ))}
             </tbody>

@@ -152,8 +152,8 @@ export function WeeklyScheduleGrid({ classId, schedules: initialSchedules, class
     }
   };
 
-// Sort slots by start time for display order
-const SORTED_SLOTS = [...SLOTS].sort((a, b) => a.start.localeCompare(b.start));
+// Filter to only show first 4 slots
+const DISPLAY_SLOTS = [...SLOTS].sort((a, b) => a.start.localeCompare(b.start)).slice(0, 4);
 
 // Generate week days
 const weekDays = useMemo(() => {
@@ -170,7 +170,7 @@ const scheduleGrid = useMemo(() => {
   // Initialize grid with sorted slots
   DAYS_OF_WEEK.forEach(day => {
     grid[day.key] = {};
-    SORTED_SLOTS.forEach(slot => {
+    DISPLAY_SLOTS.forEach(slot => {
       grid[day.key][slot.number] = [];
     });
   });
@@ -202,7 +202,7 @@ const scheduleGrid = useMemo(() => {
     if (scheduleDate.getTime() < weekStart.getTime() || scheduleDate.getTime() >= weekEnd.getTime()) return;
 
     // Find matching slot (time is already local)
-    const matchingSlot = SORTED_SLOTS.find(slot => {
+    const matchingSlot = DISPLAY_SLOTS.find(slot => {
       return scheduleTime >= slot.start && scheduleTime < slot.end;
     });
 
@@ -211,6 +211,7 @@ const scheduleGrid = useMemo(() => {
     }
   });
 
+  console.log('DEBUG scheduleGrid:', JSON.stringify(grid, null, 2));
   return grid;
 }, [schedules, currentWeekStart]);
 
@@ -489,7 +490,7 @@ const scheduleGrid = useMemo(() => {
 
             {/* Body */}
             <tbody>
-              {SORTED_SLOTS.map((slot) => (
+              {DISPLAY_SLOTS.map((slot) => (
                 <tr key={slot.number} className="border-t-2 border-border">
                   {/* Slot Column */}
                   <td className="sticky left-0 z-20 p-3 text-center font-bold bg-gradient-to-r from-blue-50 to-blue-100 dark:from-blue-950 dark:to-blue-900 border-r-2 border-border min-w-[140px]">

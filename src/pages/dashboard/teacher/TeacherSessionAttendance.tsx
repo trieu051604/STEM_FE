@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useSearchParams, useNavigate, Link } from 'react-router-dom';
 import { format, parseISO } from 'date-fns';
 import { vi } from 'date-fns/locale';
-import { Loader2, AlertCircle, Save, CheckCircle2, ArrowLeft, Check, Users, UserX, Clock, X, Lock } from 'lucide-react';
+import { Loader2, AlertCircle, Save, CheckCircle2, ArrowLeft, Check, Users, UserX, Clock, Lock } from 'lucide-react';
 import {
   classesApi,
   attendanceApi,
@@ -14,16 +14,19 @@ import { TeacherCard } from '@/components/Dashboard/teacher/TeacherCard';
 import { Button } from '@/components/ui/button';
 import { getSlotByTime } from '@/components/WeeklyScheduleGrid';
 
+const STATUS_OPTIONS: { value: AttendanceStatus; label: string; activeClass: string }[] = [
+  { value: 'Present', label: 'Có mặt', activeClass: 'bg-emerald-500 text-white border-emerald-500' },
+  { value: 'Absent', label: 'Vắng', activeClass: 'bg-red-500 text-white border-red-500' },
+];
+
 export const TeacherSessionAttendance = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
 
   const classId = Number(searchParams.get('classId'));
+  const scheduleIdParam = searchParams.get('scheduleId');
+  const scheduleId = scheduleIdParam ? Number(scheduleIdParam) : null;
   const dateStr = searchParams.get('date') || format(new Date(), 'yyyy-MM-dd');
-  // Business rule: a Teacher may only create/edit attendance on the day the session actually
-  // happens. Recomputed on every render (not memoized) so the UI naturally flips to read-only
-  // if a tab is left open across midnight. The Backend independently enforces the same rule —
-  // this is UX only, not the source of truth.
   const todayStr = format(new Date(), 'yyyy-MM-dd');
   const isAttendanceEditable = dateStr === todayStr;
   const isPastSession = dateStr < todayStr;
@@ -58,7 +61,10 @@ export const TeacherSessionAttendance = () => {
         const students = classDetail.students ?? [];
         setRoster(students);
         
-        const existing = attendanceResult.items || [];
+        // Filter existing records by scheduleId if provided
+        const existing = scheduleId
+          ? (attendanceResult.items || []).filter(r => r.scheduleId === scheduleId)
+          : (attendanceResult.items || []);
         setExistingRecords(existing);
 
         const initialDrafts: Record<number, AttendanceStatus> = {};
@@ -87,19 +93,17 @@ export const TeacherSessionAttendance = () => {
 
   const stats = useMemo(() => {
     let present = 0;
-    let late = 0;
     let absent = 0;
     let unmarked = 0;
 
     roster.forEach(student => {
       const status = draftStatuses[student.id];
       if (status === 'Present') present++;
-      else if (status === 'Late') late++;
-      else if (status === 'Absent' || status === 'Excused') absent++;
+      else if (status === 'Absent') absent++;
       else unmarked++;
     });
 
-    return { total: roster.length, present, late, absent, unmarked };
+    return { total: roster.length, present, absent, unmarked };
   }, [roster, draftStatuses]);
 
   const handleMarkAllPresent = () => {
@@ -156,6 +160,7 @@ export const TeacherSessionAttendance = () => {
         promises.push(
           attendanceApi.createAttendance({
             classId,
+            scheduleId: scheduleId ?? undefined,
             attendanceDate: dateStr,
             records: newRecords
           })
@@ -247,7 +252,7 @@ export const TeacherSessionAttendance = () => {
       ) : (
         <>
           {/* Top Summary */}
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             <div className="bg-card border border-border p-3 rounded-xl flex flex-col items-center justify-center">
               <span className="text-2xl font-bold text-foreground">{stats.total}</span>
               <span className="text-xs text-muted-foreground mt-1 uppercase tracking-wider font-semibold">Học sinh</span>
@@ -258,19 +263,13 @@ export const TeacherSessionAttendance = () => {
                 <Users className="w-3 h-3" /> Có mặt
               </span>
             </div>
-            <div className="bg-amber-500/10 border border-amber-500/20 p-3 rounded-xl flex flex-col items-center justify-center">
-              <span className="text-2xl font-bold text-amber-600">{stats.late}</span>
-              <span className="text-xs text-amber-600/80 mt-1 uppercase tracking-wider font-semibold flex items-center gap-1">
-                <Clock className="w-3 h-3" /> Đi muộn
-              </span>
-            </div>
             <div className="bg-red-500/10 border border-red-500/20 p-3 rounded-xl flex flex-col items-center justify-center">
               <span className="text-2xl font-bold text-red-600">{stats.absent}</span>
               <span className="text-xs text-red-600/80 mt-1 uppercase tracking-wider font-semibold flex items-center gap-1">
                 <UserX className="w-3 h-3" /> Vắng
               </span>
             </div>
-            <div className="bg-muted/50 border border-border p-3 rounded-xl flex flex-col items-center justify-center col-span-2 md:col-span-1">
+            <div className="bg-muted/50 border border-border p-3 rounded-xl flex flex-col items-center justify-center">
               <span className="text-2xl font-bold text-foreground">{stats.unmarked}</span>
               <span className="text-xs text-muted-foreground mt-1 uppercase tracking-wider font-semibold">Chưa ĐD</span>
             </div>
@@ -322,19 +321,9 @@ export const TeacherSessionAttendance = () => {
                         Có mặt
                       </button>
                       <button
-                        onClick={() => handleSetStatus(student.id, 'Late')}
-                        className={`flex-1 sm:flex-none px-3 py-1.5 rounded-lg text-sm font-medium transition-colors border ${
-                          currentStatus === 'Late'
-                            ? 'bg-amber-500 text-white border-amber-500'
-                            : 'bg-background text-muted-foreground border-border hover:border-amber-500/50'
-                        }`}
-                      >
-                        Đi muộn
-                      </button>
-                      <button
                         onClick={() => handleSetStatus(student.id, 'Absent')}
                         className={`flex-1 sm:flex-none px-3 py-1.5 rounded-lg text-sm font-medium transition-colors border ${
-                          (currentStatus === 'Absent' || currentStatus === 'Excused')
+                          currentStatus === 'Absent'
                             ? 'bg-red-500 text-white border-red-500'
                             : 'bg-background text-muted-foreground border-border hover:border-red-500/50'
                         }`}
@@ -347,15 +336,12 @@ export const TeacherSessionAttendance = () => {
                       <span className={`inline-flex items-center px-3 py-1.5 rounded-lg text-sm font-medium border ${
                         currentStatus === 'Present'
                           ? 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20'
-                          : currentStatus === 'Late'
-                          ? 'bg-amber-500/10 text-amber-600 border-amber-500/20'
-                          : (currentStatus === 'Absent' || currentStatus === 'Excused')
+                          : currentStatus === 'Absent'
                           ? 'bg-red-500/10 text-red-600 border-red-500/20'
                           : 'bg-muted/50 text-muted-foreground border-border'
                       }`}>
                         {currentStatus === 'Present' ? 'Có mặt'
-                          : currentStatus === 'Late' ? 'Đi muộn'
-                          : (currentStatus === 'Absent' || currentStatus === 'Excused') ? 'Vắng'
+                          : currentStatus === 'Absent' ? 'Vắng'
                           : 'Chưa điểm danh'}
                       </span>
                     </div>

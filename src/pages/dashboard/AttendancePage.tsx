@@ -15,8 +15,6 @@ import { TeacherCard } from '@/components/Dashboard/teacher/TeacherCard';
 const STATUS_OPTIONS: { value: AttendanceStatus; label: string; activeClass: string }[] = [
   { value: 'Present', label: 'Có mặt', activeClass: 'bg-emerald-500 text-white border-emerald-500' },
   { value: 'Absent', label: 'Vắng', activeClass: 'bg-red-500 text-white border-red-500' },
-  { value: 'Late', label: 'Trễ', activeClass: 'bg-amber-500 text-white border-amber-500' },
-  { value: 'Excused', label: 'Có phép', activeClass: 'bg-slate-500 text-white border-slate-500' },
 ];
 
 function todayIsoDate(): string {
@@ -103,8 +101,10 @@ export const AttendancePage = () => {
         setExistingRecords(attendanceResult.items);
 
         const initialDrafts: Record<number, AttendanceStatus> = {};
+        const existingByStudent = new Map(attendanceResult.items.map(r => [r.studentId, r.status ?? 'Present']));
         students.forEach((s) => {
-          initialDrafts[s.id] = 'Present';
+          // Use existing record status (null means "Present" as default), or default to 'Present'
+          initialDrafts[s.id] = existingByStudent.get(s.id) ?? 'Present';
         });
         setDraftStatuses(initialDrafts);
       } catch (err) {
@@ -122,10 +122,20 @@ export const AttendancePage = () => {
 
   const alreadyMarked = existingRecords.length > 0;
 
-  const recordByStudentId = useMemo(() => {
-    const map = new Map<number, AttendanceRecord>();
-    existingRecords.forEach((r) => map.set(r.studentId, r));
+  const recordsByScheduleAndStudent = useMemo(() => {
+    const map = new Map<string, AttendanceRecord>();
+    existingRecords.forEach((r) => {
+      const key = `${r.scheduleId ?? 'none'}-${r.studentId}`;
+      map.set(key, r);
+    });
+    console.log('DEBUG recordsByScheduleAndStudent map:', Object.fromEntries(map));
     return map;
+  }, [existingRecords]);
+
+  const scheduleIds = useMemo(() => {
+    const ids = [...new Set(existingRecords.map((r) => r.scheduleId))].sort((a, b) => (a ?? 0) - (b ?? 0));
+    console.log('DEBUG scheduleIds:', ids);
+    return ids;
   }, [existingRecords]);
 
   const handleSubmitNew = async () => {
@@ -134,16 +144,22 @@ export const AttendancePage = () => {
     setSaveError(null);
     setSaveSuccess(null);
     try {
-      const created = await attendanceApi.createAttendance({
-        classId: selectedClassId,
-        attendanceDate: selectedDate,
-        records: roster.map((s) => ({
-          studentId: s.id,
-          status: draftStatuses[s.id] ?? 'Present',
-        })),
-      });
-      setExistingRecords(created);
-      setSaveSuccess(`Đã lưu điểm danh cho ${created.length} học sinh.`);
+      // Create attendance records for ALL schedules in the day
+      const createdRecords: AttendanceRecord[] = [];
+      for (const scheduleId of scheduleIds) {
+        const created = await attendanceApi.createAttendance({
+          classId: selectedClassId,
+          scheduleId: scheduleId ?? undefined,
+          attendanceDate: selectedDate,
+          records: roster.map((s) => ({
+            studentId: s.id,
+            status: draftStatuses[s.id] ?? 'Present',
+          })),
+        });
+        createdRecords.push(...created);
+      }
+      setExistingRecords((prev) => [...prev, ...createdRecords]);
+      setSaveSuccess(`Đã lưu điểm danh cho ${createdRecords.length} bản ghi (${scheduleIds.length} slot).`);
     } catch (err) {
       setSaveError(getErrorMessage(err, 'Lưu điểm danh thất bại.'));
     } finally {
@@ -240,53 +256,84 @@ export const AttendancePage = () => {
         </div>
       ) : (
         <TeacherCard noPadding>
-          <table className="w-full text-sm text-left">
-            <thead className="bg-muted text-muted-foreground">
-              <tr>
-                <th className="px-4 py-3 font-medium">Học sinh</th>
-                <th className="px-4 py-3 font-medium">Email</th>
-                <th className="px-4 py-3 font-medium">Trạng thái</th>
-              </tr>
-            </thead>
-            <tbody>
-              {roster.map((student) => {
-                const existing = recordByStudentId.get(student.id);
-                return (
-                  <tr key={student.id} className="border-t border-border">
-                    <td className="px-4 py-3 font-medium text-foreground">{student.fullName}</td>
-                    <td className="px-4 py-3 text-muted-foreground">{student.email}</td>
-                    <td className="px-4 py-3">
-                      <div className="flex gap-1.5 flex-wrap">
-                        {STATUS_OPTIONS.map((opt) => {
-                          const currentValue = existing ? existing.status : draftStatuses[student.id];
-                          const isActive = currentValue === opt.value;
-                          const isSavingThis = alreadyMarked && savingRecordId === existing?.id;
-                          return (
-                            <button
-                              key={opt.value}
-                              disabled={alreadyMarked && (!existing || isSavingThis)}
-                              onClick={() => {
-                                if (alreadyMarked && existing) {
-                                  handleUpdateExisting(existing, opt.value);
-                                } else {
-                                  setDraftStatuses((prev) => ({ ...prev, [student.id]: opt.value }));
-                                }
-                              }}
-                              className={`px-2.5 py-1 rounded-full text-xs font-semibold border transition-colors ${
-                                isActive ? opt.activeClass : 'bg-background text-muted-foreground border-border hover:border-foreground/50'
-                              } ${isSavingThis ? 'opacity-50 cursor-wait' : ''}`}
-                            >
-                              {opt.label}
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm text-left">
+              <thead className="bg-muted text-muted-foreground">
+                <tr>
+                  <th className="px-4 py-3 font-medium sticky left-0 bg-muted z-10">Học sinh</th>
+                  <th className="px-4 py-3 font-medium sticky left-24 bg-muted z-10">Email</th>
+                  {scheduleIds.map((scheduleId) => (
+                    <th key={scheduleId} className="px-4 py-3 font-medium text-center min-w-[180px]">
+                      Slot {scheduleId ?? '?'}
+                    </th>
+                  ))}
+                  {!alreadyMarked && <th className="px-4 py-3 font-medium text-center">Thao tác</th>}
+                </tr>
+              </thead>
+              <tbody>
+                {roster.map((student) => {
+                  return (
+                    <tr key={student.id} className="border-t border-border">
+                      <td className="px-4 py-3 font-medium text-foreground sticky left-0 bg-background z-10">{student.fullName}</td>
+                      <td className="px-4 py-3 text-muted-foreground sticky left-24 bg-background z-10">{student.email}</td>
+                      {scheduleIds.map((scheduleId) => {
+                        const key = `${scheduleId ?? 'none'}-${student.id}`;
+                        const existing = recordsByScheduleAndStudent.get(key);
+                        const isSavingThis = savingRecordId === existing?.id;
+                        return (
+                          <td key={scheduleId} className="px-4 py-3 text-center">
+                            <div className="flex gap-1 justify-center flex-wrap">
+                              {STATUS_OPTIONS.map((opt) => {
+                                const currentValue = existing?.status;
+                                const isActive = currentValue === opt.value;
+                                return (
+                                  <button
+                                    key={opt.value}
+                                    disabled={alreadyMarked && (!existing || isSavingThis)}
+                                    onClick={() => {
+                                      if (existing) {
+                                        handleUpdateExisting(existing, opt.value);
+                                      }
+                                    }}
+                                    className={`px-2 py-0.5 rounded-full text-xs font-semibold border transition-colors ${
+                                      isActive ? opt.activeClass : 'bg-background text-muted-foreground border-border hover:border-foreground/50'
+                                    } ${isSavingThis ? 'opacity-50 cursor-wait' : ''}`}
+                                  >
+                                    {opt.label}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          </td>
+                        );
+                      })}
+                      {!alreadyMarked && (
+                        <td className="px-4 py-3 text-center">
+                          <div className="flex gap-1 justify-center flex-wrap">
+                            {STATUS_OPTIONS.map((opt) => {
+                              const currentValue = draftStatuses[student.id];
+                              const isActive = currentValue === opt.value;
+                              return (
+                                <button
+                                  key={opt.value}
+                                  onClick={() => setDraftStatuses((prev) => ({ ...prev, [student.id]: opt.value }))}
+                                  className={`px-2 py-0.5 rounded-full text-xs font-semibold border transition-colors ${
+                                    isActive ? opt.activeClass : 'bg-background text-muted-foreground border-border hover:border-foreground/50'
+                                  }`}
+                                >
+                                  {opt.label}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </td>
+                      )}
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
 
           {!alreadyMarked && (
             <div className="p-4 border-t border-border flex justify-end">

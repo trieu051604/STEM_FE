@@ -455,6 +455,7 @@ export const classesApi = {
 // Schedules API
 export interface ScheduleCalendarItem {
   id: number;
+  scheduleId?: number;
   classId: number;
   title: string;
   start: string;
@@ -473,6 +474,7 @@ export interface GetMyScheduleParams {
 function normalizeScheduleItem(source: Record<string, unknown>): ScheduleCalendarItem {
   return {
     id: toNumberValue(pick(source, 'id', 'Id')),
+    scheduleId: toNumberValue(pick(source, 'scheduleId', 'ScheduleId')),
     classId: toNumberValue(pick(source, 'classId', 'ClassId')),
     title: (pick<string>(source, 'title', 'Title')) ?? '',
     start: (pick<string>(source, 'start', 'Start')) ?? '',
@@ -507,6 +509,7 @@ export type AttendanceStatus = 'Present' | 'Absent' | 'Late' | 'Excused';
 export interface AttendanceRecord {
   id: number;
   classId: number;
+  scheduleId?: number;
   classCode: string;
   studentId: number;
   studentName: string;
@@ -544,6 +547,7 @@ export interface CreateAttendanceRecordInput {
 
 export interface CreateAttendanceRequestPayload {
   classId: number;
+  scheduleId?: number;
   attendanceDate: string;
   records: CreateAttendanceRecordInput[];
 }
@@ -552,12 +556,13 @@ function normalizeAttendanceRecord(source: Record<string, unknown>): AttendanceR
   return {
     id: toNumberValue(pick(source, 'id', 'Id')),
     classId: toNumberValue(pick(source, 'classId', 'ClassId')),
+    scheduleId: toNumberValue(pick(source, 'scheduleId', 'ScheduleId')),
     classCode: (pick<string>(source, 'classCode', 'ClassCode')) ?? '',
     studentId: toNumberValue(pick(source, 'studentId', 'StudentId')),
     studentName: (pick<string>(source, 'studentName', 'StudentName')) ?? '',
     studentEmail: (pick<string>(source, 'studentEmail', 'StudentEmail')) ?? '',
     attendanceDate: (pick<string>(source, 'attendanceDate', 'AttendanceDate')) ?? '',
-    status: ((pick<string>(source, 'status', 'Status')) ?? 'Present') as AttendanceStatus,
+    status: (pick<string>(source, 'status', 'Status') as AttendanceStatus | undefined) ?? 'Present',
     note: pick<string>(source, 'note', 'Note'),
     markedById: toNumberValue(pick(source, 'markedById', 'MarkedById')),
     markedByName: (pick<string>(source, 'markedByName', 'MarkedByName')) ?? '',
@@ -594,11 +599,15 @@ export const attendanceApi = {
     payload: CreateAttendanceRequestPayload
   ): Promise<AttendanceRecord[]> => {
     const dateStr = payload.attendanceDate.includes('T') ? payload.attendanceDate.split('T')[0] : payload.attendanceDate;
-    const response = await api.post('/Attendance', {
+    const requestBody: Record<string, unknown> = {
       classId: payload.classId,
       attendanceDate: dateStr,
       records: payload.records,
-    });
+    };
+    if (payload.scheduleId) {
+      requestBody.scheduleId = payload.scheduleId;
+    }
+    const response = await api.post('/Attendance', requestBody);
     const data = unwrapApiData<Record<string, unknown>>(response.data) ?? {};
     const items = pick<unknown[]>(data, 'items', 'Items') ?? [];
     return items.map((item) => normalizeAttendanceRecord(item as Record<string, unknown>));
@@ -658,6 +667,7 @@ export interface AssignmentEntity {
   dueDate?: string | null;
   maxScore: number;
   rubricId?: number | null;
+  rubricCriteria?: { name: string; maxPoints: number; description?: string }[];
   allowResubmit: boolean;
   resubmitLimit?: number | null;
   status: AssignmentStatus | string;
@@ -720,6 +730,7 @@ export interface CreateAssignmentRequest {
   dueDate?: string | null;
   maxScore?: number;
   rubricId?: number | null;
+  rubricCriteria?: { name: string; maxPoints: number; description?: string }[];
   allowResubmit?: boolean;
   resubmitLimit?: number | null;
   status?: AssignmentStatus;
@@ -842,6 +853,19 @@ function normalizeSimulationDetail(value: unknown): AssignmentSimulationDetail |
   };
 }
 
+function normalizeRubricCriteria(value: unknown): { name: string; maxPoints: number; description?: string }[] | undefined {
+  if (!value || !Array.isArray(value)) {
+    return undefined;
+  }
+  return value
+    .filter((item): item is Record<string, unknown> => item !== null && typeof item === 'object')
+    .map((item) => ({
+      name: toStringValue(pick(item, 'name', 'Name'), ''),
+      maxPoints: toNumberValue(pick(item, 'maxPoints', 'max_points', 'MaxPoints'), 0),
+      description: toStringValue(pick(item, 'description', 'Description')) || undefined,
+    }));
+}
+
 function normalizeAssignment(value: unknown): AssignmentEntity {
   const source = toRecord(value) ?? {};
   const assignmentType = normalizeAssignmentType(
@@ -865,6 +889,7 @@ function normalizeAssignment(value: unknown): AssignmentEntity {
     dueDate: (pick(source, 'dueDate', 'DueDate') as string | null | undefined) ?? null,
     maxScore: toNumberValue(pick(source, 'maxScore', 'MaxScore'), 100),
     rubricId: toNullableNumber(pick(source, 'rubricId', 'RubricId')),
+    rubricCriteria: normalizeRubricCriteria(pick(source, 'rubricCriteria', 'RubricCriteria')),
     allowResubmit: toBooleanValue(pick(source, 'allowResubmit', 'AllowResubmit')),
     resubmitLimit: toNullableNumber(pick(source, 'resubmitLimit', 'ResubmitLimit')),
     status: toStringValue(pick(source, 'status', 'Status'), 'draft'),
@@ -2179,14 +2204,18 @@ export interface SubmissionEntity {
   id: number;
   assignmentId: number;
   assignmentTitle: string;
+  assignmentType: string; // 'quiz' | 'text_report' | 'practical_simulation'
   classId: number;
   classCode: string;
   studentId: number | null;
   studentName: string;
   studentEmail: string;
+  fileId: number | null;
+  fileUrl: string;
   status: SubmissionStatus;
   score: number | null;
   finalScore: number | null;
+  attemptNumber: number;
   gradedById: number | null;
   gradedByName: string;
   gradedAt: string | null;
@@ -2224,14 +2253,18 @@ function normalizeSubmissionEntity(value: unknown): SubmissionEntity {
     id: toNumberValue(pick(source, 'id', 'Id')),
     assignmentId: toNumberValue(pick(source, 'assignmentId', 'AssignmentId')),
     assignmentTitle: toStringValue(pick(source, 'assignmentTitle', 'AssignmentTitle')),
+    assignmentType: toStringValue(pick(source, 'assignmentType', 'AssignmentType', 'assignmenttype')),
     classId: toNumberValue(pick(source, 'classId', 'ClassId')),
     classCode: toStringValue(pick(source, 'classCode', 'ClassCode')),
     studentId: toNullableNumber(pick(source, 'studentId', 'StudentId')),
     studentName: toStringValue(pick(source, 'studentName', 'StudentName')),
     studentEmail: toStringValue(pick(source, 'studentEmail', 'StudentEmail')),
+    fileId: toNullableNumber(pick(source, 'fileId', 'FileId')),
+    fileUrl: toStringValue(pick(source, 'fileUrl', 'FileUrl')),
     status: normalizeSubmissionStatus(pick(source, 'status', 'Status')),
     score: toNullableNumber(pick(source, 'score', 'Score')),
     finalScore: toNullableNumber(pick(source, 'finalScore', 'FinalScore')),
+    attemptNumber: toNumberValue(pick(source, 'attemptNumber', 'AttemptNumber')),
     gradedById: toNullableNumber(pick(source, 'gradedById', 'GradedById')),
     gradedByName: toStringValue(pick(source, 'gradedByName', 'GradedByName')),
     gradedAt: (pick(source, 'gradedAt', 'GradedAt') as string | null | undefined) ?? null,
@@ -2253,6 +2286,67 @@ function normalizeSubmissionsResponse(payload: unknown): PagedSubmissionsResult 
   };
 }
 
+export interface SubmissionDetailResponse {
+  id: number;
+  assignmentId: number;
+  assignmentTitle: string;
+  classId: number;
+  classCode: string;
+  studentId: number | null;
+  studentName: string;
+  studentEmail: string;
+  fileId: number | null;
+  fileUrl: string;
+  status: string;
+  contentJson: string;
+  autoGradeResultJson?: string;
+  autoScore?: number;
+  finalScore?: number;
+  attemptNumber: number;
+  score?: number;
+  feedback?: string;
+  gradedById?: number;
+  gradedByName: string;
+  gradedAt?: string;
+  createdAt: string;
+  updatedAt: string;
+  assignmentType?: string;
+  maxScore?: number;
+  rubricCriteria?: { name: string; maxPoints: number; description?: string }[];
+}
+
+function normalizeSubmissionDetailResponse(payload: unknown): SubmissionDetailResponse {
+  const source = toRecord(unwrapApiData<unknown>(payload)) ?? {};
+  return {
+    id: toNumberValue(pick(source, 'id', 'Id')),
+    assignmentId: toNumberValue(pick(source, 'assignmentId', 'AssignmentId')),
+    assignmentTitle: toStringValue(pick(source, 'assignmentTitle', 'AssignmentTitle')),
+    classId: toNumberValue(pick(source, 'classId', 'ClassId')),
+    classCode: toStringValue(pick(source, 'classCode', 'ClassCode')),
+    studentId: toNullableNumber(pick(source, 'studentId', 'StudentId')),
+    studentName: toStringValue(pick(source, 'studentName', 'StudentName')),
+    studentEmail: toStringValue(pick(source, 'studentEmail', 'StudentEmail')),
+    fileId: toNullableNumber(pick(source, 'fileId', 'FileId')),
+    fileUrl: toStringValue(pick(source, 'fileUrl', 'FileUrl')),
+    status: toStringValue(pick(source, 'status', 'Status')),
+    contentJson: toStringValue(pick(source, 'contentJson', 'ContentJson'), '{}'),
+    autoGradeResultJson: toStringValue(pick(source, 'autoGradeResultJson', 'AutoGradeResultJson')),
+    autoScore: toNullableNumber(pick(source, 'autoScore', 'AutoScore')) ?? undefined,
+    finalScore: toNullableNumber(pick(source, 'finalScore', 'FinalScore')) ?? undefined,
+    attemptNumber: toNumberValue(pick(source, 'attemptNumber', 'AttemptNumber')),
+    score: toNullableNumber(pick(source, 'score', 'Score')) ?? undefined,
+    feedback: toStringValue(pick(source, 'feedback', 'Feedback')),
+    gradedById: toNullableNumber(pick(source, 'gradedById', 'GradedById')) ?? undefined,
+    gradedByName: toStringValue(pick(source, 'gradedByName', 'GradedByName')),
+    gradedAt: (pick(source, 'gradedAt', 'GradedAt') as string | null | undefined) ?? undefined,
+    createdAt: toStringValue(pick(source, 'createdAt', 'CreatedAt')),
+    updatedAt: toStringValue(pick(source, 'updatedAt', 'UpdatedAt')),
+    assignmentType: toStringValue(pick(source, 'assignmentType', 'AssignmentType')),
+    maxScore: toNumberValue(pick(source, 'maxScore', 'MaxScore')),
+    rubricCriteria: normalizeRubricCriteria(pick(source, 'rubricCriteria', 'RubricCriteria')),
+  };
+}
+
 // GET /Grading/submissions — GetSubmissionsHandler.cs tự scope theo role trong JWT hiện tại
 // (Teacher chỉ thấy submission của lớp mình dạy, không cần/không được gửi TeacherId thủ
 // công) và đã OrderByDescending(CreatedAt) sẵn ở SubmissionRepository — không cần FE sort lại.
@@ -2269,6 +2363,19 @@ export const gradingApi = {
       params: Object.keys(queryParams).length ? queryParams : undefined,
     });
     return normalizeSubmissionsResponse(response.data);
+  },
+
+  getSubmissionDetail: async (submissionId: number): Promise<SubmissionDetailResponse> => {
+    const response = await api.get(`/Grading/submissions/${submissionId}`);
+    return normalizeSubmissionDetailResponse(response.data);
+  },
+
+  gradeSubmission: async (submissionId: number, score: number, feedback?: string): Promise<any> => {
+    const response = await api.post(`/Grading/submissions/${submissionId}/grade`, {
+      score,
+      feedback,
+    });
+    return response.data;
   },
 };
 

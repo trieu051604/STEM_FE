@@ -26,9 +26,9 @@ export const ClassDetailDrawer: React.FC<ClassDetailDrawerProps> = ({ isOpen, on
   const isSessionToday = sessionDateStr === todayStr;
 
   const handleNavigateToAttendance = () => {
-    if (session && session.classId) {
+    if (session && session.classId && session.id) {
       const dateStr = session.start ? format(parseISO(session.start), 'yyyy-MM-dd') : '';
-      navigate(`/dashboard/teacher/schedule/attendance?classId=${session.classId}&date=${dateStr}&classCode=${session.classCode || session.title}&className=${session.className}&startTime=${session.start}&endTime=${session.end}`);
+      navigate(`/dashboard/teacher/schedule/attendance?classId=${session.classId}&date=${dateStr}&classCode=${session.classCode || session.title}&className=${session.className}&startTime=${session.start}&endTime=${session.end}&scheduleId=${session.id}`);
     }
   };
 

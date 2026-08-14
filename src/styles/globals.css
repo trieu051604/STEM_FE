@@ -359,4 +359,4 @@
    semantic tokens (bg-card, text-foreground, border-border, ...) as every
    other role, so removing the override lets them inherit the normal
    :root/.dark cascade and respond to the toggle like the rest of the app.
-   The class is kept as a namespace hook for future Teacher-specific rules. */
+   The class is kept as a namespace hook for future Teacher-specific rules. */

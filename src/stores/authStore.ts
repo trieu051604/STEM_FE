@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { authApi, LoginResponse } from '@/services/authApi';
+import { encodeData, decodeData } from '@/utils/crypto';
 
 export type UserRole = 'master_admin' | 'school_admin' | 'teacher' | 'student';
 
@@ -11,6 +12,7 @@ export interface User {
   avatar?: string;
   role: UserRole;
   schoolId?: number;
+  schoolName?: string;
   isOnline?: boolean;
   createdAt: string;
 }
@@ -21,16 +23,16 @@ interface AuthStore {
   refreshToken: string | null;
   isAuthenticated: boolean;
   isLoading: boolean;
-  
+
   // Email/Password login (School Admin)
   login: (email: string, password: string) => Promise<void>;
-  
+
   // Google OAuth login (Student, Teacher)
   googleLogin: (idToken: string) => Promise<void>;
-  
+
   // Auto-login from stored session
   autoLogin: () => Promise<void>;
-  
+
   logout: () => void;
   updateUser: (user: Partial<User>) => void;
 }
@@ -48,10 +50,11 @@ const mapRole = (role: string): UserRole => {
 
 const mapResponseToUser = (data: LoginResponse): User => {
   return {
-    id: 0, // Will be extracted from JWT if needed
+    id: data.id,
     email: data.email,
     fullName: data.fullName,
     role: mapRole(data.role),
+    schoolId: data.schoolId,
     createdAt: new Date().toISOString(),
   };
 };
@@ -70,12 +73,12 @@ export const useAuthStore = create<AuthStore>()(
         try {
           const data = await authApi.login(email, password);
           const user = mapResponseToUser(data);
-          set({ 
-            user, 
-            token: data.token, 
+          set({
+            user,
+            token: data.token,
             refreshToken: data.refreshToken,
-            isAuthenticated: true, 
-            isLoading: false 
+            isAuthenticated: true,
+            isLoading: false
           });
         } catch (err: any) {
           set({ isLoading: false });
@@ -89,19 +92,18 @@ export const useAuthStore = create<AuthStore>()(
         try {
           const data = await authApi.googleLogin(idToken);
           const user = mapResponseToUser(data);
-          set({ 
-            user, 
-            token: data.token, 
+          set({
+            user,
+            token: data.token,
             refreshToken: data.refreshToken,
-            isAuthenticated: true, 
-            isLoading: false 
+            isAuthenticated: true,
+            isLoading: false
           });
         } catch (err: any) {
           set({ isLoading: false });
-          // Extract error message from response
-          const message = err.response?.data?.message || 
-                          err.message || 
-                          'Đăng nhập Google thất bại. Vui lòng thử lại.';
+          const message = err.response?.data?.message ||
+            err.message ||
+            'Đăng nhập Google thất bại. Vui lòng thử lại.';
           throw new Error(message);
         }
       },
@@ -112,29 +114,28 @@ export const useAuthStore = create<AuthStore>()(
 
         set({ isLoading: true });
         try {
-          // Try to refresh the token
           const data = await authApi.refreshToken(refreshToken || token);
           const updatedUser = mapResponseToUser(data);
-          set({ 
-            user: updatedUser, 
-            token: data.token, 
+          set({
+            user: updatedUser,
+            token: data.token,
             refreshToken: data.refreshToken,
-            isAuthenticated: true, 
-            isLoading: false 
+            isAuthenticated: true,
+            isLoading: false
           });
         } catch {
-          // Token expired, clear auth state
           get().logout();
         }
       },
 
       logout: () => {
-        set({ 
-          user: null, 
-          token: null, 
+        // Clear all sensitive data
+        set({
+          user: null,
+          token: null,
           refreshToken: null,
           isAuthenticated: false,
-          isLoading: false 
+          isLoading: false
         });
       },
 
@@ -143,14 +144,53 @@ export const useAuthStore = create<AuthStore>()(
         if (current) set({ user: { ...current, ...partial } });
       },
     }),
-    { 
+    {
       name: 'stem-auth',
-      partialize: (state) => ({ 
-        user: state.user, 
+      partialize: (state) => ({
+        user: state.user,
         token: state.token,
         refreshToken: state.refreshToken,
         isAuthenticated: state.isAuthenticated,
       }),
+      // Add storage transformation for extra security
+      storage: {
+        getItem: (name) => {
+          const value = localStorage.getItem(name);
+          if (!value) return null;
+
+          try {
+            const parsed = JSON.parse(value);
+            // Decode stored tokens if encoded
+            if (parsed.state?.token && typeof parsed.state.token === 'string') {
+              parsed.state.token = decodeData(parsed.state.token);
+            }
+            if (parsed.state?.refreshToken && typeof parsed.state.refreshToken === 'string') {
+              parsed.state.refreshToken = decodeData(parsed.state.refreshToken);
+            }
+            return parsed;
+          } catch {
+            return null;
+          }
+        },
+        setItem: (name, value) => {
+          try {
+            const toStore = JSON.parse(JSON.stringify(value));
+            // Encode tokens before storing to prevent casual viewing
+            if (toStore.state?.token) {
+              toStore.state.token = encodeData(toStore.state.token);
+            }
+            if (toStore.state?.refreshToken) {
+              toStore.state.refreshToken = encodeData(toStore.state.refreshToken);
+            }
+            localStorage.setItem(name, JSON.stringify(toStore));
+          } catch {
+            localStorage.setItem(name, JSON.stringify(value));
+          }
+        },
+        removeItem: (name) => {
+          localStorage.removeItem(name);
+        },
+      },
     }
   )
 );

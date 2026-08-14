@@ -42,8 +42,8 @@ export function Footer() {
           {/* StemFlow Branding Col */}
           <div className="lg:col-span-2 space-y-6">
             <div className="font-bold text-2xl tracking-tight text-white flex items-center gap-2 select-none">
-              <Icon name="Cpu" className="text-blue-500 animate-pulse" />
-              <span>Stem<span className="text-blue-500">Flow</span></span>
+              <Icon name="Cpu" className="text-brand-500 animate-pulse" />
+              <span>Stem<span className="text-brand-500">Flow</span></span>
             </div>
             <p className="text-sm text-slate-400 max-w-sm leading-relaxed">
               Hệ sinh thái thực hành STEM trực tuyến tối ưu nhất dành cho học sinh, giáo viên và các tổ chức giáo dục. Đồng hành xây dựng tương lai công nghệ số bền vững.

@@ -8,9 +8,9 @@ const PATHS_DATA = [
     title: 'Robotics & Automation',
     desc: 'Chế tạo robot tránh vật cản, robot dò line, và điều khiển từ xa qua Bluetooth.',
     icon: 'Cpu',
-    color: 'border-blue-500 text-blue-600 dark:text-blue-400 bg-blue-50/50 dark:bg-blue-950/30',
+    color: 'border-brand-500 text-brand-600 dark:text-brand-400 bg-brand-50/50 dark:bg-brand-950/30',
     accentColor: 'blue',
-    glow: 'group-hover:bg-blue-500/10',
+    glow: 'group-hover:bg-brand-500/10',
     demo: {
       title: 'Mô phỏng Robot Tránh Vật Cản',
       code: `void loop() {
@@ -24,7 +24,7 @@ const PATHS_DATA = [
 }`,
       telemetry: [
         { label: 'Trạng thái', value: 'Đang di chuyển', highlight: 'text-emerald-600 dark:text-emerald-400' },
-        { label: 'Cảm biến siêu âm', value: '42.5 cm', highlight: 'text-blue-600 dark:text-blue-400 font-mono' },
+        { label: 'Cảm biến siêu âm', value: '42.5 cm', highlight: 'text-brand-600 dark:text-brand-400 font-mono' },
         { label: 'Động cơ trái / phải', value: '80% / 80%', highlight: 'font-mono' },
         { label: 'Điện áp PIN', value: '7.4 V', highlight: 'font-mono' }
       ]
@@ -54,7 +54,7 @@ const PATHS_DATA = [
         { label: 'Độ ẩm đất', value: '38%', highlight: 'text-amber-600 dark:text-amber-400 font-mono' },
         { label: 'Máy bơm nước', value: 'ĐANG MỞ (ON)', highlight: 'text-emerald-600 dark:text-emerald-400 font-semibold' },
         { label: 'Nhiệt độ phòng', value: '29.5 °C', highlight: 'font-mono' },
-        { label: 'Kết nối Cloud', value: 'Đã kết nối', highlight: 'text-blue-500 font-mono' }
+        { label: 'Kết nối Cloud', value: 'Đã kết nối', highlight: 'text-brand-500 font-mono' }
       ]
     }
   },
@@ -94,14 +94,14 @@ export function FeatureShowcase() {
     <section id="paths" className="py-24 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 transition-colors duration-300 relative overflow-hidden">
       
       {/* Dynamic Background Accents */}
-      <div className="absolute top-1/2 left-0 w-96 h-96 bg-blue-100/30 dark:bg-blue-950/10 rounded-full blur-[120px] pointer-events-none"></div>
+      <div className="absolute top-1/2 left-0 w-96 h-96 bg-brand-50/30 dark:bg-brand-950/10 rounded-full blur-[120px] pointer-events-none"></div>
       <div className="absolute bottom-0 right-0 w-96 h-96 bg-purple-100/30 dark:bg-purple-950/10 rounded-full blur-[120px] pointer-events-none"></div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
         
         {/* Section Title */}
         <div className="text-center max-w-3xl mx-auto mb-16">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-50 dark:bg-blue-950/50 border border-blue-200 dark:border-blue-900 text-blue-600 dark:text-blue-400 text-xs font-semibold mb-4 uppercase tracking-widest">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-brand-50 dark:bg-brand-950/50 border border-brand-200 dark:border-brand-900 text-brand-600 dark:text-brand-400 text-xs font-semibold mb-4 uppercase tracking-widest">
             Học thông qua trải nghiệm thực tế
           </div>
           <h2 className="text-4xl md:text-5xl font-black tracking-tight text-slate-950 dark:text-white">
@@ -122,7 +122,7 @@ export function FeatureShowcase() {
                 onClick={() => setSelectedPath(path)}
                 className={`group text-left p-6 rounded-2xl border-2 transition-all duration-300 flex flex-col justify-between h-64 relative overflow-hidden select-none outline-none ${
                   isSelected
-                    ? `${path.color} shadow-lg shadow-blue-500/5`
+                    ? `${path.color} shadow-lg shadow-brand-500/5`
                     : 'border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 hover:bg-slate-100 dark:hover:bg-slate-800/80 hover:border-slate-350 dark:hover:border-slate-700'
                 }`}
               >
@@ -174,7 +174,7 @@ export function FeatureShowcase() {
                 onClick={() => setVirtualLedActive(!virtualLedActive)}
                 className={`px-3 py-1 text-xs font-semibold rounded-lg transition-all ${
                   virtualLedActive 
-                    ? 'bg-blue-600 hover:bg-blue-500 text-white' 
+                    ? 'bg-brand-600 hover:bg-brand-500 text-white' 
                     : 'bg-slate-800 hover:bg-slate-750 text-slate-300'
                 }`}
               >
@@ -190,9 +190,9 @@ export function FeatureShowcase() {
               <div>
                 <div className="text-slate-600 mb-2 flex items-center justify-between border-b border-slate-900 pb-2">
                   <span>Trình soạn thảo Code</span>
-                  <span className="text-[10px] bg-slate-900 px-2 py-0.5 rounded text-blue-400 font-semibold uppercase">Arduino C++</span>
+                  <span className="text-[10px] bg-slate-900 px-2 py-0.5 rounded text-brand-400 font-semibold uppercase">Arduino C++</span>
                 </div>
-                <pre className="text-blue-300 whitespace-pre-wrap leading-relaxed">
+                <pre className="text-brand-300 whitespace-pre-wrap leading-relaxed">
                   {selectedPath.id === 'iot' && customMoisture < 50 ? (
                     selectedPath.demo.code.replace('digitalWrite(PUMP_PIN, HIGH); // Mở van nước', '// ĐẤT KHÔ -> KÍCH HOẠT MÁY BƠM\n    digitalWrite(PUMP_PIN, HIGH);')
                   ) : selectedPath.demo.code}
@@ -246,7 +246,7 @@ export function FeatureShowcase() {
               <div className="border border-slate-800 bg-slate-950/50 p-4 rounded-2xl flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <div className={`w-8 h-8 rounded-xl flex items-center justify-center ${
-                    selectedPath.id === 'robotics' ? 'bg-blue-500/20 text-blue-400' : selectedPath.id === 'iot' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-purple-500/20 text-purple-400'
+                    selectedPath.id === 'robotics' ? 'bg-brand-500/20 text-brand-400' : selectedPath.id === 'iot' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-purple-500/20 text-purple-400'
                   }`}>
                     <Icon name={selectedPath.icon} size={18} />
                   </div>
@@ -265,7 +265,7 @@ export function FeatureShowcase() {
                     selectedPath.id === 'iot' && customMoisture < 50
                       ? 'bg-red-500 shadow-red-500/80 animate-pulse'
                       : selectedPath.id === 'robotics' && virtualLedActive
-                      ? 'bg-blue-500 shadow-blue-500/80 animate-pulse'
+                      ? 'bg-brand-500 shadow-brand-500/80 animate-pulse'
                       : selectedPath.id === 'games'
                       ? 'bg-purple-500 shadow-purple-500/80 animate-pulse'
                       : 'bg-slate-800 shadow-none'
@@ -295,16 +295,16 @@ export function FeatureShowcase() {
           
           {/* Feature 1: Custom Sandbox (Large) */}
           <div className="md:col-span-2 bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-800 rounded-3xl p-8 flex flex-col justify-between relative overflow-hidden group hover:-translate-y-1 hover:shadow-xl transition-all duration-300">
-            <div className="absolute top-0 right-0 w-64 h-64 bg-blue-500/5 rounded-full blur-[80px] pointer-events-none"></div>
+            <div className="absolute top-0 right-0 w-64 h-64 bg-brand-500/5 rounded-full blur-[80px] pointer-events-none"></div>
             <div className="relative z-10 max-w-lg">
-              <div className="w-12 h-12 bg-blue-600 hover:bg-blue-500 text-white rounded-xl flex items-center justify-center mb-6 shadow-lg shadow-blue-600/35">
+              <div className="w-12 h-12 bg-brand-600 hover:bg-brand-500 text-white rounded-xl flex items-center justify-center mb-6 shadow-lg shadow-brand-600/35">
                 <Icon name="Box" size={20} />
               </div>
               <h3 className="text-2xl font-bold text-slate-950 dark:text-white mb-3">Môi trường mô phỏng không giới hạn</h3>
               <p className="text-slate-600 dark:text-slate-400 leading-relaxed mb-6 font-medium">
                 Tự do kéo thả linh kiện, vẽ đường cáp kết nối và chạy thử code tức thì. Hỗ trợ hàng trăm loại cảm biến, động cơ Servo, màn hình hiển thị OLED, cảm biến độ ẩm đất và các bo mạch như Arduino Uno R3, ESP32 DevKit.
               </p>
-              <span className="text-blue-600 dark:text-blue-400 font-bold inline-flex items-center gap-1 group-hover:gap-2 transition-all">
+              <span className="text-brand-600 dark:text-brand-400 font-bold inline-flex items-center gap-1 group-hover:gap-2 transition-all">
                 Khám phá kho linh kiện <Icon name="ArrowRight" size={16} />
               </span>
             </div>
@@ -357,7 +357,7 @@ export function FeatureShowcase() {
             </div>
             <div className="bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-850 py-2.5 px-4 rounded-xl flex items-center justify-between text-xs">
               <span className="font-mono text-slate-500 truncate mr-2">stemflow.vn/project/x3f9...</span>
-              <button className="bg-blue-600 text-white px-2.5 py-1 rounded-md text-[10px] font-bold active:scale-95 transition-all">COPY</button>
+              <button className="bg-brand-600 text-white px-2.5 py-1 rounded-md text-[10px] font-bold active:scale-95 transition-all">COPY</button>
             </div>
           </div>
 

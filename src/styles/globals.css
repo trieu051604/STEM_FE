@@ -5,86 +5,102 @@
 @tailwind components;
 @tailwind utilities;
 
-/* ============ CSS CUSTOM PROPERTIES ============ */
+/* ============ CSS CUSTOM PROPERTIES - DISCORD INSPIRED ============ */
 :root {
-  /* Color palette */
-  --color-brand: #6366f1;
-  --color-accent: #0ea5e9;
-  --color-success: #10b981;
-  --color-warning: #f59e0b;
-  --color-danger: #ef4444;
+  --border: 222, 14%, 88%;
+  --input: 222, 14%, 88%;
+  --ring: 235, 86%, 65%;
 
-  /* Semantic tokens (light defaults) */
-  --bg: #f8f9fb;
-  --surface: #ffffff;
-  --muted: #6b7280;
-  --text: #0f172a;
-  --border: #e6e9ee;
-  --card-bg: rgba(255,255,255,0.6);
-  --glass-bg: rgba(255,255,255,0.06);
+  --background: 222, 20%, 97%;
+  --foreground: 224, 30%, 12%;
 
-  --primary: var(--color-brand);
-  --accent: var(--color-accent);
+  --primary: 235, 86%, 65%;
+  --primary-foreground: 0, 0%, 100%;
 
-  --sidebar-width: 260px;
-  --topbar-height: 64px;
-  --radius: 1rem;
-  --transition: 0.2s ease;
+  --secondary: 222, 20%, 92%;
+  --secondary-foreground: 224, 30%, 12%;
 
-  /* shadcn tokens (map) */
-  --background: var(--bg);
-  --foreground: var(--text);
-  --input: #f3f4f6;
-  --ring: var(--primary);
+  --muted: 222, 20%, 92%;
+  --muted-foreground: 218, 10%, 50%;
+
+  --accent: 222, 20%, 92%;
+  --accent-foreground: 224, 30%, 12%;
+
+  --popover: 0, 0%, 100%;
+  --popover-foreground: 224, 30%, 12%;
+
+  --card: 0, 0%, 100%;
+  --card-foreground: 224, 30%, 12%;
+
+  --destructive: 0, 72%, 51%;
+  --destructive-foreground: 0, 0%, 100%;
+
+  --radius: 0.5rem;
+
+  /* Discord palette */
+  --color-brand: #5865f2;
+  --color-accent: #eb459e;
+  --color-success: #57f287;
+  --color-warning: #fee75c;
+  --color-danger: #ed4245;
 }
 
-/* Dark theme overrides */
+/* ============ DARK THEME ============ */
 .dark {
-  --bg: #0f172a;
-  --surface: #0f172a;
-  --muted: #94a3b8;
-  --text: #f8fafc;
-  --border: #1f2937;
-  --card-bg: rgba(17,24,39,0.6);
-  --glass-bg: rgba(255,255,255,0.03);
+  --border: 240, 4%, 24%;
+  --input: 240, 4%, 24%;
+  --ring: 235, 86%, 65%;
 
-  --input: #111827;
+  --background: 240, 2%, 11%;
+  --foreground: 220, 12%, 94%;
+
+  --primary: 235, 86%, 65%;
+  --primary-foreground: 0, 0%, 100%;
+
+  --secondary: 240, 4%, 17%;
+  --secondary-foreground: 220, 12%, 94%;
+
+  --muted: 240, 4%, 17%;
+  --muted-foreground: 220, 8%, 66%;
+
+  --accent: 240, 4%, 21%;
+  --accent-foreground: 220, 12%, 94%;
+
+  --popover: 240, 2%, 13%;
+  --popover-foreground: 220, 12%, 94%;
+
+  --card: 240, 4%, 16%;
+  --card-foreground: 220, 12%, 94%;
+
+  --destructive: 0, 72%, 48%;
+  --destructive-foreground: 0, 0%, 100%;
 }
 
-/* ============ RESET ============ */
-*,
-*::before,
-*::after {
-  box-sizing: border-box;
-  border-color: var(--border);
-}
+/* ============ BASE STYLES ============ */
+@layer base {
+  * {
+    border-color: hsl(var(--border));
+  }
 
-html {
-  scroll-behavior: smooth;
-  font-family: "Geist Variable", sans-serif;
-}
+  body {
+    background-color: hsl(var(--background));
+    color: hsl(var(--foreground));
+  }
 
-body {
-  margin: 0;
-  min-height: 100vh;
+  html {
+    scroll-behavior: smooth;
+    font-family: "Geist Variable", sans-serif;
+  }
 
-  background-color: var(--bg);
-  color: var(--text);
-
-  font-family: "Inter", system-ui, sans-serif;
-
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-}
-
-h1,
-h2,
-h3,
-h4,
-h5,
-h6,
-.font-headline {
-  font-family: "Manrope", sans-serif;
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6,
+  .font-headline {
+    font-family: "Manrope", sans-serif;
+  }
 }
 
 /* ============ SCROLLBAR ============ */
@@ -94,16 +110,16 @@ h6,
 }
 
 ::-webkit-scrollbar-track {
-  background: var(--color-surface);
+  background: transparent;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #334155;
+  background: hsl(var(--border));
   border-radius: 999px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--color-brand);
+  background: hsl(var(--muted-foreground));
 }
 
 /* ============ SELECTION ============ */
@@ -118,12 +134,12 @@ h6,
     @apply bg-white/5 backdrop-blur-md border border-white/10;
   }
 
-  .glass-hover {
-    @apply hover:bg-white/10 transition-colors duration-200;
+  .bg-card {
+    color: hsl(var(--card-foreground));
   }
 
-  .glass-card {
-    @apply bg-slate-800/60 backdrop-blur-sm border border-slate-700/50 rounded-2xl;
+  .bg-popover {
+    color: hsl(var(--popover-foreground));
   }
 
   .gradient-brand {
@@ -135,31 +151,11 @@ h6,
   }
 
   .kpi-card {
-    @apply glass-card p-5 relative overflow-hidden transition-all duration-300 hover:scale-[1.01] shadow-soft;
-  }
-
-  .card {
-    @apply bg-surface-container-lowest rounded-2xl p-6 border border-slate-700/20 shadow-soft;
+    @apply p-5 relative overflow-hidden transition-all duration-300 hover:scale-[1.01];
   }
 
   .img-cover {
     @apply w-full h-full object-cover rounded-2xl;
-  }
-
-  .shadow-soft {
-    box-shadow: 0 6px 18px rgba(2,6,23,0.08), 0 2px 6px rgba(2,6,23,0.04);
-  }
-
-  .shadow-elevated {
-    box-shadow: 0 18px 50px rgba(2,6,23,0.12), 0 6px 20px rgba(2,6,23,0.06);
-  }
-
-  .sidebar-item {
-    @apply flex items-center gap-3 px-3 py-2.5 rounded-xl text-slate-400 hover:text-white hover:bg-white/5 transition-all duration-200 text-sm font-medium cursor-pointer;
-  }
-
-  .sidebar-item.active {
-    @apply text-white bg-brand-500/20 border border-brand-500/30;
   }
 
   .badge {
@@ -167,19 +163,7 @@ h6,
   }
 
   .badge-brand {
-    @apply badge bg-brand-500/20 text-brand-300 border border-brand-500/30;
-  }
-
-  .badge-success {
-    @apply badge bg-emerald-500/20 text-emerald-300 border border-emerald-500/30;
-  }
-
-  .badge-warning {
-    @apply badge bg-amber-500/20 text-amber-300 border border-amber-500/30;
-  }
-
-  .badge-danger {
-    @apply badge bg-red-500/20 text-red-300 border border-red-500/30;
+    @apply badge bg-primary/20 text-primary border border-primary/30;
   }
 
   .btn-primary {
@@ -187,27 +171,39 @@ h6,
   }
 
   .btn-secondary {
-    @apply inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold text-slate-200 bg-slate-700 hover:bg-slate-600 active:scale-95 transition-all duration-150 border border-slate-600;
+    @apply inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold bg-secondary text-secondary-foreground hover:bg-secondary/80 active:scale-95 transition-all duration-150 border-border;
   }
 
   .btn-ghost {
-    @apply inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium text-slate-400 hover:text-white hover:bg-white/5 active:scale-95 transition-all duration-150;
+    @apply inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-accent active:scale-95 transition-all duration-150;
   }
 
   .input-base {
-    @apply w-full px-4 py-2.5 rounded-xl bg-slate-800 border border-slate-700 text-slate-100 placeholder-slate-500 focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500/50 transition-all duration-200 text-sm;
+    @apply w-full px-4 py-2.5 rounded-xl bg-input border text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring/50 transition-all duration-200 text-sm;
   }
 
   .divider {
-    @apply h-px bg-slate-700/50 my-4;
+    @apply h-px bg-border my-4;
   }
 
   .section-heading {
-    @apply text-lg font-semibold text-white;
+    @apply text-lg font-semibold text-foreground;
   }
 
   .stat-number {
-    @apply text-3xl font-bold text-white;
+    @apply text-3xl font-bold text-foreground;
+  }
+
+  .badge-success {
+    @apply badge bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800;
+  }
+
+  .badge-warning {
+    @apply badge bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-300 border border-amber-200 dark:border-amber-800;
+  }
+
+  .badge-danger {
+    @apply badge bg-red-100 text-red-700 dark:bg-red-900/50 dark:text-red-300 border border-red-200 dark:border-red-800;
   }
 
   .online-indicator {
@@ -219,7 +215,7 @@ h6,
   }
 
   .skeleton {
-    @apply bg-slate-700/30 rounded-md animate-pulse;
+    @apply bg-muted animate-pulse rounded-md;
   }
 }
 
@@ -256,6 +252,30 @@ h6,
   }
 }
 
+/* Thanh tiến trình vô định (không có ETA chính xác) cho giai đoạn compile
+   thật (~40-90s) khi chạy mô phỏng mode="qemu" — xem LabSandboxPage.tsx. */
+@keyframes compile-progress {
+  0% {
+    transform: translateX(-100%);
+  }
+
+  100% {
+    transform: translateX(300%);
+  }
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 .page-enter {
   animation: slideUp 0.3s ease-out;
 }
@@ -273,30 +293,70 @@ h6,
   }
 }
 
-/* Focus styles for accessibility */
-:focus {
+/* ============ FOCUS STYLES ============ */
+:focus-visible {
   outline: none;
+  box-shadow: 0 0 0 2px hsl(var(--background)), 0 0 0 4px hsl(var(--ring));
 }
 
-.font-headline {
-  font-family: "Manrope", sans-serif;
+/* ============ FULLCALENDAR DARK MODE ============ */
+.dark .fc {
+  --fc-border-color: hsl(var(--border));
+  --fc-button-bg-color: hsl(var(--secondary));
+  --fc-button-border-color: hsl(var(--border));
+  --fc-button-text-color: hsl(var(--foreground));
+  --fc-button-hover-bg-color: hsl(var(--accent));
+  --fc-button-hover-border-color: hsl(var(--border));
+  --fc-button-active-bg-color: hsl(var(--primary));
+  --fc-button-active-border-color: hsl(var(--primary));
+  --fc-page-bg-color: hsl(var(--background));
+  --fc-neutral-bg-color: hsl(var(--muted));
+  --fc-list-event-hover-bg-color: hsl(var(--accent));
 }
 
-/* ============ SCROLLBAR ============ */
-::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+.dark .fc th,
+.dark .fc td {
+  border-color: hsl(var(--border));
 }
 
-::-webkit-scrollbar-track {
-  background: var(--color-surface);
+.dark .fc .fc-toolbar-title {
+  color: hsl(var(--foreground));
 }
 
-::-webkit-scrollbar-thumb {
-  background: #334155;
-  border-radius: 999px;
+.dark .fc .fc-col-header-cell-cushion {
+  color: hsl(var(--foreground));
 }
 
-::-webkit-scrollbar-thumb:hover {
-  background: var(--color-brand);
+.dark .fc .fc-daygrid-day-number,
+.dark .fc .fc-timegrid-slot-label-cushion {
+  color: hsl(var(--foreground));
 }
+
+.dark .fc .fc-scrollgrid {
+  border-color: hsl(var(--border));
+}
+
+.dark .fc .fc-daygrid-day.fc-day-today,
+.dark .fc .fc-timegrid-col.fc-timegrid-col.fc-timegrid-col-today {
+  background-color: hsl(var(--accent));
+}
+
+.dark .fc td,
+.dark .fc th {
+  background-color: hsl(var(--background));
+}
+
+.dark .fc-theme-standard td,
+.dark .fc-theme-standard th,
+.dark .fc-theme-standard .fc-scrollgrid {
+  border-color: hsl(var(--border));
+}
+
+/* ============ TEACHER THEME ============ */
+/* Previously hardcoded dark HSL values unconditionally here, which made the
+   Light/Dark toggle a no-op on Teacher pages (this class always won over
+   .dark on <html> further up the tree). Teacher pages already use the same
+   semantic tokens (bg-card, text-foreground, border-border, ...) as every
+   other role, so removing the override lets them inherit the normal
+   :root/.dark cascade and respond to the toggle like the rest of the app.
+   The class is kept as a namespace hook for future Teacher-specific rules. */

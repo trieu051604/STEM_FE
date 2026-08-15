@@ -1,7 +1,7 @@
 {
   "rewrites": [
     {
-      "source": "/backend/:path*",
+      "source": "/:path*",
       "destination": "http://34.21.246.26/:path*"
     },
     {

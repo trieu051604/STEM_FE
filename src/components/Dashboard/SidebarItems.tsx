@@ -9,6 +9,7 @@ interface SidebarItem {
 const roleSidebarItems: Record<UserRole, SidebarItem[]> = {
   master_admin: [
     { label: 'Quản lý trường', path: '/dashboard/schools', icon: 'Building2' },
+    { label: 'Quản lý gói token', path: '/dashboard/packages', icon: 'Package' },
     { label: 'Thông báo', path: '/dashboard/notifications', icon: 'Bell' },
     { label: 'Hồ sơ', path: '/dashboard/profile', icon: 'User' },
   ],
@@ -19,6 +20,7 @@ const roleSidebarItems: Record<UserRole, SidebarItem[]> = {
     { label: 'Khóa học', path: '/dashboard/courses', icon: 'BookOpen' },
     { label: 'Lớp học', path: '/dashboard/classes', icon: 'School' },
     { label: 'Mua Token', path: '/dashboard/payments', icon: 'Coins' },
+    { label: 'Quản lý AI Quota', path: '/dashboard/ai-quota', icon: 'Sparkles' },
     { label: 'Lịch sử đăng nhập', path: '/dashboard/login-history', icon: 'History' },
     { label: 'Thông báo', path: '/dashboard/notifications', icon: 'Bell' },
     { label: 'Hồ sơ', path: '/dashboard/profile', icon: 'User' },

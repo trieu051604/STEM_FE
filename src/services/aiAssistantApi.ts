@@ -89,4 +89,24 @@ export const aiAssistantApi = {
     const response = await api.post(`/virtual-lab/projects/${projectId}/ai-assist`, request);
     return normalizeResponse(response.data);
   },
+
+  // Lấy thông tin AI quota của user hiện tại
+  getAiQuota: async (): Promise<UserAiQuotaResponse> => {
+    const response = await api.get('/virtual-lab/projects/ai-quota');
+    return response.data;
+  },
+};
+
+// User AI Quota Response
+export interface UserAiQuotaResponse {
+  success: boolean;
+  userId: number;
+  userName?: string;
+  totalAllocated: number;
+  totalUsed: number;
+  todayUsed: number;
+  remaining: number;
+  expiresAt?: string | null;
+  hasIndividualAllocation: boolean;
+  errorMessage?: string | null;
 };

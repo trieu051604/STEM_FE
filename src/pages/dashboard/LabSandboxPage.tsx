@@ -1307,6 +1307,12 @@ export const LabSandboxPage = () => {
                   console.error('[LabSandboxPage] setSimulationInput failed', error);
                 });
               }}
+              onAnalogInput={(componentId, value) => {
+                if (!isRunning || !projectId) return;
+                virtualLabHub.setAnalogInput(projectId, componentId, value).catch((error) => {
+                  console.error('[LabSandboxPage] setAnalogInput failed', error);
+                });
+              }}
             />
 
             <ComponentPalettePopup

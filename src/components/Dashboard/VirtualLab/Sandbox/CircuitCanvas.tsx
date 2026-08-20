@@ -97,6 +97,11 @@ interface CircuitCanvasProps {
   // it to virtualLabHub.setSimulationInput. When omitted, push_button behaves
   // exactly as before (drag/select only, no press semantics).
   onButtonInput?: (componentId: string, pressed: boolean) => void;
+  // Realtime analog input (STEP 6) — same opt-in shape as onButtonInput.
+  // Value is already clamped to the canonical ESP32 ADC range (0..4095)
+  // before this fires; CircuitCanvas owns the slider widget, not the value's
+  // meaning.
+  onAnalogInput?: (componentId: string, value: number) => void;
 }
 
 function getBoardTagName(boardType: string) {
@@ -345,11 +350,21 @@ export const CircuitCanvas = ({
   onOpenPalette,
   autoSelectId,
   onButtonInput,
+  onAnalogInput,
 }: CircuitCanvasProps) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const boardRef = useRef<HTMLElement | null>(null);
   const componentRefs = useRef(new Map<string, HTMLElement | null>());
   const boardTagName = getBoardTagName(boardType);
+  // Light debounce for the potentiometer slider — visual state updates every
+  // drag tick (local, free), but the actual SetSimulationInput call is capped
+  // to at most one in flight per ~80ms so dragging doesn't spam SignalR.
+  // analogInputPending holds the LATEST value per component while a timer is
+  // in flight, so a fast drag still ends up sending the final position, not
+  // whatever value happened to be current when the timer was first armed.
+  const analogInputTimers = useRef(new Map<string, ReturnType<typeof setTimeout>>());
+  const analogInputPending = useRef(new Map<string, number>());
+  const [analogPreview, setAnalogPreview] = useState<Record<string, number>>({});
 
   // Board position & rotation (draggable) — "arduino" id is kept as the fixed
   // main-board slot regardless of which board type is actually selected.
@@ -722,6 +737,31 @@ export const CircuitCanvas = ({
       }
     }
     setDraggingId(compId);
+  };
+
+  const ANALOG_MAX = 4095;
+
+  const handleAnalogSliderChange = (componentId: string, rawValue: number) => {
+    const value = Math.round(Math.min(Math.max(rawValue, 0), ANALOG_MAX));
+    setAnalogPreview((prev) => ({ ...prev, [componentId]: value }));
+
+    if (!onAnalogInput) return;
+
+    analogInputPending.current.set(componentId, value);
+    const timers = analogInputTimers.current;
+    if (timers.has(componentId)) return; // a send is already scheduled; it will read the pending map at fire time
+
+    timers.set(
+      componentId,
+      setTimeout(() => {
+        timers.delete(componentId);
+        const latest = analogInputPending.current.get(componentId);
+        analogInputPending.current.delete(componentId);
+        if (latest !== undefined) {
+          onAnalogInput(componentId, latest);
+        }
+      }, 80)
+    );
   };
 
   const handlePinPointerDown = (e: React.PointerEvent, partId: string, pinName: string, absX: number, absY: number) => {
@@ -1128,6 +1168,8 @@ export const CircuitCanvas = ({
           }
 
           const isPressableButton = type === 'push_button' && Boolean(onButtonInput);
+          const isAnalogPotentiometer = type === 'potentiometer' && Boolean(onAnalogInput);
+          const analogValue = analogPreview[component.id] ?? 0;
 
           return (
             <div
@@ -1151,6 +1193,28 @@ export const CircuitCanvas = ({
               onPointerLeave={isPressableButton ? () => onButtonInput!(component.id, false) : undefined}
             >
               {renderElement}
+
+              {isAnalogPotentiometer && (
+                // Deliberately plain — STEP 6 says not to over-design this.
+                // stopPropagation on pointerdown so dragging the slider thumb
+                // doesn't also start a component-drag via the wrapper's own
+                // onPointerDown above.
+                <div
+                  className="absolute flex items-center gap-1 bg-[#1a1a1a] border border-gray-600 rounded px-1"
+                  style={{ top: '100%', left: 0, marginTop: 4, zIndex: 20, width: 90 }}
+                  onPointerDown={(e) => e.stopPropagation()}
+                >
+                  <input
+                    type="range"
+                    min={0}
+                    max={ANALOG_MAX}
+                    value={analogValue}
+                    onChange={(e) => handleAnalogSliderChange(component.id, Number(e.target.value))}
+                    className="w-full"
+                  />
+                  <span className="text-[9px] text-gray-300 font-mono w-8 text-right">{analogValue}</span>
+                </div>
+              )}
 
               {isSelected && (
                 <div className="absolute inset-0 -m-2 border border-dashed border-[#22c55e] pointer-events-none" style={{ zIndex: 15 }}>

@@ -316,6 +316,14 @@ class VirtualLabHubService {
     await this.connection!.invoke('SetSimulationInput', projectId, componentId, pin, 'digital', pressed ? '1' : '0');
   }
 
+  // Value must already be within the BE's canonical ESP32 ADC range
+  // (0..4095) — the Hub rejects out-of-range values rather than clamping, so
+  // callers (the potentiometer slider) clamp on their own end first.
+  public async setAnalogInput(projectId: string, componentId: string, value: number, pin: string | null = null) {
+    await this.ensureConnected();
+    await this.connection!.invoke('SetSimulationInput', projectId, componentId, pin, 'analog', String(value));
+  }
+
   public async stopped(projectId: string) {
     await this.ensureConnected();
     await this.connection!.invoke('Stopped', projectId);

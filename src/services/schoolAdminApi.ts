@@ -751,6 +751,10 @@ export interface TokenBalance {
   tokensUsed: number;
   expiresAt?: string;
   lastPurchaseAt?: string;
+  teacherCount: number;
+  studentCount: number;
+  teacherTokens: number;
+  studentTokens: number;
 }
 
 export interface TokenTransaction {

@@ -12,8 +12,6 @@ import {
   LogOut,
   User,
   ChevronDown,
-  Bell,
-  Settings,
   Plus,
   ChevronLeft,
   Home,
@@ -143,12 +141,6 @@ export const StandardDashboardLayout = () => {
           </ul>
         </nav>
 
-        <div className="p-6">
-          <button className="w-full bg-[#0f4c5c] hover:bg-[#0a3540] text-white rounded-full py-3 px-4 flex items-center justify-center gap-2 text-sm font-medium transition-colors shadow-md">
-            <Plus className="w-5 h-5" />
-            Start Experiment
-          </button>
-        </div>
 
         <div className="p-4 border-t border-border shrink-0">
           <div className="flex items-center gap-3">
@@ -221,13 +213,6 @@ export const StandardDashboardLayout = () => {
             </button>
             <div className="flex items-center gap-3 text-muted-foreground">
               <ThemeToggle className="hover:text-foreground transition-colors p-1" />
-              <button className="hover:text-foreground transition-colors p-1 relative">
-                <Bell className="w-5 h-5" />
-                <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-orange-500 rounded-full border border-background"></span>
-              </button>
-              <button className="hover:text-foreground transition-colors p-1">
-                <Settings className="w-5 h-5" />
-              </button>
             </div>
 
             <div className="relative">

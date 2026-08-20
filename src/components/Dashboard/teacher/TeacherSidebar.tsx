@@ -4,7 +4,7 @@ import { Icon } from '@/components/ui/Icon';
 import { getSidebarItems } from '../SidebarItems';
 import { useAuthStore } from '@/stores/authStore';
 import { useSidebarStore } from '@/stores/sidebarStore';
-import { PanelLeftClose, PanelLeftOpen, Plus, User, X } from 'lucide-react';
+import { PanelLeftClose, PanelLeftOpen, User, X } from 'lucide-react';
 
 export const TeacherSidebar = ({ isDesktop }: { isDesktop: boolean }) => {
   const location = useLocation();
@@ -88,12 +88,6 @@ export const TeacherSidebar = ({ isDesktop }: { isDesktop: boolean }) => {
         </ul>
       </nav>
 
-      <div className="p-6">
-        <button className="w-full bg-indigo-500 hover:bg-indigo-600 text-white rounded-full py-3 px-4 flex items-center justify-center gap-2 text-sm font-medium transition-colors shadow-md border-0">
-          <Plus className="w-5 h-5" />
-          Start Experiment
-        </button>
-      </div>
 
       <div className="p-4 border-t border-border shrink-0">
         <div className="flex items-center gap-3">

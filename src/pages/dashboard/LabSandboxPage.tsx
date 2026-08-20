@@ -1313,6 +1313,12 @@ export const LabSandboxPage = () => {
                   console.error('[LabSandboxPage] setAnalogInput failed', error);
                 });
               }}
+              onSensorInput={(componentId, sensorKind, value) => {
+                if (!isRunning || !projectId) return;
+                virtualLabHub.setSensorInput(projectId, componentId, sensorKind, value).catch((error) => {
+                  console.error('[LabSandboxPage] setSensorInput failed', error);
+                });
+              }}
             />
 
             <ComponentPalettePopup

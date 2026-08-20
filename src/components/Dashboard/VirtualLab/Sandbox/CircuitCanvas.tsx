@@ -102,6 +102,11 @@ interface CircuitCanvasProps {
   // before this fires; CircuitCanvas owns the slider widget, not the value's
   // meaning.
   onAnalogInput?: (componentId: string, value: number) => void;
+  // Realtime sensor input (STEP 8) — same shape as onAnalogInput plus a
+  // sensorKind label (STEP 9's DTO requirement). Only "light" is wired today
+  // (photoresistor-sensor); a future sensor with a genuinely different value
+  // shape gets its own prop rather than overloading this one.
+  onSensorInput?: (componentId: string, sensorKind: string, value: number) => void;
 }
 
 function getBoardTagName(boardType: string) {
@@ -351,6 +356,7 @@ export const CircuitCanvas = ({
   autoSelectId,
   onButtonInput,
   onAnalogInput,
+  onSensorInput,
 }: CircuitCanvasProps) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const boardRef = useRef<HTMLElement | null>(null);
@@ -741,11 +747,17 @@ export const CircuitCanvas = ({
 
   const ANALOG_MAX = 4095;
 
-  const handleAnalogSliderChange = (componentId: string, rawValue: number) => {
+  // sensorKind: undefined -> plain analog (Potentiometer), set -> sensor
+  // (e.g. "light" for the photoresistor) — routes to onSensorInput instead of
+  // onAnalogInput, matching the distinct wire shape STEP 9 asked for.
+  const handleAnalogSliderChange = (componentId: string, rawValue: number, sensorKind?: string) => {
     const value = Math.round(Math.min(Math.max(rawValue, 0), ANALOG_MAX));
     setAnalogPreview((prev) => ({ ...prev, [componentId]: value }));
 
-    if (!onAnalogInput) return;
+    const send = sensorKind
+      ? (v: number) => onSensorInput?.(componentId, sensorKind, v)
+      : (v: number) => onAnalogInput?.(componentId, v);
+    if (!onAnalogInput && !onSensorInput) return;
 
     analogInputPending.current.set(componentId, value);
     const timers = analogInputTimers.current;
@@ -758,7 +770,7 @@ export const CircuitCanvas = ({
         const latest = analogInputPending.current.get(componentId);
         analogInputPending.current.delete(componentId);
         if (latest !== undefined) {
-          onAnalogInput(componentId, latest);
+          send(latest);
         }
       }, 80)
     );
@@ -1169,6 +1181,7 @@ export const CircuitCanvas = ({
 
           const isPressableButton = type === 'push_button' && Boolean(onButtonInput);
           const isAnalogPotentiometer = type === 'potentiometer' && Boolean(onAnalogInput);
+          const isLightSensor = type === 'photoresistor-sensor' && Boolean(onSensorInput);
           const analogValue = analogPreview[component.id] ?? 0;
 
           return (
@@ -1194,7 +1207,7 @@ export const CircuitCanvas = ({
             >
               {renderElement}
 
-              {isAnalogPotentiometer && (
+              {(isAnalogPotentiometer || isLightSensor) && (
                 // Deliberately plain — STEP 6 says not to over-design this.
                 // stopPropagation on pointerdown so dragging the slider thumb
                 // doesn't also start a component-drag via the wrapper's own
@@ -1209,7 +1222,9 @@ export const CircuitCanvas = ({
                     min={0}
                     max={ANALOG_MAX}
                     value={analogValue}
-                    onChange={(e) => handleAnalogSliderChange(component.id, Number(e.target.value))}
+                    onChange={(e) =>
+                      handleAnalogSliderChange(component.id, Number(e.target.value), isLightSensor ? 'light' : undefined)
+                    }
                     className="w-full"
                   />
                   <span className="text-[9px] text-gray-300 font-mono w-8 text-right">{analogValue}</span>

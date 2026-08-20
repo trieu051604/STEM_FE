@@ -17,6 +17,12 @@ import { CloudDashboardPanel, type CloudComponentState } from '@/components/Dash
 import { getSandboxProjectId } from '@/components/Dashboard/VirtualLab/Sandbox/projectId';
 import { AiAssistantPanel } from '@/components/Dashboard/VirtualLab/Sandbox/AiAssistantPanel';
 import type { ProposedChange } from '@/services/aiAssistantApi';
+import { componentRegistryApi } from '@/services/componentRegistryApi';
+import {
+  isRegistryComponentPaletteEnabled,
+  mergeWithExistingGlueRegistry,
+  toGlueRegistryCandidates,
+} from '@/services/componentRegistryPaletteAdapter';
 
 const DIAGRAM_SAVE_DEBOUNCE_MS = 1500;
 // Riêng biệt với debounce lưu diagram (1.5s) — dài hơn 1 chút vì đây chỉ là
@@ -420,7 +426,20 @@ export const LabSandboxPage = () => {
   useEffect(() => {
     labsApi
       .getComponentGlueRegistry(true)
-      .then(setComponentGlueRegistry)
+      .then(async (registry) => {
+        if (!isRegistryComponentPaletteEnabled()) {
+          setComponentGlueRegistry(registry);
+          return;
+        }
+        try {
+          const registryComponents = await componentRegistryApi.list();
+          setComponentGlueRegistry(
+            mergeWithExistingGlueRegistry(registry, toGlueRegistryCandidates(registryComponents))
+          );
+        } catch {
+          setComponentGlueRegistry(registry);
+        }
+      })
       .catch((error) => console.error('[LabSandboxPage] Failed to load component glue registry', error));
   }, []);
 

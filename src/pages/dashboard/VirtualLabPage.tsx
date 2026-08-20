@@ -23,6 +23,12 @@ import {
 import { TemplatePickerModal } from '@/components/Dashboard/VirtualLab/TemplatePickerModal';
 import type { VirtualLabSampleExercise } from '@/data/virtualLabSampleExercises';
 import { TeacherPageHeader } from '@/components/Dashboard/teacher/TeacherPageHeader';
+import { componentRegistryApi } from '@/services/componentRegistryApi';
+import {
+  isRegistryComponentPaletteEnabled,
+  mergeWithExistingGlueRegistry,
+  toGlueRegistryCandidates,
+} from '@/services/componentRegistryPaletteAdapter';
 
 type ManagedClassOption = {
   id: number;
@@ -317,7 +323,21 @@ export const VirtualLabPage = () => {
 
     try {
       const registry = await labsApi.getComponentGlueRegistry(true);
-      setComponentOptions(registry);
+
+      if (isRegistryComponentPaletteEnabled()) {
+        try {
+          const registryComponents = await componentRegistryApi.list();
+          setComponentOptions(
+            mergeWithExistingGlueRegistry(registry, toGlueRegistryCandidates(registryComponents))
+          );
+        } catch {
+          // Registry bridge failing must never break the existing palette —
+          // fall back to the baseline glue registry unchanged.
+          setComponentOptions(registry);
+        }
+      } else {
+        setComponentOptions(registry);
+      }
     } catch (componentError) {
       setComponentsError(
         getErrorMessage(componentError, 'Không tải được registry linh kiện sandbox.')

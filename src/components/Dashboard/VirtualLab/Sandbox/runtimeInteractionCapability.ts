@@ -21,6 +21,7 @@ const CAPABILITY_BY_TYPE: Record<string, InteractionCapability> = {
   'wokwi-led': { kind: 'output' },
   'wokwi-buzzer': { kind: 'output' },
   'wokwi-servo': { kind: 'output' },
+  'wokwi-relay-module': { kind: 'output' },
 };
 
 // Takes the RAW diagram type (e.g. "wokwi-pushbutton"), not the normalized

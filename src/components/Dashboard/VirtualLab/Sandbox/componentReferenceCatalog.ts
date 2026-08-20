@@ -456,7 +456,7 @@ export const COMPONENT_REFERENCES: Record<string, ComponentReference> = {
     badge: 'Kiểm tra nối dây',
   },
 
-  // --- Fallback card — wiring-validation ---
+  // --- Fallback card — runtime-supported (RelayModel.cs, IN -> ON/OFF) ---
   relay_module: {
     label: 'Relay Module',
     summary: '6 chân: VCC, IN, GND, NO, COM, NC',
@@ -465,7 +465,7 @@ export const COMPONENT_REFERENCES: Record<string, ComponentReference> = {
     sample: '5V -> VCC, GND -> GND, IN -> GPIO',
     icon: Settings2,
     iconClassName: 'bg-amber-50 text-amber-700',
-    badge: 'Kiểm tra nối dây',
+    badge: 'Mô phỏng được',
   },
   fan: {
     label: 'Fan / DC Fan',

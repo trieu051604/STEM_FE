@@ -59,7 +59,9 @@ export const ROBOT_KIT_FALLBACK_CARDS: Record<
   // ===== Thư viện linh kiện mở rộng — Actuator/Sensor không có element thật
   // (wiring-validation — width/height PHẢI khớp đúng toạ độ trong
   // pinMaps.ts, xem RELAY_MODULE_PINS/FAN_PINS/... ) =====
-  'relay-module': { label: 'Relay Module', icon: Settings2, width: 90, height: 50, badge: 'Kiểm tra nối dây' },
+  // Relay Module — runtime-supported (RelayModel.cs), width/height giữ nguyên
+  // để khớp toạ độ pinMaps.ts (RELAY_MODULE_PINS), chỉ badge đổi.
+  'relay-module': { label: 'Relay Module', icon: Settings2, width: 90, height: 50, badge: 'Mô phỏng được' },
   'fan': { label: 'Fan / DC Fan', icon: Fan, width: 60, height: 50, badge: 'Kiểm tra nối dây' },
   'water-pump': { label: 'Water Pump / Mini Pump', icon: Droplets, width: 60, height: 50, badge: 'Kiểm tra nối dây' },
   'water-leak-sensor': { label: 'Water Leak Sensor', icon: Droplets, width: 90, height: 50, badge: 'Kiểm tra nối dây' },

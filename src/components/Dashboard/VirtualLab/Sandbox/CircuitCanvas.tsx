@@ -32,6 +32,9 @@ export interface PartVisualState {
   // thị đầy đủ topic/value/log; ở đây chỉ 1 chấm nhỏ báo "đang có dữ liệu",
   // card 70x60 quá nhỏ để nhồi thêm danh sách topic).
   cloudLive?: boolean;
+  // Relay Module — suy ra thật từ digitalWrite trên chân IN qua
+  // RelayModel.cs (Educational runner). undefined = chưa nhận event nào.
+  relay?: boolean;
 }
 
 // wokwi-led/wokwi-buzzer (Lit) khai báo `value`/`hasSignal` là boolean nội
@@ -192,6 +195,9 @@ function renderFallbackCard(type: string, rawType: string, partState: PartVisual
   // phải giả lập UI. Chưa có event nào (undefined) hiện "—" thay vì bịa trạng
   // thái mặc định.
   const showMotorState = type === 'l298n';
+  // Relay Module — trạng thái ON/OFF suy ra thật từ digitalWrite trên chân IN
+  // (RelayModel.cs, Educational runner). Không animation phức tạp, chỉ nhãn.
+  const showRelayState = type === 'relay-module';
   // WiFi/Cloud Phase 1 — chấm nhỏ báo đang nhận dữ liệu cloud-event (chi tiết
   // đầy đủ topic/value/log xem CloudDashboardPanel.tsx, KHÔNG nhồi vào đây).
   const showCloudDot = (type === 'wifi-cloud-node' || type === 'dashboard-cloud') && partState?.cloudLive;
@@ -227,6 +233,11 @@ function renderFallbackCard(type: string, rawType: string, partState: PartVisual
               </span>
             </span>
           )}
+          {showRelayState && (
+            <span className={`block text-[8px] font-mono leading-tight text-center ${partState?.relay ? 'text-emerald-400' : 'text-slate-400'}`}>
+              {partState?.relay === undefined ? '—' : partState.relay ? 'ON' : 'OFF'}
+            </span>
+          )}
         </div>
       </div>
     );
@@ -249,6 +260,11 @@ function renderFallbackCard(type: string, rawType: string, partState: PartVisual
           <span className={MOTOR_STATE_COLOR[partState?.motorB ?? 'stopped']}>
             B:{partState?.motorB ? MOTOR_STATE_LABEL[partState.motorB] : '—'}
           </span>
+        </span>
+      )}
+      {showRelayState && (
+        <span className={`text-[9px] font-mono leading-tight ${partState?.relay ? 'text-emerald-400' : 'text-slate-400'}`}>
+          {partState?.relay === undefined ? '—' : partState.relay ? 'ON' : 'OFF'}
         </span>
       )}
     </div>

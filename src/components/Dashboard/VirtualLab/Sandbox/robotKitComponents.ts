@@ -672,18 +672,18 @@ export const EXTENDED_COMPONENT_LIBRARY: ComponentRegistryEntry[] = [
     licenseNote: '@wokwi/elements — MIT license',
   },
 
-  // --- Fallback card (tự vẽ) — wiring-validation ---
+  // --- Fallback card (tự vẽ) — runtime-supported (RelayModel.cs) ---
   {
     componentType: 'wokwi-relay-module',
     displayName: 'Relay Module',
     category: 'actuator',
     source: 'stem',
-    supportLevel: 'wiring-validation',
+    supportLevel: 'runtime-supported',
     quantity: 1,
     pins: ['VCC', 'IN', 'GND', 'NO', 'COM', 'NC'],
     defaultProps: {},
-    wiringRules: ['Structural-only (MVP).'],
-    runtimeAdapter: null,
+    wiringRules: ['IN must reach an ESP32 GPIO.', 'VCC must connect to 3V3/5V.', 'GND must connect to ground.'],
+    runtimeAdapter: 'RelayModel.cs (STEM.Application/UseCases/Simulation/Runners/Educational/Components/RelayModel.cs) — digitalWrite(IN) -> ON/OFF. NO/COM/NC là metadata, không mô phỏng chuyển mạch điện thật.',
     renderer: 'fallback-card',
     notes: 'Không có element @wokwi/elements cho relay module — card tự vẽ (icon + tên), tham khảo hình dáng module relay 1-kênh phổ biến.',
     visualSource: 'custom-svg (fallback-card, tham khảo hình dáng module relay Fritzing/thực tế)',

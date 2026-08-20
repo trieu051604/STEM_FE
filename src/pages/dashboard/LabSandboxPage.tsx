@@ -550,6 +550,11 @@ export const LabSandboxPage = () => {
         const channelKey = event.payload.channel === 'G' ? 'rgbG' : event.payload.channel === 'B' ? 'rgbB' : 'rgbR';
         const on = event.payload.state === 'on';
         setPartStates((prev) => ({ ...prev, [partId]: { ...prev[partId], [channelKey]: on } }));
+      } else if (component === 'relay') {
+        // Runtime adapter thật (RelayModel.cs) — suy ra ON/OFF từ digitalWrite
+        // trên chân IN qua EducationalSimulationRunner, không phải giả lập.
+        const on = event.payload.state === 'on';
+        setPartStates((prev) => ({ ...prev, [partId]: { ...prev[partId], relay: on } }));
       }
       // Button/Servo/DHT/Ultrasonic: chưa có adapter runtime — không có gì để
       // ánh xạ (giới hạn kỹ thuật đã ghi trong Component Support Matrix, xem

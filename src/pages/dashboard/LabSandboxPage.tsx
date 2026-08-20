@@ -1297,6 +1297,16 @@ export const LabSandboxPage = () => {
               }}
               onOpenPalette={() => setIsPaletteOpen(true)}
               autoSelectId={autoSelectPartId}
+              onButtonInput={(componentId, pressed) => {
+                // Only meaningful while a simulation is actually running —
+                // matches ACCEPTANCE CRITERIA "no restart, no recompile":
+                // this never triggers a new Run, it only reaches a session
+                // ISimulationInputChannel already has registered.
+                if (!isRunning || !projectId) return;
+                virtualLabHub.setSimulationInput(projectId, componentId, pressed).catch((error) => {
+                  console.error('[LabSandboxPage] setSimulationInput failed', error);
+                });
+              }}
             />
 
             <ComponentPalettePopup

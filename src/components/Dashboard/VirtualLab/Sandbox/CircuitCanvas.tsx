@@ -90,6 +90,13 @@ interface CircuitCanvasProps {
   // hoạt lại useEffect chọn lại, không cần biến CircuitCanvas thành fully
   // controlled component cho toàn bộ selection state.
   autoSelectId?: string | null;
+  // Realtime input (STEP 5) — opt-in, same pattern as onOpenPalette above.
+  // CircuitCanvas doesn't know about SignalR/simulation state at all; it just
+  // reports press/release for push_button components while this callback is
+  // provided. Only the parent (LabSandboxPage) decides whether/when to wire
+  // it to virtualLabHub.setSimulationInput. When omitted, push_button behaves
+  // exactly as before (drag/select only, no press semantics).
+  onButtonInput?: (componentId: string, pressed: boolean) => void;
 }
 
 function getBoardTagName(boardType: string) {
@@ -337,6 +344,7 @@ export const CircuitCanvas = ({
   onComponentRotate,
   onOpenPalette,
   autoSelectId,
+  onButtonInput,
 }: CircuitCanvasProps) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const boardRef = useRef<HTMLElement | null>(null);
@@ -1119,8 +1127,29 @@ export const CircuitCanvas = ({
             renderElement = renderFallbackCard(type, component.type, partState);
           }
 
+          const isPressableButton = type === 'push_button' && Boolean(onButtonInput);
+
           return (
-            <div key={component.id} style={style} onPointerDown={(e) => handleComponentPointerDown(e, component.id)}>
+            <div
+              key={component.id}
+              style={isPressableButton ? { ...style, cursor: 'pointer' } : style}
+              onPointerDown={(e) => {
+                handleComponentPointerDown(e, component.id);
+                if (isPressableButton) {
+                  onButtonInput!(component.id, true);
+                }
+              }}
+              // Not stopPropagation()'d — the container's own handlePointerUp
+              // (drag-end/wire-end) still needs to see this event bubble up,
+              // exactly as it did before this prop existed.
+              onPointerUp={isPressableButton ? () => onButtonInput!(component.id, false) : undefined}
+              // Safety net: a real momentary pushbutton releases when you lift
+              // your finger, but the pointer can leave this element's bounds
+              // while still physically held down (e.g. a small drag) with no
+              // pointerup ever landing back on it — without this, the button
+              // would stay latched "pressed" in ComponentInputs indefinitely.
+              onPointerLeave={isPressableButton ? () => onButtonInput!(component.id, false) : undefined}
+            >
               {renderElement}
 
               {isSelected && (

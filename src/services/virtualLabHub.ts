@@ -305,6 +305,17 @@ class VirtualLabHubService {
     await this.connection!.invoke('SimulationEvent', projectId, eventPayload);
   }
 
+  // Realtime input (STEP 3/5) — mirrors SimulationEvent's call shape above.
+  // Only "digital" is wired end-to-end today; value is sent as a string
+  // ("1"/"0") to match the Hub method's signature (avoids SignalR JSON-typing
+  // ambiguity on the server side). Errors are NOT swallowed here — a rejected
+  // input (e.g. simulation not running) should surface to the caller, not
+  // fail silently and leave the UI showing a press that never took effect.
+  public async setSimulationInput(projectId: string, componentId: string, pressed: boolean, pin: string | null = null) {
+    await this.ensureConnected();
+    await this.connection!.invoke('SetSimulationInput', projectId, componentId, pin, 'digital', pressed ? '1' : '0');
+  }
+
   public async stopped(projectId: string) {
     await this.ensureConnected();
     await this.connection!.invoke('Stopped', projectId);

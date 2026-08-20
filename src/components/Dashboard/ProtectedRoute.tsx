@@ -33,8 +33,9 @@ import {
   TeachersPage,
   LoginHistoryPage,
   PaymentsPage,
+  AiQuotaPage,
 } from '@/pages/dashboard/school-admin';
-import { SchoolsPage, UsersPage } from '@/pages/dashboard/master-admin';
+import { SchoolsPage, UsersPage, PackagesManagementPage } from '@/pages/dashboard/master-admin';
 import React from 'react';
 
 interface RouteConfig {
@@ -99,6 +100,11 @@ export const dashboardRoutes = [
       { 
         path: 'schools', 
         element: <ProtectedElement element={<SchoolsPage />} allowedRoles={['master_admin']} />,
+      },
+      // Packages Management (Master Admin only)
+      { 
+        path: 'packages', 
+        element: <ProtectedElement element={<PackagesManagementPage />} allowedRoles={['master_admin']} />,
       },
       // Requests (Master Admin only)
       { 
@@ -165,6 +171,11 @@ export const dashboardRoutes = [
       { 
         path: 'payments', 
         element: <ProtectedElement element={<PaymentsPage />} allowedRoles={['school_admin']} />,
+      },
+      // AI Quota Management (School Admin)
+      { 
+        path: 'ai-quota', 
+        element: <ProtectedElement element={<AiQuotaPage />} allowedRoles={['school_admin']} />,
       },
       // Assignments
       { path: 'assignments', element: <AssignmentsPage /> },

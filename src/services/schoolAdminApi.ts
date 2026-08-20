@@ -698,13 +698,24 @@ export interface PaymentPackage {
   id: number;
   name: string;
   description: string;
-  durationMonths: number;
   price: number;
   currency: string;
   tokenAmount: number;
+  studentLimit: number;
   isActive: boolean;
   isFeatured: boolean;
   features?: string;
+  displayOrder?: number;
+  sortOrder?: number;
+  expiresAt: string;
+}
+
+export interface CreatePaymentResponse {
+  success: boolean;
+  checkoutUrl?: string;
+  paymentLinkId?: string;
+  transactionId?: string;
+  errorMessage?: string;
 }
 
 export interface Payment {
@@ -712,7 +723,6 @@ export interface Payment {
   transactionId: string;
   packageId: number;
   packageName: string;
-  durationMonths: number;
   tokenAmount: number;
   amount: number;
   currency: string;
@@ -737,6 +747,7 @@ export interface TokenBalance {
   schoolName: string;
   totalTokensPurchased: number;
   tokensRemaining: number;
+  tokensDistributed: number;
   tokensUsed: number;
   expiresAt?: string;
   lastPurchaseAt?: string;
@@ -753,13 +764,52 @@ export interface TokenTransaction {
   createdAt: string;
 }
 
+export interface PayOSCheckoutResponse {
+  paymentId: number;
+  transactionId: string;
+  checkoutUrl: string;
+  paymentLinkId: string;
+  amount: number;
+  currency: string;
+  status: string;
+  expiresAt?: string;
+}
+
+export interface TokenAllocation {
+  id: number;
+  schoolId: number;
+  userId: number;
+  userName: string;
+  userEmail: string;
+  userRole: string;
+  allocatedTokens: number;
+  usedTokens: number;
+  remainingTokens: number;
+  expiresAt?: string;
+  notes?: string;
+  allocatedByUserId: number;
+  allocatedByUserName: string;
+  createdAt: string;
+}
+
+export interface UserTokenInfo {
+  userId: number;
+  userName: string;
+  email: string;
+  role: string;
+  allocatedTokens: number;
+  usedTokens: number;
+  remainingTokens: number;
+  expiresAt?: string;
+}
+
 export const paymentsApi = {
   getPackages: async (): Promise<PaymentPackage[]> => {
     const response = await api.get('/payments/packages');
     return response.data.data || [];
   },
 
-  createPayment: async (packageId: number, method: string = 'Manual'): Promise<Payment> => {
+  createPayment: async (packageId: number, method: string = 'PayOS'): Promise<CreatePaymentResponse> => {
     const response = await api.post('/payments', { packageId, method });
     return response.data.data;
   },
@@ -774,9 +824,14 @@ export const paymentsApi = {
     return response.data.data;
   },
 
-  getTransactions: async (page: number = 1, pageSize: number = 20): Promise<TokenTransaction[]> => {
+  getTransactions: async (page: number = 1, pageSize: number = 20): Promise<{
+    items: TokenTransaction[];
+    total: number;
+    page: number;
+    pageSize: number;
+  }> => {
     const response = await api.get('/payments/transactions', { params: { page, pageSize } });
-    return response.data.data || [];
+    return response.data.data;
   },
 
   paymentCallback: async (data: { transactionId: string; status: string; gatewayTransactionId?: string }): Promise<void> => {
@@ -785,5 +840,92 @@ export const paymentsApi = {
 
   useTokens: async (amount: number, description: string): Promise<void> => {
     await api.post('/payments/use', { amount, description });
+  },
+
+  // Token Allocation APIs
+  getAllocations: async (page: number = 1, pageSize: number = 20): Promise<{
+    items: TokenAllocation[];
+    total: number;
+    page: number;
+    pageSize: number;
+  }> => {
+    const response = await api.get('/payments/allocations', { params: { page, pageSize } });
+    return response.data.data;
+  },
+
+  allocateTokens: async (data: {
+    userId: number;
+    tokens: number;
+    expiresAt?: string;
+    notes?: string;
+  }): Promise<{
+    allocationId: number;
+    userId: number;
+    userName: string;
+    tokensAllocated: number;
+    schoolTokensRemaining: number;
+    expiresAt?: string;
+  }> => {
+    const response = await api.post('/payments/allocate', data);
+    return response.data.data;
+  },
+
+  revokeAllocation: async (allocationId: number): Promise<void> => {
+    await api.delete(`/payments/allocations/${allocationId}`);
+  },
+
+  getUsersWithTokens: async (): Promise<UserTokenInfo[]> => {
+    const response = await api.get('/payments/users-with-tokens');
+    return response.data.data || [];
+  },
+
+  distributeTokens: async (data: {
+    userId: number;
+    tokens: number;
+    notes?: string;
+  }): Promise<{
+    success: boolean;
+    allocationId: number;
+    userId: number;
+    userName: string;
+    tokensAllocated: number;
+    schoolTokensRemaining: number;
+    expiresAt?: string;
+    errorMessage?: string;
+  }> => {
+    const response = await api.post('/payments/allocate', data);
+    return response.data.data;
+  },
+
+  getAllPackagesForAdmin: async (includeInactive: boolean = false): Promise<PaymentPackage[]> => {
+    const response = await api.get('/payments/admin/packages', { params: { includeInactive } });
+    return response.data.data || [];
+  },
+
+  // Bulk Allocation
+  bulkAllocate: async (data: {
+    studentTokens: number;
+    teacherTokens: number;
+    expiresAt?: string;
+    notes?: string;
+  }): Promise<{
+    success: boolean;
+    totalUsers: number;
+    successCount: number;
+    failedCount: number;
+    totalTokensAllocated: number;
+    schoolTokensRemaining: number;
+    results: Array<{
+      userId: number;
+      userName: string;
+      role: string;
+      success: boolean;
+      errorMessage?: string;
+      tokensAllocated: number;
+    }>;
+    errorMessage?: string;
+  }> => {
+    const response = await api.post('/payments/bulk-allocate', data);
+    return response.data.data;
   },
 };

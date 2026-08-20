@@ -114,6 +114,17 @@ export const AiAssistantPanel = ({
         currentDiagramJson,
       });
 
+      // Kiểm tra các loại lỗi quota
+      const isQuotaError = response.errorMessage === 'quota_exhausted' ||
+                          response.errorMessage === 'quota_expired' ||
+                          response.errorMessage === 'insufficient_quota' ||
+                          response.errorMessage === 'no_token_account' ||
+                          response.errorMessage === 'user_not_found';
+
+      if (isQuotaError) {
+        setQuotaExceeded(true);
+      }
+
       const assistantMessage: ChatMessage = {
         id: `a-${Date.now()}`,
         role: 'assistant',
@@ -126,7 +137,6 @@ export const AiAssistantPanel = ({
           : null,
       };
       if (assistantMessage.usage) setLatestUsage(assistantMessage.usage);
-      if (response.errorMessage === 'daily_quota_exceeded') setQuotaExceeded(true);
       setMessages((prev) => [...prev, assistantMessage]);
     } catch (error) {
       setMessages((prev) => [
@@ -245,7 +255,7 @@ export const AiAssistantPanel = ({
         {quotaExceeded && (
           <div className="mx-4 mb-2 flex items-start gap-2 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-600 dark:text-amber-400 text-xs font-medium px-3 py-2 shrink-0">
             <AlertTriangle className="w-3.5 h-3.5 shrink-0 mt-0.5" />
-            <span>Đã dùng hết hạn mức token AI hôm nay. Vui lòng thử lại vào ngày mai.</span>
+            <span>Đã hết quota AI. Vui lòng liên hệ quản trị viên trường để được cấp thêm.</span>
           </div>
         )}
 

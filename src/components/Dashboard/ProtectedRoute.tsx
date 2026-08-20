@@ -9,6 +9,7 @@ import { AssignmentsPage } from '@/pages/dashboard/AssignmentsPage';
 import { LabDetailPage } from '@/pages/dashboard/LabDetailPage';
 import { LabSandboxPage } from '@/pages/dashboard/LabSandboxPage';
 import { ClassMonitorPage } from '@/pages/dashboard/ClassMonitorPage';
+import { ComponentRegistryPage } from '@/pages/dashboard/ComponentRegistryPage';
 import { AttendancePage } from '@/pages/dashboard/AttendancePage';
 import { NotificationsPage } from '@/pages/dashboard/NotificationsPage';
 import SubmissionDetailPage from '@/pages/dashboard/SubmissionDetailPage';
@@ -96,6 +97,15 @@ export const dashboardRoutes = [
       { path: 'virtual-lab/:id', element: <LabDetailPage /> },
       { path: 'virtual-lab/:id/sandbox', element: <LabSandboxPage /> },
       { path: 'virtual-lab/monitor/:classId', element: <ClassMonitorPage /> },
+      // Component Registry admin (School Admin + Teacher) — matches BE
+      // ComponentsController's "TeacherAndAbove" policy exactly (that
+      // policy does NOT include master_admin, so it's deliberately left
+      // out here too — a master_admin visiting this route would just get
+      // 403 from the API otherwise).
+      {
+        path: 'component-registry',
+        element: <ProtectedElement element={<ComponentRegistryPage />} allowedRoles={['school_admin', 'teacher']} />,
+      },
       // Schools (Master Admin only)
       { 
         path: 'schools', 

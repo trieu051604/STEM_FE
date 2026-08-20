@@ -24,6 +24,12 @@ export interface ComponentSource {
   importedAt: string;
 }
 
+// Backend-computed from simulationComponentType (RuntimeCapabilityResolver,
+// C#) — never derived on the frontend from name/category/provider. A
+// component with simulationComponentType === null (e.g. every RGB LED
+// variant) always has runtimeCapabilities === [] by construction.
+export type RuntimeCapability = 'DigitalInput' | 'AnalogInput' | 'SensorInput' | 'Output';
+
 export interface ComponentDefinition {
   id: string;
   canonicalKey: string;
@@ -32,6 +38,8 @@ export interface ComponentDefinition {
   status: string;
   simulationComponentType: string | null;
   simulationReady: boolean;
+  runtimeCapabilities: RuntimeCapability[];
+  sensorKind: string | null;
   pins: ComponentPin[];
   sources: ComponentSource[];
 }

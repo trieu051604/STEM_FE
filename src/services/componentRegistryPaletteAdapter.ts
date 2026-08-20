@@ -10,12 +10,19 @@ import type { ComponentDefinition } from './componentRegistryApi';
 // merge them in behind whatever the existing endpoint already returned.
 // robotKitComponents.ts is untouched and unreferenced here.
 
-// Feature flag — default OFF. Only flip VITE_USE_REGISTRY_COMPONENT_PALETTE=true
-// in an isolated/test .env to exercise this; production behavior is
-// unaffected until this is deliberately turned on after the vertical slice
-// is verified.
+// Default ON as of the Registry -> Interactive Palette milestone (the B1
+// vertical slice this flag originally gated has since passed full live
+// verification: LED/Button through the real search->import->palette->canvas
+// ->run->interact path, RGB LED negative protection, providers-off,
+// static-catalog regression — see that milestone's report). Kept as an
+// explicit kill switch, not removed outright — set
+// VITE_USE_REGISTRY_COMPONENT_PALETTE=false to fall back to the static-only
+// palette if something regresses. componentRegistryApi.list() failing is
+// already handled by the caller's own try/catch (falls back to the baseline
+// glue registry unchanged), so this being unconditional doesn't add a new
+// failure mode.
 export function isRegistryComponentPaletteEnabled(): boolean {
-  return import.meta.env.VITE_USE_REGISTRY_COMPONENT_PALETTE === 'true';
+  return import.meta.env.VITE_USE_REGISTRY_COMPONENT_PALETTE !== 'false';
 }
 
 // Only components the backend has actually mapped to a runnable simulation

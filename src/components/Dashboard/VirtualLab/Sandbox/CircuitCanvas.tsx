@@ -9,6 +9,7 @@ import { getPinCoords, getPinKind } from './pinMaps';
 import { HelpCircle, Plus } from 'lucide-react';
 import { normalizeComponentType } from './componentTypeNormalize';
 import { ROBOT_KIT_FALLBACK_CARDS, getFallbackIllustration } from './componentIllustrations';
+import { getInteractionCapability } from './runtimeInteractionCapability';
 
 export type Waypoint = { x: number; y: number };
 export type Connection = [string, string, string, Waypoint[]?];
@@ -1179,9 +1180,17 @@ export const CircuitCanvas = ({
             renderElement = renderFallbackCard(type, component.type, partState);
           }
 
-          const isPressableButton = type === 'push_button' && Boolean(onButtonInput);
-          const isAnalogPotentiometer = type === 'potentiometer' && Boolean(onAnalogInput);
-          const isLightSensor = type === 'photoresistor-sensor' && Boolean(onSensorInput);
+          // Capability-driven, not a type-name switch — component.type (the
+          // raw diagram type, e.g. "wokwi-pushbutton") is looked up once
+          // against runtimeInteractionCapability.ts's table, which mirrors
+          // the backend's RuntimeCapabilityResolver. A future canonical type
+          // (static or Registry-imported) gets the right interaction UI just
+          // by having an entry there — no new branch needed here.
+          const interactionCapability = getInteractionCapability(component.type);
+          const isPressableButton = interactionCapability?.kind === 'digital' && Boolean(onButtonInput);
+          const isAnalogPotentiometer = interactionCapability?.kind === 'analog' && Boolean(onAnalogInput);
+          const isLightSensor = interactionCapability?.kind === 'sensor' && Boolean(onSensorInput);
+          const sensorKind = interactionCapability?.kind === 'sensor' ? interactionCapability.sensorKind : 'light';
           const analogValue = analogPreview[component.id] ?? 0;
 
           return (
@@ -1223,7 +1232,7 @@ export const CircuitCanvas = ({
                     max={ANALOG_MAX}
                     value={analogValue}
                     onChange={(e) =>
-                      handleAnalogSliderChange(component.id, Number(e.target.value), isLightSensor ? 'light' : undefined)
+                      handleAnalogSliderChange(component.id, Number(e.target.value), isLightSensor ? sensorKind : undefined)
                     }
                     className="w-full"
                   />

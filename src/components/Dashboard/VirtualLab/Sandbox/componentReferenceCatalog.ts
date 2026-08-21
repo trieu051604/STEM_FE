@@ -507,6 +507,11 @@ export const COMPONENT_REFERENCES: Record<string, ComponentReference> = {
     iconClassName: 'bg-slate-100 text-slate-600',
     badge: 'Kiểm tra nối dây',
   },
+  // Pin SEMANTICS verified (VCC/GND/DO/AO, cross-vendor corroborated YL-69
+  // module convention) + dedicated wiring rule đã có, nhưng pin GEOMETRY
+  // (vị trí thật trên hình) CHƯA xác minh — chưa tìm được visual/CAD asset
+  // thật khớp đúng module này (xem component-compatibility.json
+  // wokwi-soil-moisture-sensor). Badge vẫn phải trung thực theo Phase 17.
   soil_moisture_sensor: {
     label: 'Soil Moisture Sensor',
     summary: '4 chân: VCC, GND, DO, AO',
@@ -515,7 +520,7 @@ export const COMPONENT_REFERENCES: Record<string, ComponentReference> = {
     sample: '5V -> VCC, GND -> GND, AO -> GPIO analog',
     icon: Sprout,
     iconClassName: 'bg-green-50 text-green-700',
-    badge: 'Kiểm tra nối dây',
+    badge: 'Chưa xác minh sơ đồ chân',
   },
   ir_obstacle_sensor: {
     label: 'IR Obstacle Sensor',

@@ -756,18 +756,26 @@ export const EXTENDED_COMPONENT_LIBRARY: ComponentRegistryEntry[] = [
     visualSource: 'custom-svg (fallback-card)',
   },
   {
+    // Component Source Resolution milestone: pin SEMANTICS verified
+    // (VCC/GND/DO/AO, cross-vendor corroborated YL-69+LM393 module
+    // convention) + real dedicated wiring rule added. Pin GEOMETRY still
+    // NOT verified — no matching visual/CAD asset found in @wokwi/elements,
+    // Fritzing core, or KiCad core (both Fritzing soil-moisture parts
+    // checked were a different module identity, rejected). Stays
+    // 'pin-unverified' (not 'wiring-validation') until a real visual
+    // source is found — see component-compatibility.json.
     componentType: 'wokwi-soil-moisture-sensor',
     displayName: 'Soil Moisture Sensor',
     category: 'sensor',
     source: 'stem',
-    supportLevel: 'wiring-validation',
+    supportLevel: 'pin-unverified',
     quantity: 1,
     pins: ['VCC', 'GND', 'DO', 'AO'],
     defaultProps: {},
-    wiringRules: ['Structural-only (MVP).'],
+    wiringRules: ['AO -> ESP32 GPIO (analog-capable).', 'VCC -> 3V3/5V.', 'GND -> ground.'],
     runtimeAdapter: null,
     renderer: 'fallback-card',
-    notes: 'Fallback card — không có element thật.',
+    notes: 'Fallback card — không có element thật cho module này (đã kiểm tra @wokwi/elements, Fritzing core, KiCad core, không khớp identity). Pin semantics verified qua manufacturer/vendor docs, geometry thì chưa.',
     visualSource: 'custom-svg (fallback-card)',
   },
   {

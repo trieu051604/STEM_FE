@@ -100,7 +100,9 @@ export const ROBOT_KIT_FALLBACK_CARDS: Record<
   // getExtraIllustration() bên dưới. =====
   'esc': { label: 'ESC (Electronic Speed Controller)', icon: Zap, width: 90, height: 50, badge: 'Kiểm tra nối dây' },
   'heating-element': { label: 'Heating Element', icon: Thermometer, width: 60, height: 50, badge: 'Kiểm tra nối dây' },
-  'ph-sensor': { label: 'pH Sensor', icon: FlaskConical, width: 90, height: 50, badge: 'Kiểm tra nối dây' },
+  // PIN_UNVERIFIED — VCC/GND/PO suy đoán theo tên gọi phổ biến, chưa có
+  // evidence xác minh (xem component-compatibility.json wokwi-ph-sensor).
+  'ph-sensor': { label: 'pH Sensor', icon: FlaskConical, width: 90, height: 50, badge: 'Chưa xác minh sơ đồ chân' },
 
   // Line Tracking đa kênh (2026-07-28) — width khớp đúng LINE_TRACKING_3CH_PINS
   // / LINE_TRACKING_5CH_PINS trong pinMaps.ts.

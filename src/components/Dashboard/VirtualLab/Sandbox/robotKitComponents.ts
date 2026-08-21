@@ -67,12 +67,19 @@ export type ComponentSource = 'wokwi' | 'stem' | 'custom';
 export type SupportLevel =
   | 'runtime-supported'
   | 'wiring-validation'
+  // Visual exists, but pin identity/geometry has NO evidence (provider
+  // metadata, datasheet, manufacturer doc, verified open-source part) — an
+  // invented/eyeballed pin position, not a wiring rule waiting to be
+  // written. Distinct from 'wiring-validation' (real pins, rule pending)
+  // — see Verified External Component Assets milestone, Phase 20.
+  | 'pin-unverified'
   | 'visual-only'
   | 'bom-only';
 
 export const SUPPORT_LEVEL_BADGE: Record<SupportLevel, string> = {
   'runtime-supported': 'Mô phỏng được',
   'wiring-validation': 'Kiểm tra nối dây',
+  'pin-unverified': 'Chưa xác minh sơ đồ chân',
   'visual-only': 'Chỉ hiển thị',
   'bom-only': 'Phụ kiện BOM',
 };
@@ -1129,19 +1136,26 @@ export const EXTENDED_COMPONENT_LIBRARY: ComponentRegistryEntry[] = [
     visualSource: 'custom-svg (fallback-card)',
   },
   {
+    // PIN_UNVERIFIED (Verified External Component Assets milestone, Phase
+    // 20/22) — VCC/GND/PO were never checked against any provider metadata,
+    // datasheet, or manufacturer doc; also unresolved whether "pH Sensor"
+    // should mean the raw probe (BNC electrode, not directly wireable) or
+    // an interface/adapter board (VCC/GND/analog-signal — the thing that
+    // actually gets wired). Do NOT promote to 'wiring-validation' without
+    // real evidence settling both questions first.
     componentType: 'wokwi-ph-sensor',
     displayName: 'pH Sensor',
     category: 'sensor',
     source: 'stem',
-    supportLevel: 'wiring-validation',
+    supportLevel: 'pin-unverified',
     quantity: 1,
     pins: ['VCC', 'GND', 'PO'],
     defaultProps: {},
-    wiringRules: ['Structural-only (MVP).'],
+    wiringRules: ['PIN_UNVERIFIED — no wiring rule until pin identity + geometry are evidenced.'],
     runtimeAdapter: null,
     renderer: 'fallback-card',
-    notes: 'Không có element @wokwi/elements cho pH sensor — card tự vẽ, đơn giản hoá theo module pH meter phổ biến (VCC/GND/PO analog).',
-    visualSource: 'custom-svg (fallback-card)',
+    notes: 'Không có element @wokwi/elements cho pH sensor — card tự vẽ. VCC/GND/PO là suy đoán theo tên gọi phổ biến, CHƯA có evidence xác minh (datasheet/manufacturer/provider) — xem PIN_UNVERIFIED.',
+    visualSource: 'custom-svg (fallback-card, unverified pins)',
   },
   {
     componentType: 'wokwi-line-tracking-3ch',

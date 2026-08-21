@@ -761,15 +761,18 @@ export const COMPONENT_REFERENCES: Record<string, ComponentReference> = {
     iconClassName: 'bg-orange-50 text-orange-700',
     badge: 'Kiểm tra nối dây',
   },
+  // PIN_UNVERIFIED — xem robotKitComponents.ts (supportLevel: 'pin-unverified')
+  // và component-compatibility.json (wokwi-ph-sensor). VCC/GND/PO suy đoán
+  // theo tên gọi phổ biến, CHƯA có evidence xác minh.
   ph_sensor: {
     label: 'pH Sensor',
-    summary: '3 chân: VCC, GND, PO (analog)',
+    summary: '3 chân: VCC, GND, PO (analog) — CHƯA xác minh',
     role: 'Đo độ pH dung dịch qua đầu dò điện cực, trả tín hiệu analog.',
     pins: ['VCC', 'GND', 'PO'],
     sample: '5V -> VCC, GND -> GND, PO -> GPIO analog',
     icon: FlaskConical,
     iconClassName: 'bg-cyan-50 text-cyan-700',
-    badge: 'Kiểm tra nối dây',
+    badge: 'Chưa xác minh sơ đồ chân',
   },
   line_tracking_3ch: {
     label: 'Line Tracking Sensor (3 kênh)',

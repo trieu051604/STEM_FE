@@ -12,7 +12,18 @@ export type InteractionCapability =
   | { kind: 'digital' }
   | { kind: 'analog' }
   | { kind: 'sensor'; sensorKind: string }
-  | { kind: 'output' };
+  | { kind: 'output' }
+  // INTERACTIVE SENSOR CONTROLS milestone. Distinct from 'digital' (a real
+  // momentary pushbutton — press/hold/release on the component body itself)
+  // — this is a PERSISTENT toggle (click once, state holds until clicked
+  // again), rendered as a small labeled control below the component exactly
+  // like the analog slider, not as a click-target on the component body.
+  // Wire-level SignalR call is IDENTICAL to 'digital' (setSimulationInput /
+  // SetSimulationInput inputType="digital") — same backend, same
+  // ISimulationInputChannel, same DigitalSensorModel.TryReadLiveInput this
+  // was built for; only the FE affordance differs. onLabel/offLabel give
+  // each sensor its own real-world semantic (not a generic "ON/OFF").
+  | { kind: 'digital-sensor'; onLabel: string; offLabel: string };
 
 const CAPABILITY_BY_TYPE: Record<string, InteractionCapability> = {
   'wokwi-pushbutton': { kind: 'digital' },
@@ -22,6 +33,11 @@ const CAPABILITY_BY_TYPE: Record<string, InteractionCapability> = {
   'wokwi-buzzer': { kind: 'output' },
   'wokwi-servo': { kind: 'output' },
   'wokwi-relay-module': { kind: 'output' },
+  'wokwi-pir-motion-sensor': { kind: 'digital-sensor', offLabel: 'No Motion', onLabel: 'Motion Detected' },
+  'wokwi-water-leak-sensor': { kind: 'digital-sensor', offLabel: 'Dry', onLabel: 'Water Detected' },
+  'wokwi-vibration-sensor': { kind: 'digital-sensor', offLabel: 'Stable', onLabel: 'Vibration Detected' },
+  // Optional 4th sensor (STEP 22) — same generic control, zero new code.
+  'wokwi-rain-sensor': { kind: 'digital-sensor', offLabel: 'Dry', onLabel: 'Rain Detected' },
 };
 
 // Takes the RAW diagram type (e.g. "wokwi-pushbutton"), not the normalized

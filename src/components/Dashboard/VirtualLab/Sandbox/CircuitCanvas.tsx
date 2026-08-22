@@ -388,6 +388,11 @@ export const CircuitCanvas = ({
   const analogInputTimers = useRef(new Map<string, ReturnType<typeof setTimeout>>());
   const analogInputPending = useRef(new Map<string, number>());
   const [analogPreview, setAnalogPreview] = useState<Record<string, number>>({});
+  // INTERACTIVE SENSOR CONTROLS milestone — same "input control is user-
+  // controlled local preview, output visual is simulation-event-controlled"
+  // separation as analogPreview (STEP 11): this never reads back from a
+  // simulation event, it's purely the last value the user clicked.
+  const [digitalSensorPreview, setDigitalSensorPreview] = useState<Record<string, boolean>>({});
 
   // Board position & rotation (draggable) — "arduino" id is kept as the fixed
   // main-board slot regardless of which board type is actually selected.
@@ -791,6 +796,18 @@ export const CircuitCanvas = ({
         }
       }, 80)
     );
+  };
+
+  // INTERACTIVE SENSOR CONTROLS milestone — a discrete click, not a slider
+  // drag, so no debounce needed (unlike handleAnalogSliderChange above).
+  // Reuses onButtonInput as-is: SetSimulationInput's wire contract for
+  // inputType="digital" is identical whether the true physical thing is a
+  // pushbutton or a PIR/Water Leak/Vibration sensor — the backend's
+  // ISimulationInputChannel/DigitalSensorModel.TryReadLiveInput don't care
+  // (STEP 8/12: reuse the existing contract, no new fields).
+  const handleDigitalSensorToggle = (componentId: string, nextValue: boolean) => {
+    setDigitalSensorPreview((prev) => ({ ...prev, [componentId]: nextValue }));
+    onButtonInput?.(componentId, nextValue);
   };
 
   const handlePinPointerDown = (e: React.PointerEvent, partId: string, pinName: string, absX: number, absY: number) => {
@@ -1208,6 +1225,9 @@ export const CircuitCanvas = ({
           const isLightSensor = interactionCapability?.kind === 'sensor' && Boolean(onSensorInput);
           const sensorKind = interactionCapability?.kind === 'sensor' ? interactionCapability.sensorKind : 'light';
           const analogValue = analogPreview[component.id] ?? 0;
+          const isDigitalSensor = interactionCapability?.kind === 'digital-sensor' && Boolean(onButtonInput);
+          const digitalSensorLabels = interactionCapability?.kind === 'digital-sensor' ? interactionCapability : null;
+          const digitalSensorValue = digitalSensorPreview[component.id] ?? false;
 
           return (
             <div
@@ -1254,6 +1274,26 @@ export const CircuitCanvas = ({
                   />
                   <span className="text-[9px] text-gray-300 font-mono w-8 text-right">{analogValue}</span>
                 </div>
+              )}
+
+              {isDigitalSensor && digitalSensorLabels && (
+                // Persistent toggle, deliberately NOT the pushbutton's
+                // press/hold-on-body affordance (STEP 3: these sensors are
+                // "state until changed", not "state while held") — same
+                // compact below-component placement as the analog slider.
+                <button
+                  type="button"
+                  className={`absolute text-[9px] font-mono rounded px-1.5 py-0.5 border whitespace-nowrap ${
+                    digitalSensorValue
+                      ? 'bg-amber-600/80 border-amber-400 text-white'
+                      : 'bg-[#1a1a1a] border-gray-600 text-gray-300'
+                  }`}
+                  style={{ top: '100%', left: 0, marginTop: 4, zIndex: 20 }}
+                  onPointerDown={(e) => e.stopPropagation()}
+                  onClick={() => handleDigitalSensorToggle(component.id, !digitalSensorValue)}
+                >
+                  {digitalSensorValue ? digitalSensorLabels.onLabel : digitalSensorLabels.offLabel}
+                </button>
               )}
 
               {isSelected && (

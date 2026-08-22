@@ -344,7 +344,7 @@ export const StudentsPage = () => {
         <div>
           <h1 className="text-2xl font-bold">Quản lý học sinh</h1>
           <p className="text-muted-foreground">
-            Quản lý tài khoản và thông tin học sinh trong trường
+            Quản lý tài khoản và thông tin học sinh học Science trong trường
           </p>
         </div>
         <div className="flex gap-2">

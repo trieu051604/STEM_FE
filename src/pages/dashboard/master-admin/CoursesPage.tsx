@@ -2,21 +2,20 @@ import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
-import { Icon } from '@/components/ui/Icon';
-import { Plus, RefreshCw, Edit, Trash2, Eye, BookOpen, Users, TrendingUp, Loader2, FlaskConical } from 'lucide-react';
+import { Plus, RefreshCw, Edit, Trash2, Eye, BookOpen, Users, FlaskConical, Clock } from 'lucide-react';
 import {
   DataTable,
   ColumnDef,
   Pagination,
   SearchInput,
-  StatusBadge,
   Modal,
   ConfirmDialog,
-  EmptyState,
-} from './components/DataTable';
-import { CourseForm, CourseFormData } from './components/Forms';
-import { coursesApi, Course } from '@/services/schoolAdminApi';
-import { syllabiApi, Syllabus } from '@/services/curriculumApi';
+} from '@/pages/dashboard/school-admin/components/DataTable';
+import { CourseForm, CourseFormData } from '@/pages/dashboard/school-admin/components/Forms';
+import { coursesApi } from '@/services/schoolAdminApi';
+import { syllabiApi } from '@/services/curriculumApi';
+import { Course } from '@/services/schoolAdminApi';
+import { CourseDetailPage } from './CourseDetailPage';
 import { format } from 'date-fns';
 import { vi } from 'date-fns/locale';
 
@@ -35,6 +34,7 @@ export const CoursesPage = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(ITEMS_PER_PAGE);
   const [toasts, setToasts] = useState<Toast[]>([]);
+  const [selectedCourseId, setSelectedCourseId] = useState<number | null>(null);
 
   // Toast notification
   const showToast = (message: string, type: ToastType = 'success') => {
@@ -43,6 +43,10 @@ export const CoursesPage = () => {
     setTimeout(() => {
       setToasts((prev) => prev.filter((t) => t.id !== id));
     }, 4000);
+  };
+
+  const dismissToast = (id: string) => {
+    setToasts((prev) => prev.filter((t) => t.id !== id));
   };
 
   // Modal states
@@ -62,6 +66,14 @@ export const CoursesPage = () => {
     }),
   });
 
+  // Fetch syllabi for course form
+  const { data: syllabiData } = useQuery({
+    queryKey: ['syllabi-published'],
+    queryFn: () => syllabiApi.getAll({ status: 'published' }),
+  });
+
+  const syllabi = syllabiData?.map((s: any) => ({ id: s.id, title: s.title })) || [];
+
   // Handle fetch error
   useEffect(() => {
     if (fetchError) {
@@ -74,17 +86,6 @@ export const CoursesPage = () => {
   // Create course mutation
   const [createError, setCreateError] = useState<string | null>(null);
   const [updateError, setUpdateError] = useState<string | null>(null);
-
-  // Fetch available syllabi
-  const { data: syllabiData } = useQuery({
-    queryKey: ['syllabi-for-course'],
-    queryFn: async () => {
-      const syllabi = await syllabiApi.getAll({ status: 'published' });
-      return syllabi;
-    },
-  });
-
-  const syllabi = syllabiData?.map((s: Syllabus) => ({ id: s.id, title: s.title })) || [];
 
   const createCourseMutation = useMutation({
     mutationFn: async (data: CourseFormData) => {
@@ -106,12 +107,12 @@ export const CoursesPage = () => {
     },
     onError: (error: any) => {
       const message = error?.response?.data?.message || error?.message || 'Lỗi khi tạo khóa học';
-      const isDuplicate = message.toLowerCase().includes('duplicate') || 
+      const isDuplicate = message.toLowerCase().includes('duplicate') ||
                           message.toLowerCase().includes('trùng') ||
                           message.toLowerCase().includes('exists') ||
                           message.toLowerCase().includes('đã tồn tại');
       if (isDuplicate) {
-        setCreateError('Mã khóa học đã tồn tại. Vui lòng sử dụng mã khác.');
+        setCreateError('Tên khóa học đã tồn tại. Vui lòng sử dụng tên khác.');
       } else {
         setCreateError(message);
         showToast(message, 'error');
@@ -141,12 +142,12 @@ export const CoursesPage = () => {
     },
     onError: (error: any) => {
       const message = error?.response?.data?.message || error?.message || 'Lỗi khi cập nhật khóa học';
-      const isDuplicate = message.toLowerCase().includes('duplicate') || 
+      const isDuplicate = message.toLowerCase().includes('duplicate') ||
                           message.toLowerCase().includes('trùng') ||
                           message.toLowerCase().includes('exists') ||
                           message.toLowerCase().includes('đã tồn tại');
       if (isDuplicate) {
-        setUpdateError('Mã khóa học đã tồn tại. Vui lòng sử dụng mã khác.');
+        setUpdateError('Tên khóa học đã tồn tại. Vui lòng sử dụng tên khác.');
       } else {
         setUpdateError(message);
         showToast(message, 'error');
@@ -180,12 +181,12 @@ export const CoursesPage = () => {
       render: (course) => (
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
-            <BookOpen className="w-5 h-5 text-primary" />
+            <FlaskConical className="w-5 h-5 text-primary" />
           </div>
           <div>
             <p className="font-medium">{course.title}</p>
             {course.description && (
-              <p className="text-xs text-muted-foreground line-clamp-1 max-w-[200px]">
+              <p className="text-xs text-muted-foreground line-clamp-1 max-w-[250px]">
                 {course.description}
               </p>
             )}
@@ -194,11 +195,33 @@ export const CoursesPage = () => {
       ),
     },
     {
-      key: 'schoolName',
-      header: 'Trường',
+      key: 'syllabusTitle',
+      header: 'Syllabus gốc',
       render: (course) => (
         <span className="text-muted-foreground">
-          {course.schoolName || '—'}
+          {course.syllabusTitle || '—'}
+        </span>
+      ),
+    },
+    {
+      key: 'estimatedHours',
+      header: 'Thời lượng',
+      render: (course) => (
+        <span className="text-muted-foreground">
+          {course.estimatedHours ? `${course.estimatedHours}h` : '—'}
+        </span>
+      ),
+    },
+    {
+      key: 'isActive',
+      header: 'Trạng thái',
+      render: (course) => (
+        <span className={`px-2 py-1 rounded text-xs font-medium ${
+          course.isActive
+            ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
+            : 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400'
+        }`}>
+          {course.isActive ? 'Hoạt động' : 'Khóa'}
         </span>
       ),
     },
@@ -212,29 +235,17 @@ export const CoursesPage = () => {
       ),
     },
     {
-      key: 'updatedAt',
-      header: 'Cập nhật',
-      render: (course) => (
-        <span className="text-muted-foreground">
-          {course.updatedAt
-            ? format(new Date(course.updatedAt), 'dd/MM/yyyy', { locale: vi })
-            : '—'}
-        </span>
-      ),
-    },
-    {
       key: 'actions',
       header: '',
       render: (course) => (
-        <div className="flex items-center gap-1 opacity-100 group-hover:opacity-100">
+        <div className="flex items-center gap-1">
           <Button
             variant="ghost"
             size="icon"
-            className="size-8 text-muted-foreground hover:text-foreground hover:bg-accent"
+            className="size-8"
             onClick={(e) => {
               e.stopPropagation();
-              setSelectedCourse(course);
-              setDetailModalOpen(true);
+              setSelectedCourseId(course.id);
             }}
           >
             <Eye className="w-4 h-4" />
@@ -242,7 +253,7 @@ export const CoursesPage = () => {
           <Button
             variant="ghost"
             size="icon"
-            className="size-8 text-muted-foreground hover:text-foreground hover:bg-accent"
+            className="size-8"
             onClick={(e) => {
               e.stopPropagation();
               setSelectedCourse(course);
@@ -254,7 +265,7 @@ export const CoursesPage = () => {
           <Button
             variant="ghost"
             size="icon"
-            className="size-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+            className="size-8 text-destructive hover:text-destructive"
             onClick={(e) => {
               e.stopPropagation();
               setSelectedCourse(course);
@@ -265,7 +276,7 @@ export const CoursesPage = () => {
           </Button>
         </div>
       ),
-      className: 'w-28',
+      className: 'w-24',
     },
   ];
 
@@ -275,7 +286,17 @@ export const CoursesPage = () => {
 
   const handleUpdateCourse = async (data: CourseFormData) => {
     if (selectedCourse) {
-      await updateCourseMutation.mutateAsync({ id: selectedCourse.id, data });
+      await updateCourseMutation.mutateAsync({
+        id: selectedCourse.id,
+        data: {
+          title: data.title,
+          description: data.description,
+          syllabusId: data.syllabusId,
+          estimatedHours: data.estimatedHours,
+          isRequired: data.isRequired,
+          isActive: data.isActive,
+        },
+      });
     }
   };
 
@@ -285,27 +306,36 @@ export const CoursesPage = () => {
     }
   };
 
+  if (selectedCourseId !== null) {
+    return (
+      <CourseDetailPage
+        courseId={selectedCourseId}
+        onBack={() => setSelectedCourseId(null)}
+      />
+    );
+  }
+
   return (
     <div className="space-y-6">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold">Quản lý môn Science</h1>
+          <h1 className="text-2xl font-bold">Quản lý Khóa học</h1>
           <p className="text-muted-foreground">
-            Tạo và quản lý các môn học Science cho trường của bạn
+            Tạo và quản lý các khóa học STEM (Engineering, Math...) cho toàn hệ thống
           </p>
         </div>
         <Button onClick={() => setCreateModalOpen(true)}>
           <Plus className="w-4 h-4" />
-          Thêm môn học
+          Thêm khóa học
         </Button>
       </div>
 
-      {/* Science Banner */}
+      {/* Info Banner */}
       <div className="bg-primary/5 border border-primary/20 rounded-xl p-4 flex items-center gap-3">
-        <FlaskConical className="w-5 h-5 text-primary shrink-0" />
+        <BookOpen className="w-5 h-5 text-primary shrink-0" />
         <p className="text-sm">
-          Các môn Science được giảng dạy theo chương trình STEM. Chọn từ danh sách Syllabus được cấp phát.
+          Khóa học được tạo từ Syllabus. School Admin sẽ sử dụng các khóa học này để tạo Class cho giáo viên và học sinh.
         </p>
       </div>
 
@@ -314,7 +344,7 @@ export const CoursesPage = () => {
         <SearchInput
           value={searchTerm}
           onChange={setSearchTerm}
-          placeholder="Tìm kiếm môn học..."
+          placeholder="Tìm kiếm khóa học..."
           className="sm:max-w-sm"
         />
         <Button variant="outline" size="icon" onClick={() => refetch()}>
@@ -332,7 +362,7 @@ export const CoursesPage = () => {
               </div>
               <div>
                 <p className="text-2xl font-bold">{coursesData.total}</p>
-                <p className="text-sm text-muted-foreground">Môn Science</p>
+                <p className="text-sm text-muted-foreground">Tổng khóa học</p>
               </div>
             </div>
           </div>
@@ -342,21 +372,23 @@ export const CoursesPage = () => {
                 <BookOpen className="w-6 h-6 text-green-600 dark:text-green-400" />
               </div>
               <div>
-                <p className="text-2xl font-bold">{coursesData.total}</p>
+                <p className="text-2xl font-bold">
+                  {coursesData.items?.filter((c: any) => c.isActive).length || 0}
+                </p>
                 <p className="text-sm text-muted-foreground">Đang hoạt động</p>
               </div>
             </div>
           </div>
           <div className="bg-card rounded-xl border border-border p-4">
             <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-lg bg-brand-100 dark:bg-brand-900/30 flex items-center justify-center">
-                <Users className="w-6 h-6 text-brand-600 dark:text-brand-400" />
+              <div className="w-12 h-12 rounded-lg bg-orange-100 dark:bg-orange-900/30 flex items-center justify-center">
+                <Clock className="w-6 h-6 text-orange-600 dark:text-orange-400" />
               </div>
               <div>
                 <p className="text-2xl font-bold">
-                  {coursesData.items?.reduce((sum, course) => sum + (course.enrolledStudents || 0), 0) || 0}
+                  {coursesData.items?.reduce((sum: number, course: any) => sum + (course.estimatedHours || 0), 0) || 0}h
                 </p>
-                <p className="text-sm text-muted-foreground">Học sinh đăng ký</p>
+                <p className="text-sm text-muted-foreground">Tổng thời lượng</p>
               </div>
             </div>
           </div>
@@ -368,7 +400,7 @@ export const CoursesPage = () => {
         columns={columns}
         data={coursesData?.items || []}
         loading={isLoading}
-        emptyMessage="Không có môn Science nào"
+        emptyMessage="Không có khóa học nào"
         onRowClick={(course) => {
           setSelectedCourse(course);
           setDetailModalOpen(true);
@@ -438,6 +470,9 @@ export const CoursesPage = () => {
               title: selectedCourse.title,
               description: selectedCourse.description,
               syllabusId: selectedCourse.syllabusId,
+              estimatedHours: selectedCourse.estimatedHours,
+              isRequired: selectedCourse.isRequired,
+              isActive: selectedCourse.isActive,
             }}
             syllabi={syllabi}
           />
@@ -458,11 +493,24 @@ export const CoursesPage = () => {
           <div className="space-y-4">
             <div className="flex items-center gap-4 pb-4 border-b border-border">
               <div className="w-16 h-16 rounded-xl bg-primary/10 flex items-center justify-center">
-                <BookOpen className="w-8 h-8 text-primary" />
+                <FlaskConical className="w-8 h-8 text-primary" />
               </div>
               <div>
                 <h3 className="text-lg font-semibold">{selectedCourse.title}</h3>
-                <p className="text-muted-foreground">ID: #{selectedCourse.id}</p>
+                <div className="flex items-center gap-2 mt-1">
+                  <span className={`px-2 py-0.5 rounded text-xs font-medium ${
+                    selectedCourse.isActive
+                      ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
+                      : 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400'
+                  }`}>
+                    {selectedCourse.isActive ? 'Hoạt động' : 'Khóa'}
+                  </span>
+                  {selectedCourse.isRequired && (
+                    <span className="px-2 py-0.5 rounded text-xs font-medium bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400">
+                      Bắt buộc
+                    </span>
+                  )}
+                </div>
               </div>
             </div>
             <div className="space-y-3">
@@ -474,8 +522,12 @@ export const CoursesPage = () => {
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <p className="text-sm text-muted-foreground">Trường</p>
-                  <p className="font-medium">{selectedCourse.schoolName || '—'}</p>
+                  <p className="text-sm text-muted-foreground">Syllabus gốc</p>
+                  <p className="font-medium">{selectedCourse.syllabusTitle || '—'}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Thời lượng</p>
+                  <p className="font-medium">{selectedCourse.estimatedHours ? `${selectedCourse.estimatedHours} giờ` : '—'}</p>
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Ngày tạo</p>
@@ -511,25 +563,31 @@ export const CoursesPage = () => {
         loading={deleteCourseMutation.isPending}
       />
 
-      {/* Toast Notification Container */}
+      {/* Toast Notifications */}
       <div className="fixed top-4 right-4 z-50 space-y-2">
         <AnimatePresence>
           {toasts.map((toast) => (
             <motion.div
               key={toast.id}
-              initial={{ opacity: 0, x: 20, scale: 0.95 }}
+              initial={{ opacity: 0, x: 50, scale: 0.95 }}
               animate={{ opacity: 1, x: 0, scale: 1 }}
-              exit={{ opacity: 0, x: 20, scale: 0.95 }}
+              exit={{ opacity: 0, x: 50, scale: 0.95 }}
               className={`flex items-center gap-3 px-4 py-3 rounded-lg shadow-lg border ${
-                toast.type === 'success' ? 'bg-green-50 dark:bg-green-900/30 border-green-200 dark:border-green-800 text-green-800 dark:text-green-200' :
-                toast.type === 'error' ? 'bg-red-50 dark:bg-red-900/30 border-red-200 dark:border-red-800 text-red-800 dark:text-red-200' :
-                'bg-yellow-50 dark:bg-yellow-900/30 border-yellow-200 dark:border-yellow-800 text-yellow-800 dark:text-yellow-200'
+                toast.type === 'success' ? 'bg-green-50 dark:bg-green-900/30 border-green-200 dark:border-green-700 text-green-800 dark:text-green-200' :
+                toast.type === 'error' ? 'bg-red-50 dark:bg-red-900/30 border-red-200 dark:border-red-700 text-red-800 dark:text-red-200' :
+                'bg-yellow-50 dark:bg-yellow-900/30 border-yellow-200 dark:border-yellow-700 text-yellow-800 dark:text-yellow-200'
               }`}
             >
               {toast.type === 'success' && <span className="text-green-500">✓</span>}
               {toast.type === 'error' && <span className="text-red-500">✕</span>}
               {toast.type === 'warning' && <span className="text-yellow-500">⚠</span>}
-              <span className="text-sm font-medium">{toast.message}</span>
+              <p className="text-sm font-medium">{toast.message}</p>
+              <button
+                onClick={() => dismissToast(toast.id)}
+                className="ml-2 p-1 hover:opacity-70 transition-opacity"
+              >
+                ✕
+              </button>
             </motion.div>
           ))}
         </AnimatePresence>

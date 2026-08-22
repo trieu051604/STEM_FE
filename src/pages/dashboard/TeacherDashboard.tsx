@@ -142,7 +142,7 @@ export const TeacherDashboard = () => {
       const userId = await resolveUserId();
 
       const [myClassesRes, dbStats, schedule] = await Promise.all([
-        classesApi.getMyClasses(userId),
+        classesApi.getMyClasses(),
         dashboardApi.getStats().catch(() => null),
         schedulesApi.getMySchedule({
           fromDate: new Date(new Date().setHours(0, 0, 0, 0)).toISOString(),

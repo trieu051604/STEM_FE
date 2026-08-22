@@ -9,8 +9,6 @@ import {
   Menu,
   User,
   ChevronDown,
-  Bell,
-  Settings,
   ChevronLeft,
   Home,
   PanelLeftClose,
@@ -77,13 +75,6 @@ export const TeacherHeader = ({ isDesktop }: { isDesktop: boolean }) => {
         </button>
         <div className="flex items-center gap-3 text-muted-foreground">
           <ThemeToggle className="hover:text-foreground transition-colors p-1" />
-          <button className="hover:text-foreground transition-colors p-1 relative">
-            <Bell className="w-5 h-5" />
-            <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-indigo-500 rounded-full border border-background"></span>
-          </button>
-          <button className="hover:text-foreground transition-colors p-1">
-            <Settings className="w-5 h-5" />
-          </button>
         </div>
 
         <div className="relative">

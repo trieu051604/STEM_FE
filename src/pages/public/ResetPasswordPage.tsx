@@ -70,7 +70,11 @@ export function ResetPasswordPage() {
     setIsLoading(true);
     setError('');
     try {
-      await api.post('/auth/reset-password', { token, password: data.password });
+      await api.post('/auth/reset-password', {
+        email: searchParams.get('email'),
+        token,
+        newPassword: data.password,
+      });
       setIsSubmitted(true);
       setIsLoading(false);
     } catch (err: any) {

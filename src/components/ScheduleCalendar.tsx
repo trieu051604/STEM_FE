@@ -135,7 +135,7 @@ export function ScheduleCalendar({ classId, schedules: initialSchedules, classIn
   };
 
   const handleDateClick = (info: any) => {
-    if (!isAdmin) return;
+    if (!isAdmin || !classId || classId <= 0) return;
     const date = info.dateStr.split('T')[0];
     setFormData({
       startDate: date,
@@ -176,8 +176,8 @@ export function ScheduleCalendar({ classId, schedules: initialSchedules, classIn
   };
 
   const handleCreateSchedule = async () => {
-    if (!classId || !formData.startDate || !formData.startTime || !formData.endTime) {
-      setError('Vui lòng điền đầy đủ thông tin');
+    if (!classId || classId <= 0 || !formData.startDate || !formData.startTime || !formData.endTime) {
+      setError('Vui lòng chọn lớp học và điền đầy đủ thông tin');
       return;
     }
 
@@ -284,7 +284,7 @@ export function ScheduleCalendar({ classId, schedules: initialSchedules, classIn
             <span className="text-sm text-muted-foreground">- {classInfo.classCode}</span>
           )}
         </div>
-        {isAdmin && (
+        {isAdmin && classId && classId > 0 && (
           <Button size="sm" onClick={() => setShowAddModal(true)}>
             <Plus className="w-4 h-4 mr-1" />
             Thêm lịch

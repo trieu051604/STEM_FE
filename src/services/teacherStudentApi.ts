@@ -1,4 +1,5 @@
 import { api } from './api';
+import type { ModuleWithLessons } from './dashboardApi';
 
 // Helper function to determine class status based on dates
 function getClassStatus(item: any): 'active' | 'completed' | 'upcoming' {
@@ -37,6 +38,24 @@ export interface TeacherClass {
   room: string;
 }
 
+export interface TeacherClassDetail {
+  id: number;
+  name: string;
+  courseId: number;
+  courseName: string;
+  status: string;
+  startDate?: string;
+  endDate?: string;
+  students: {
+    id: number;
+    fullName: string;
+    email: string;
+    enrolledAt: string;
+  }[];
+  // Curriculum from separate API call
+  modules?: ModuleWithLessons[];
+}
+
 export interface TeacherStats {
   totalClasses: number;
   totalStudents: number;
@@ -64,6 +83,12 @@ const teacherApi = {
   }> => {
     const response = await api.get('/classes/my-classes', { params });
     return response.data.data || { items: [], total: 0, page: 1, pageSize: 10 };
+  },
+
+  // Get teacher's class detail
+  getClassDetail: async (classId: number): Promise<TeacherClassDetail> => {
+    const response = await api.get(`/classes/${classId}/detail`);
+    return response.data.data;
   },
 
   // Get teacher's assignments

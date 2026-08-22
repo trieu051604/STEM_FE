@@ -350,6 +350,35 @@ export interface MyClassesParams {
   courseId?: number;
 }
 
+// Curriculum interfaces
+export interface ClassCurriculumResponse {
+  classId: number;
+  classCode: string;
+  className: string;
+  courseTitle: string;
+  modules: ModuleWithLessons[];
+}
+
+export interface ModuleWithLessons {
+  id: number;
+  title: string;
+  description: string;
+  displayOrder: number;
+  estimatedMinutes: number;
+  lessonCount: number;
+  lessons: LessonInCurriculum[];
+}
+
+export interface LessonInCurriculum {
+  id: number;
+  title: string;
+  displayOrder: number;
+  estimatedMinutes: number;
+  lessonType: string;
+  hasVirtualLab: boolean;
+  labId?: string;
+}
+
 function normalizeClassesResponse(payload: unknown): MyClassesResponse {
   const data = unwrapApiData<unknown>(payload);
 
@@ -414,15 +443,8 @@ export const classesApi = {
     return response.data.data;
   },
   getMyClasses: async (
-    userId: number,
     params?: MyClassesParams
   ): Promise<MyClassesResponse> => {
-    const numericUserId = Number(userId);
-
-    if (!Number.isFinite(numericUserId) || numericUserId <= 0) {
-      throw new Error('Missing user id for my classes request');
-    }
-
     const queryParams: Record<string, string | number> = {};
 
     if (params?.searchTerm) {
@@ -434,7 +456,7 @@ export const classesApi = {
     }
 
     const response = await api.get(
-      `/Classes/my-classes/${numericUserId}`,
+      '/Classes/my-classes',
       Object.keys(queryParams).length ? { params: queryParams } : undefined
     );
 
@@ -450,6 +472,11 @@ export const classesApi = {
   delete: async (id: number): Promise<void> => {
     await api.delete(`/classes/${id}`);
   },
+
+  getCurriculum: async (classId: number): Promise<ClassCurriculumResponse> => {
+    const response = await api.get(`/classes/${classId}/curriculum`);
+    return response.data.data;
+  },
 };
 
 // Schedules API
@@ -463,6 +490,19 @@ export interface ScheduleCalendarItem {
   classCode: string;
   className: string;
   color: string;
+}
+
+export interface ScheduleResponse {
+  id: number;
+  classId: number;
+  classCode: string;
+  className: string;
+  lessonId?: number;
+  lessonTitle?: string;
+  startTime: string;
+  endTime: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface GetMyScheduleParams {
@@ -485,6 +525,21 @@ function normalizeScheduleItem(source: Record<string, unknown>): ScheduleCalenda
   };
 }
 
+function normalizeSchedule(source: Record<string, unknown>): ScheduleResponse {
+  return {
+    id: toNumberValue(pick(source, 'id', 'Id')) ?? 0,
+    classId: toNumberValue(pick(source, 'classId', 'ClassId')) ?? 0,
+    classCode: (pick<string>(source, 'classCode', 'ClassCode')) ?? '',
+    className: (pick<string>(source, 'className', 'ClassName')) ?? '',
+    lessonId: toNumberValue(pick(source, 'lessonId', 'LessonId')),
+    lessonTitle: (pick<string>(source, 'lessonTitle', 'LessonTitle')) ?? undefined,
+    startTime: (pick<string>(source, 'startTime', 'StartTime')) ?? '',
+    endTime: (pick<string>(source, 'endTime', 'EndTime')) ?? '',
+    createdAt: (pick<string>(source, 'createdAt', 'CreatedAt')) ?? '',
+    updatedAt: (pick<string>(source, 'updatedAt', 'UpdatedAt')) ?? '',
+  };
+}
+
 export const schedulesApi = {
   getMySchedule: async (params?: GetMyScheduleParams): Promise<ScheduleCalendarItem[]> => {
     const queryParams: Record<string, string | number> = {};
@@ -500,6 +555,12 @@ export const schedulesApi = {
     const data = unwrapApiData<unknown>(response.data);
     const items = Array.isArray(data) ? data : [];
     return items.map((item) => normalizeScheduleItem(item as Record<string, unknown>));
+  },
+  getByClass: async (classId: number): Promise<ScheduleResponse[]> => {
+    const response = await api.get(`/Schedules/class/${classId}`);
+    const data = unwrapApiData<unknown>(response.data);
+    const items = Array.isArray(data) ? data : [];
+    return items.map((item) => normalizeSchedule(item as Record<string, unknown>));
   },
 };
 
@@ -1187,6 +1248,7 @@ export interface CreateLabRequest {
   classIds: number[];
   status: LabStatus;
   linkedAssignmentId?: number | null;
+  scheduleId?: number | null; // Gán lab vào buổi dạy cụ thể
 }
 
 export type UpdateLabRequest = CreateLabRequest;

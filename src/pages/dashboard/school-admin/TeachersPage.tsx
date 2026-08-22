@@ -283,9 +283,9 @@ export const TeachersPage = () => {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Quản lý giáo viên</h1>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Quản lý giáo viên Science</h1>
           <p className="text-gray-500 dark:text-gray-400">
-            Quản lý tài khoản và thông tin giáo viên trong trường
+            Quản lý tài khoản và thông tin giáo viên Science trong trường
           </p>
         </div>
         <Button onClick={() => setCreateModalOpen(true)}>

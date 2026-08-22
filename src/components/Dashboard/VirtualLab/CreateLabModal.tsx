@@ -33,6 +33,11 @@ export interface LabAssignmentOption {
   classId?: number;
 }
 
+export interface LabLessonOption {
+  id: number;
+  label: string;
+}
+
 // Dữ liệu điền sẵn từ "bài tập mẫu" (src/data/virtualLabSampleExercises.ts) — KHÁC với
 // initialLab: không bật chế độ "đang sửa lab có sẵn" (isEditing vẫn false), Lưu vẫn gọi
 // labsApi.create(), không phải update(). Chỉ áp dụng khi mở modal để TẠO MỚI.
@@ -51,6 +56,7 @@ interface CreateLabModalProps {
   onValidateWokwi: (value: string) => Promise<ValidateWokwiProjectResponse>;
   classOptions: LabClassOption[];
   assignmentOptions: LabAssignmentOption[];
+  lessonOptions?: LabLessonOption[];
   componentOptions?: ComponentGlueRegistryEntity[];
   isComponentsLoading?: boolean;
   componentsError?: string | null;
@@ -59,6 +65,7 @@ interface CreateLabModalProps {
   templateData?: CreateLabTemplateData | null;
   isSaving?: boolean;
   error?: string | null;
+  scheduleOptions?: LabLessonOption[]; // Danh sách buổi dạy (schedules)
 }
 
 const categories: Array<{ value: LabCategory; label: string }> = [
@@ -86,6 +93,7 @@ const defaultFormData = {
   classIds: [] as number[],
   status: 'published' as LabStatus,
   linkedAssignmentId: '',
+  scheduleId: '',
   simulationMode: 'custom_sandbox' as LabSimulationMode,
   starterCode: defaultStarterCode,
   circuitConfig: defaultCircuitConfig,
@@ -113,13 +121,14 @@ function getInitialFormData(
       // buộc chọn lớp ngay lúc chỉ mới "dùng thử mẫu".
       status: 'draft' as LabStatus,
       linkedAssignmentId: '',
+      lessonId: '',
       simulationMode: 'custom_sandbox' as LabSimulationMode,
       starterCode: templateData.starterCode,
       circuitConfig: templateData.circuitConfig,
     };
   }
 
-  if (!initialLab) return defaultFormData;
+  if (!initialLab) return { ...defaultFormData, lessonId: '' };
 
   return {
     title: initialLab.title,
@@ -132,6 +141,7 @@ function getInitialFormData(
     linkedAssignmentId: initialLab.linkedAssignmentId
       ? String(initialLab.linkedAssignmentId)
       : '',
+    lessonId: '',
     simulationMode:
       (initialLab.simulationMode === 'custom_sandbox'
         ? 'custom_sandbox'
@@ -148,6 +158,8 @@ export const CreateLabModal = ({
   onValidateWokwi,
   classOptions,
   assignmentOptions,
+  lessonOptions = [],
+  scheduleOptions = [], // Danh sách buổi dạy (schedules)
   componentOptions = [],
   isComponentsLoading,
   componentsError,
@@ -259,6 +271,7 @@ export const CreateLabModal = ({
         linkedAssignmentId: formData.linkedAssignmentId
           ? Number(formData.linkedAssignmentId)
           : null,
+        scheduleId: formData.scheduleId ? Number(formData.scheduleId) : null,
       },
       initialLab ?? undefined
     );
@@ -470,6 +483,36 @@ export const CreateLabModal = ({
                   </option>
                 ))}
               </select>
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium text-foreground">
+                Gắn vào buổi dạy
+              </label>
+              <select
+                value={formData.scheduleId}
+                onChange={(event) =>
+                  setFormData({ ...formData, scheduleId: event.target.value })
+                }
+                className={nativeFieldClassName}
+              >
+                <option value="">Bỏ qua</option>
+                {scheduleOptions.length === 0 && (
+                  <option value="" disabled>
+                    Chưa có buổi dạy nào cho các lớp đã chọn
+                  </option>
+                )}
+                {scheduleOptions.map((schedule) => (
+                  <option key={schedule.id} value={schedule.id}>
+                    {schedule.label}
+                  </option>
+                ))}
+              </select>
+              <p className="text-xs text-muted-foreground">
+                {scheduleOptions.length === 0
+                  ? 'Các lớp đã chọn chưa có buổi dạy nào trong thời khóa biểu.'
+                  : 'Tùy chọn - gán lab vào một buổi dạy cụ thể.'}
+              </p>
             </div>
 
             {(localError || error) && (

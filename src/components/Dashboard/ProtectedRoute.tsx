@@ -36,7 +36,7 @@ import {
   PaymentsPage,
   AiQuotaPage,
 } from '@/pages/dashboard/school-admin';
-import { SchoolsPage, UsersPage, PackagesManagementPage, SyllabusesPage, SyllabusDetailPage } from '@/pages/dashboard/master-admin';
+import { SchoolsPage, UsersPage, PackagesManagementPage, SyllabusesPage, SyllabusDetailPage, SystemLogsPage } from '@/pages/dashboard/master-admin';
 import React from 'react';
 
 interface RouteConfig {
@@ -126,6 +126,11 @@ export const dashboardRoutes = [
       {
         path: 'syllabuses/:id',
         element: <ProtectedElement element={<SyllabusDetailPage />} allowedRoles={['master_admin']} />,
+      },
+      // System Audit Log (Master Admin only — enforced server-side too)
+      {
+        path: 'system-logs',
+        element: <ProtectedElement element={<SystemLogsPage />} allowedRoles={['master_admin']} />,
       },
       // Requests (Master Admin only)
       { 

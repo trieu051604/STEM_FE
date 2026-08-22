@@ -177,7 +177,7 @@ export const COMPONENT_REFERENCES: Record<string, ComponentReference> = {
   l298n: {
     label: 'L298N Motor Driver',
     summary: '13 chân: IN1-4, ENA/ENB, OUT1-4, VIN, GND, 5V',
-    role: 'Điều khiển chiều/tốc độ 2 động cơ DC từ tín hiệu GPIO — trạng thái forward/backward/stopped/brake được suy ra THẬT từ QEMU (đọc digitalWrite IN1-4), hiện ngay trên card.',
+    role: 'Điều khiển chiều/tốc độ 2 động cơ DC từ tín hiệu GPIO — trạng thái forward/backward/stopped/brake được suy ra THẬT từ QEMU (đọc digitalWrite IN1-4), hiện ngay trên card. Tên chân đã đối chiếu với components101.com (chuẩn breakout L298N phổ biến) — hình minh hoạ là sơ đồ khối chung, KHÔNG phải ảnh linh kiện thật (không có part L298N/relay module nào trong kho Fritzing chính thức đang dùng).',
     pins: ['IN1', 'IN2', 'IN3', 'IN4', 'ENA', 'ENB', 'OUT1', 'OUT2', 'OUT3', 'OUT4', 'VIN', 'GND', '5V'],
     sample: 'GPIO -> IN1..IN4, OUT1/2 -> Motor A, OUT3/4 -> Motor B, VIN -> Battery (+), GND -> chung',
     icon: CircuitBoard,
@@ -460,7 +460,7 @@ export const COMPONENT_REFERENCES: Record<string, ComponentReference> = {
   relay_module: {
     label: 'Relay Module',
     summary: '6 chân: VCC, IN, GND, NO, COM, NC',
-    role: 'Đóng/ngắt tải điện áp cao qua tín hiệu điều khiển digital.',
+    role: 'Đóng/ngắt tải điện áp cao qua tín hiệu điều khiển digital. Tên chân đã đối chiếu với lastminuteengineers.com/circuitdigest.com (chuẩn module relay 1 kênh phổ biến) — hình minh hoạ là sơ đồ khối chung, KHÔNG phải ảnh linh kiện thật.',
     pins: ['VCC', 'IN', 'GND', 'NO', 'COM', 'NC'],
     sample: '5V -> VCC, GND -> GND, IN -> GPIO',
     icon: Settings2,

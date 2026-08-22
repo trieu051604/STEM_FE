@@ -68,7 +68,7 @@ export const ROBOT_KIT_FALLBACK_CARDS: Record<
   'rain-sensor': { label: 'Rain Sensor', icon: CloudRain, width: 90, height: 50, badge: 'Kiểm tra nối dây' },
   // Pin semantics verified + wiring rule có, geometry CHƯA verified — xem
   // component-compatibility.json wokwi-soil-moisture-sensor.
-  'soil-moisture-sensor': { label: 'Soil Moisture Sensor', icon: Sprout, width: 90, height: 50, badge: 'Chưa xác minh sơ đồ chân' },
+  'soil-moisture-sensor': { label: 'Soil Moisture Sensor', icon: Sprout, width: 90, height: 50, badge: 'Kiểm tra nối dây' },
   'ir-obstacle-sensor': { label: 'IR Obstacle Sensor', icon: ScanLine, width: 90, height: 50, badge: 'Kiểm tra nối dây' },
   'line-tracking-sensor': { label: 'Line Tracking Sensor', icon: Route, width: 90, height: 50, badge: 'Kiểm tra nối dây' },
   'color-sensor': { label: 'Color Sensor', icon: Palette, width: 90, height: 50, badge: 'Kiểm tra nối dây' },

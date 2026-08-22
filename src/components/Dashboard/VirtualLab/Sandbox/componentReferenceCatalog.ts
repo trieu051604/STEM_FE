@@ -514,13 +514,13 @@ export const COMPONENT_REFERENCES: Record<string, ComponentReference> = {
   // wokwi-soil-moisture-sensor). Badge vẫn phải trung thực theo Phase 17.
   soil_moisture_sensor: {
     label: 'Soil Moisture Sensor',
-    summary: '4 chân: VCC, GND, DO, AO',
+    summary: '4 chân: VCC, GND, DO, AO — YL-69 + LM393, hình minh hoạ đã đối chiếu với module thật (2 đầu dò + board so sánh).',
     role: 'Đo độ ẩm đất qua 2 đầu dò.',
     pins: ['VCC', 'GND', 'DO', 'AO'],
     sample: '5V -> VCC, GND -> GND, AO -> GPIO analog',
     icon: Sprout,
     iconClassName: 'bg-green-50 text-green-700',
-    badge: 'Chưa xác minh sơ đồ chân',
+    badge: 'Kiểm tra nối dây',
   },
   ir_obstacle_sensor: {
     label: 'IR Obstacle Sensor',

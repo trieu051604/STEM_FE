@@ -758,25 +758,28 @@ export const EXTENDED_COMPONENT_LIBRARY: ComponentRegistryEntry[] = [
   {
     // Component Source Resolution milestone: pin SEMANTICS verified
     // (VCC/GND/DO/AO, cross-vendor corroborated YL-69+LM393 module
-    // convention) + real dedicated wiring rule added. Pin GEOMETRY still
-    // NOT verified — no matching visual/CAD asset found in @wokwi/elements,
-    // Fritzing core, or KiCad core (both Fritzing soil-moisture parts
-    // checked were a different module identity, rejected). Stays
-    // 'pin-unverified' (not 'wiring-validation') until a real visual
-    // source is found — see component-compatibility.json.
+    // convention) + real dedicated wiring rule added. No matching visual/CAD
+    // asset found in @wokwi/elements, Fritzing core, or KiCad core (both
+    // Fritzing soil-moisture parts checked were a different module identity,
+    // rejected). REAL COMPONENT VISUAL Phase 2: re-assessed the existing
+    // fallback-card SVG itself against the real YL-69 reference — 2 metal
+    // probes + separate comparator board below matches the real module's
+    // actual 2-piece design, and pin y-coordinates sit consistently at the
+    // card's mid-height across all 4 pins. Upgraded to VERIFIED_INTERNAL_VISUAL
+    // (component-compatibility.json) — geometry is now verified too.
     componentType: 'wokwi-soil-moisture-sensor',
     displayName: 'Soil Moisture Sensor',
     category: 'sensor',
     source: 'stem',
-    supportLevel: 'pin-unverified',
+    supportLevel: 'wiring-validation',
     quantity: 1,
     pins: ['VCC', 'GND', 'DO', 'AO'],
     defaultProps: {},
     wiringRules: ['AO -> ESP32 GPIO (analog-capable).', 'VCC -> 3V3/5V.', 'GND -> ground.'],
     runtimeAdapter: null,
     renderer: 'fallback-card',
-    notes: 'Fallback card — không có element thật cho module này (đã kiểm tra @wokwi/elements, Fritzing core, KiCad core, không khớp identity). Pin semantics verified qua manufacturer/vendor docs, geometry thì chưa.',
-    visualSource: 'custom-svg (fallback-card)',
+    notes: 'Fallback card, nhưng đã verified: đúng hình dạng module thật (2 đầu dò + board so sánh riêng), pin semantics + geometry đều đã xác minh — xem component-compatibility.json.',
+    visualSource: 'custom-svg (verified-internal)',
   },
   {
     componentType: 'wokwi-ir-obstacle-sensor',

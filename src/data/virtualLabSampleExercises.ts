@@ -1,4 +1,5 @@
-// StemFlow Virtual Lab — Bộ 14 bài tập mẫu (Component Library đã hỗ trợ runtime hôm nay).
+// StemFlow Virtual Lab — Bộ 14 bài tập mẫu + module "Robot Giao Hàng Mini" (LAB01-LAB08,
+// ACCELERATION PHASE 5) = 22 bài (Component Library đã hỗ trợ runtime hôm nay).
 //
 // NGUỒN SỰ THẬT ĐÃ ĐỐI CHIẾU TRỰC TIẾP VỚI SOURCE (không suy đoán) trước khi viết file này:
 // - STEM_BE/STEM.Application/Dtos/Labs/LabDtos.cs           — CreateLabRequest, đúng field BE nhận.
@@ -17,9 +18,12 @@
 //   này đều nằm trong danh sách an toàn [13,14,16,17,18,19,21,22,23,25,26,27,32,33], tránh strapping
 //   pin/UART0.
 //
-// PHẠM VI: chỉ 14 bài trong danh sách được duyệt (LED/Buzzer/RGB LED/L298N xe 2 bánh/tránh vật cản
-// HC-SR04/dò line 3ch/robot giao hàng mini/rò rỉ nước/cháy Flame/DHT nhiệt-ẩm/PIR/mưa/độ ẩm đất/
-// rung SW-420). KHÔNG có bài nào dùng WiFi/MQTT/HTTP/cloud/camera AI/drone/robot physics thật.
+// PHẠM VI: 14 bài gốc (LED/Buzzer/RGB LED/L298N xe 2 bánh/tránh vật cản HC-SR04/dò line 3ch/
+// robot giao hàng mini/rò rỉ nước/cháy Flame/DHT nhiệt-ẩm/PIR/mưa/độ ẩm đất/rung SW-420)
+// + module "Robot Giao Hàng Mini" LAB01-LAB08 (ROBOT_DELIVERY_MINI_LABS, xuất riêng để dùng làm
+// 1 chuỗi bài tiến trình độc lập) tái sử dụng đúng logic điện của Bài 4/5/7 phía trên, thêm 1 bộ
+// GPIO chung (ROBOT_DELIVERY_PINS) xuyên suốt LAB02-LAB08. KHÔNG có bài nào dùng WiFi/MQTT/HTTP/
+// cloud/camera AI/drone/robot physics thật.
 //
 // CÁCH DÙNG: đây là DỮ LIỆU THUẦN (không tự động thêm lab vào hệ thống, không đổi API/route nào).
 // Giáo viên/admin dùng `toCreateLabRequest(exercise, classIds)` để lấy đúng payload rồi gọi
@@ -1144,6 +1148,864 @@ const dhtStation: VirtualLabSampleExercise = {
   limitations: 'Không dùng được thư viện DHT.h/Adafruit Unified Sensor thật; giá trị hoàn toàn theo kịch bản timeline, không có nhiễu/sai số ngẫu nhiên như cảm biến thật.',
 };
 
+// ============================================================================
+// ROBOT DELIVERY MINI — module LAB01-LAB08 (ACCELERATION PHASE 5)
+//
+// 8 bài tiến trình, MỖI bài xây trên bài trước, kết thúc ở robot giao hàng mini
+// hoàn chỉnh (ESP32 + HC-SR04 + L298N + 2 DC Motor). LAB03/LAB07/LAB08 tái sử
+// dụng ĐÚNG logic điện đã verify ở Bài 4/5/7 phía trên (không phát minh lại) —
+// khác biệt duy nhất là numbering theo module riêng + 1 bộ chân GPIO CHUNG
+// (ROBOT_DELIVERY_PINS) dùng xuyên suốt LAB02-LAB08, tránh lặp số GPIO rải rác
+// từng file/từng bài như 3 bài gốc phía trên từng làm độc lập.
+//
+// GOLDEN RULE (kế thừa từ các milestone trước): L298N chỉ có runtime THẬT qua
+// QEMU (L298nModel.cs đọc digitalWrite qua SF_EVENT) — KHÔNG có trong
+// Educational interpreter. HC-SR04 (pulseIn) cũng CHỈ có qua QEMU
+// (SensorRuntimeHeaderGenerator) — "Do not port pulseIn to Educational" đúng
+// như chỉ định milestone. Vì vậy LAB02-LAB08 (có L298N và/hoặc HC-SR04) LUÔN
+// resolve sang QEMU tự động qua ISimulationRunnerResolver hiện có (không cần
+// set field "mode" nào ở đây — kiến trúc chọn runtime dựa trên linh kiện,
+// không dựa trên nhãn bài học). Chỉ LAB01 (ESP32 + LED, không linh kiện nào
+// cần QEMU) mới thật sự chạy qua Educational.
+// ============================================================================
+const ROBOT_DELIVERY_PINS = {
+  MOTOR_L_IN1: 13, // Motor trái (Motor A trên L298N)
+  MOTOR_L_IN2: 14,
+  MOTOR_R_IN1: 16, // Motor phải (Motor B trên L298N)
+  MOTOR_R_IN2: 17,
+  MOTOR_ENA: 18,
+  MOTOR_ENB: 19,
+  HC_TRIG: 32,
+  HC_ECHO: 33,
+  WARNING_LED: 25,
+} as const;
+
+// ----------------------------------------------------------------------------
+// LAB01 — ESP32 Digital Output (Educational)
+// ----------------------------------------------------------------------------
+const lab01StarterCode = `// Robot Delivery Mini - LAB01: ESP32 Digital Output
+// Muc tieu: xac minh duong dieu khien co ban cua ESP32 truoc khi ghep dong co/cam bien.
+// LED: A (anode) -> GPIO13, C (cathode) -> GND
+
+const int LED_PIN = 13;
+
+void setup() {
+  Serial.begin(115200);
+  pinMode(LED_PIN, OUTPUT);
+}
+
+void loop() {
+  digitalWrite(LED_PIN, HIGH);
+  Serial.println("Trang thai: LED ON");
+  delay(500);
+  digitalWrite(LED_PIN, LOW);
+  Serial.println("Trang thai: LED OFF");
+  delay(500);
+}
+`;
+
+const robotDeliveryLab01: VirtualLabSampleExercise = {
+  title: '[Robot Giao Hàng Mini] LAB01 — ESP32 Digital Output',
+  slug: 'robot-delivery-lab01-esp32-output',
+  category: 'robotics',
+  level: 'beginner',
+  estimatedTimeMinutes: 15,
+  objective: 'Xác minh đường điều khiển digitalWrite/pinMode cơ bản của ESP32 hoạt động đúng trước khi ghép động cơ/cảm biến ở các bài sau.',
+  description: 'Bài mở đầu module Robot Giao Hàng Mini (LAB01/8). Không yêu cầu tiên quyết. Nhiệm vụ: nháy LED mỗi 500ms và quan sát Serial Monitor khớp đúng trạng thái. Input: không có tín hiệu vào. Output: 1 tín hiệu digital ra LED.',
+  components: ['wokwi-led'],
+  supportedLevel: 'wokwi-led: Mô phỏng được đầy đủ qua Educational runtime (không cần QEMU).',
+  wiringGuide: [
+    'Đặt ESP32 DevKit v1 và 1 LED lên canvas.',
+    'Nối LED: chân A (anode) -> GPIO13, chân C (cathode) -> ESP32 GND.',
+  ],
+  starterCode: lab01StarterCode,
+  circuitConfig: {
+    board: 'esp32_devkit_v1',
+    parts: [{ id: 'led1', type: 'wokwi-led', x: 220, y: 120, pinMapping: { A: 13 } }],
+    connections: [
+      [`${BOARD}:GPIO13`, 'led1:A'],
+      ['led1:C', GND],
+    ],
+  },
+  expectedBehavior: 'LED nháy sáng/tắt đều đặn mỗi 500ms; Serial Monitor in "LED ON"/"LED OFF" khớp đúng từng nhịp.',
+  testSteps: [
+    'Bấm Run/Compile.',
+    'Diagram hợp lệ (đúng 1 LED, đủ 2 kết nối A/C).',
+    'Code parse được, Run trả PASS.',
+    'Quan sát LED đổi trạng thái ON/OFF đúng chu kỳ, khớp Serial Monitor.',
+  ],
+  serialExpectedOutput: 'Trang thai: LED ON\nTrang thai: LED OFF\nTrang thai: LED ON\n...',
+  teacherNotes: 'Bài nền tảng cho cả module — không yêu cầu tiên quyết. Học sinh cần hoàn thành PASS bài này trước khi sang LAB02 (giới thiệu L298N).',
+  limitations: 'Chưa dùng linh kiện robot thật nào (L298N/HC-SR04) — thuần kiểm tra đường tín hiệu digital output.',
+};
+
+// ----------------------------------------------------------------------------
+// LAB02 — L298N One Motor (QEMU)
+// ----------------------------------------------------------------------------
+const lab02StarterCode = `// Robot Delivery Mini - LAB02: L298N dieu khien 1 dong co
+// ESP32 DevKit v1 - L298N Motor A (dieu khien): IN1=${ROBOT_DELIVERY_PINS.MOTOR_L_IN1}, IN2=${ROBOT_DELIVERY_PINS.MOTOR_L_IN2}, ENA=${ROBOT_DELIVERY_PINS.MOTOR_ENA}
+// Motor B (chua dung, giu LOW de tat): IN3=${ROBOT_DELIVERY_PINS.MOTOR_R_IN1}, IN4=${ROBOT_DELIVERY_PINS.MOTOR_R_IN2}, ENB=${ROBOT_DELIVERY_PINS.MOTOR_ENB}
+// L298N that luon co du 4 chan IN1-IN4 tren module (kha ca 2 kenh du chi dung 1) - noi day du,
+// code chi dieu khien kenh A.
+
+const int IN1 = ${ROBOT_DELIVERY_PINS.MOTOR_L_IN1};
+const int IN2 = ${ROBOT_DELIVERY_PINS.MOTOR_L_IN2};
+const int IN3 = ${ROBOT_DELIVERY_PINS.MOTOR_R_IN1};
+const int IN4 = ${ROBOT_DELIVERY_PINS.MOTOR_R_IN2};
+const int ENA = ${ROBOT_DELIVERY_PINS.MOTOR_ENA};
+const int ENB = ${ROBOT_DELIVERY_PINS.MOTOR_ENB};
+
+void motorForward() { digitalWrite(IN1, HIGH); digitalWrite(IN2, LOW);  Serial.println("Trang thai: FORWARD"); }
+void motorStop()    { digitalWrite(IN1, LOW);  digitalWrite(IN2, LOW);  Serial.println("Trang thai: STOP"); }
+
+void setup() {
+  Serial.begin(115200);
+  pinMode(IN1, OUTPUT);
+  pinMode(IN2, OUTPUT);
+  pinMode(IN3, OUTPUT);
+  pinMode(IN4, OUTPUT);
+  pinMode(ENA, OUTPUT);
+  pinMode(ENB, OUTPUT);
+  digitalWrite(ENA, HIGH);
+  digitalWrite(ENB, HIGH);
+  digitalWrite(IN3, LOW);  // Kenh B chua dung, giu tat
+  digitalWrite(IN4, LOW);
+}
+
+void loop() {
+  motorForward();
+  delay(2000);
+  motorStop();
+  delay(2000);
+}
+`;
+
+const robotDeliveryLab02: VirtualLabSampleExercise = {
+  title: '[Robot Giao Hàng Mini] LAB02 — L298N Một Động Cơ',
+  slug: 'robot-delivery-lab02-l298n-one-motor',
+  category: 'robotics',
+  level: 'beginner',
+  estimatedTimeMinutes: 20,
+  objective: 'Hiểu nguyên lý điều khiển 1 động cơ DC qua cầu H L298N bằng cặp tín hiệu digital IN1/IN2 — không nối động cơ trực tiếp vào ESP32.',
+  description: 'Yêu cầu hoàn thành LAB01. Động cơ A lặp chu trình: quay tiến (FORWARD) 2s -> dừng (STOP) 2s. Input: 2 tín hiệu digitalWrite (IN1, IN2). Output: trạng thái động cơ hiển thị trên card L298N. L298N thật luôn có đủ 4 chân IN1-IN4 trên module (dù chỉ dùng 1 kênh) nên bài này vẫn nối đủ IN1-IN4/ENA/ENB — code chỉ điều khiển kênh A (IN1/IN2), kênh B (IN3/IN4) giữ LOW (tắt).',
+  components: ['wokwi-l298n', 'wokwi-dc-motor', 'wokwi-battery-pack'],
+  supportedLevel: 'wokwi-l298n: Mô phỏng được (trạng thái forward/stopped suy ra thật từ digitalWrite IN1/IN2 qua QEMU). wokwi-dc-motor: Mô phỏng được (theo trạng thái L298N tương ứng).',
+  wiringGuide: [
+    'Đặt ESP32 DevKit v1, 1 L298N, 1 DC Motor, 1 Battery Pack lên canvas.',
+    `Nối ESP32 GPIO${ROBOT_DELIVERY_PINS.MOTOR_L_IN1} -> L298N IN1, GPIO${ROBOT_DELIVERY_PINS.MOTOR_L_IN2} -> IN2, GPIO${ROBOT_DELIVERY_PINS.MOTOR_R_IN1} -> IN3, GPIO${ROBOT_DELIVERY_PINS.MOTOR_R_IN2} -> IN4, GPIO${ROBOT_DELIVERY_PINS.MOTOR_ENA} -> ENA, GPIO${ROBOT_DELIVERY_PINS.MOTOR_ENB} -> ENB.`,
+    'Nối Motor: terminal1/2 -> L298N OUT1/OUT2 (KHÔNG nối motor thẳng vào GPIO ESP32). Kênh B (OUT3/OUT4) không cần nối motor ở bài này.',
+    'Nối Battery Pack (+) -> L298N VIN, Battery Pack (-) -> L298N GND. Nối L298N GND -> ESP32 GND.',
+  ],
+  starterCode: lab02StarterCode,
+  circuitConfig: {
+    board: 'esp32_devkit_v1',
+    parts: [
+      { id: 'l298n1', type: 'wokwi-l298n', x: 220, y: 120, pinMapping: { IN1: ROBOT_DELIVERY_PINS.MOTOR_L_IN1, IN2: ROBOT_DELIVERY_PINS.MOTOR_L_IN2, IN3: ROBOT_DELIVERY_PINS.MOTOR_R_IN1, IN4: ROBOT_DELIVERY_PINS.MOTOR_R_IN2, ENA: ROBOT_DELIVERY_PINS.MOTOR_ENA, ENB: ROBOT_DELIVERY_PINS.MOTOR_ENB } },
+      { id: 'motorA', type: 'wokwi-dc-motor', x: 60, y: 60, pinMapping: {} },
+      { id: 'battery1', type: 'wokwi-battery-pack', x: 400, y: 120, pinMapping: {} },
+    ],
+    connections: [
+      [`${BOARD}:GPIO${ROBOT_DELIVERY_PINS.MOTOR_L_IN1}`, 'l298n1:IN1'],
+      [`${BOARD}:GPIO${ROBOT_DELIVERY_PINS.MOTOR_L_IN2}`, 'l298n1:IN2'],
+      [`${BOARD}:GPIO${ROBOT_DELIVERY_PINS.MOTOR_R_IN1}`, 'l298n1:IN3'],
+      [`${BOARD}:GPIO${ROBOT_DELIVERY_PINS.MOTOR_R_IN2}`, 'l298n1:IN4'],
+      [`${BOARD}:GPIO${ROBOT_DELIVERY_PINS.MOTOR_ENA}`, 'l298n1:ENA'],
+      [`${BOARD}:GPIO${ROBOT_DELIVERY_PINS.MOTOR_ENB}`, 'l298n1:ENB'],
+      ['motorA:terminal1', 'l298n1:OUT1'],
+      ['motorA:terminal2', 'l298n1:OUT2'],
+      ['battery1:+', 'l298n1:VIN'],
+      ['battery1:-', 'l298n1:GND'],
+      ['l298n1:GND', GND],
+    ],
+  },
+  expectedBehavior: 'Card L298N/Motor A đổi trạng thái forward/stopped đúng chu kỳ 2s/2s; Serial log khớp FORWARD/STOP. Kênh B không có motor gắn nên không hiển thị trạng thái.',
+  testSteps: [
+    'Bấm Run/Compile.',
+    'Diagram hợp lệ: đủ IN1-IN4/ENA/ENB trên L298N; không có kết nối trực tiếp motor -> ESP32 GPIO (bắt buộc qua L298N OUT).',
+    'Quan sát card L298N/Motor A đổi FORWARD -> STOP đúng thứ tự, khớp Serial Monitor.',
+  ],
+  serialExpectedOutput: 'Trang thai: FORWARD\nTrang thai: STOP\nTrang thai: FORWARD\n...',
+  teacherNotes: 'Yêu cầu hoàn thành LAB01. Dùng đúng bộ chân ROBOT_DELIVERY_PINS sẽ được tái sử dụng nguyên vẹn cho LAB03-LAB08 (Motor trái). Nối đủ IN1-IN4 dù chỉ dùng 1 kênh phản ánh đúng module L298N thật (luôn có 4 chân IN cố định).',
+  limitations: 'Không có mô phỏng vật lý chuyển động thật — chỉ mô phỏng đúng trạng thái điện của động cơ. Chỉ 1 động cơ có tải thật, kênh B chỉ nối dây làm quen (chưa gắn motor).',
+};
+
+// ----------------------------------------------------------------------------
+// LAB03 — L298N Two Motors (QEMU) — mở rộng LAB02 sang cả 2 động cơ
+// ----------------------------------------------------------------------------
+const lab03StarterCode = `// Robot Delivery Mini - LAB03: L298N dieu khien 2 dong co (trai/phai)
+// ESP32 DevKit v1 - Motor trai: IN1=${ROBOT_DELIVERY_PINS.MOTOR_L_IN1}, IN2=${ROBOT_DELIVERY_PINS.MOTOR_L_IN2} | Motor phai: IN3=${ROBOT_DELIVERY_PINS.MOTOR_R_IN1}, IN4=${ROBOT_DELIVERY_PINS.MOTOR_R_IN2} | ENA=${ROBOT_DELIVERY_PINS.MOTOR_ENA}, ENB=${ROBOT_DELIVERY_PINS.MOTOR_ENB}
+
+const int IN1 = ${ROBOT_DELIVERY_PINS.MOTOR_L_IN1}, IN2 = ${ROBOT_DELIVERY_PINS.MOTOR_L_IN2};
+const int IN3 = ${ROBOT_DELIVERY_PINS.MOTOR_R_IN1}, IN4 = ${ROBOT_DELIVERY_PINS.MOTOR_R_IN2};
+const int ENA = ${ROBOT_DELIVERY_PINS.MOTOR_ENA}, ENB = ${ROBOT_DELIVERY_PINS.MOTOR_ENB};
+
+void forward()   { digitalWrite(IN1, HIGH); digitalWrite(IN2, LOW);  digitalWrite(IN3, HIGH); digitalWrite(IN4, LOW);  Serial.println("Trang thai: FORWARD"); }
+void stopCar()    { digitalWrite(IN1, LOW);  digitalWrite(IN2, LOW);  digitalWrite(IN3, LOW);  digitalWrite(IN4, LOW);  Serial.println("Trang thai: STOP"); }
+void turnLeft()   { digitalWrite(IN1, LOW);  digitalWrite(IN2, LOW);  digitalWrite(IN3, HIGH); digitalWrite(IN4, LOW);  Serial.println("Trang thai: TURN LEFT"); }
+void turnRight()  { digitalWrite(IN1, HIGH); digitalWrite(IN2, LOW);  digitalWrite(IN3, LOW);  digitalWrite(IN4, LOW);  Serial.println("Trang thai: TURN RIGHT"); }
+
+void setup() {
+  Serial.begin(115200);
+  pinMode(IN1, OUTPUT); pinMode(IN2, OUTPUT);
+  pinMode(IN3, OUTPUT); pinMode(IN4, OUTPUT);
+  pinMode(ENA, OUTPUT); pinMode(ENB, OUTPUT);
+  digitalWrite(ENA, HIGH);
+  digitalWrite(ENB, HIGH);
+}
+
+void loop() {
+  forward();    delay(2000);
+  stopCar();    delay(1000);
+  turnLeft();   delay(1000);
+  stopCar();    delay(1000);
+  turnRight();  delay(1000);
+  stopCar();    delay(2000);
+}
+`;
+
+const robotDeliveryLab03: VirtualLabSampleExercise = {
+  title: '[Robot Giao Hàng Mini] LAB03 — L298N Hai Động Cơ',
+  slug: 'robot-delivery-lab03-two-motors',
+  category: 'robotics',
+  level: 'beginner',
+  estimatedTimeMinutes: 25,
+  objective: 'Mở rộng LAB02 sang điều khiển đồng thời 2 động cơ trái/phải để tạo các hành vi forward/stop/turnLeft/turnRight.',
+  description: 'Yêu cầu hoàn thành LAB02. Robot lặp: tiến 2s -> dừng 1s -> rẽ trái 1s -> dừng 1s -> rẽ phải 1s -> dừng 2s. Chiến lược rẽ đơn giản: 1 bên dừng, 1 bên quay (không dùng lùi bánh đối diện). Input: 4 tín hiệu digitalWrite (IN1-IN4). Output: trạng thái 2 động cơ hiển thị độc lập.',
+  components: ['wokwi-l298n', 'wokwi-dc-motor', 'wokwi-battery-pack'],
+  supportedLevel: 'wokwi-l298n/wokwi-dc-motor: Mô phỏng được (như LAB02, mở rộng đủ 2 cặp IN1-4).',
+  wiringGuide: [
+    'Đặt ESP32 DevKit v1, 1 L298N, 2 DC Motor (trái + phải), 1 Battery Pack lên canvas.',
+    `Nối GPIO${ROBOT_DELIVERY_PINS.MOTOR_L_IN1}->IN1, GPIO${ROBOT_DELIVERY_PINS.MOTOR_L_IN2}->IN2, GPIO${ROBOT_DELIVERY_PINS.MOTOR_R_IN1}->IN3, GPIO${ROBOT_DELIVERY_PINS.MOTOR_R_IN2}->IN4, GPIO${ROBOT_DELIVERY_PINS.MOTOR_ENA}->ENA, GPIO${ROBOT_DELIVERY_PINS.MOTOR_ENB}->ENB.`,
+    'Nối Motor trái: terminal1/2 -> OUT1/OUT2. Nối Motor phải: terminal1/2 -> OUT3/OUT4.',
+    'Nối Battery Pack + Battery Pack GND như LAB02.',
+  ],
+  starterCode: lab03StarterCode,
+  circuitConfig: {
+    board: 'esp32_devkit_v1',
+    parts: [
+      { id: 'l298n1', type: 'wokwi-l298n', x: 220, y: 120, pinMapping: { IN1: ROBOT_DELIVERY_PINS.MOTOR_L_IN1, IN2: ROBOT_DELIVERY_PINS.MOTOR_L_IN2, IN3: ROBOT_DELIVERY_PINS.MOTOR_R_IN1, IN4: ROBOT_DELIVERY_PINS.MOTOR_R_IN2, ENA: ROBOT_DELIVERY_PINS.MOTOR_ENA, ENB: ROBOT_DELIVERY_PINS.MOTOR_ENB } },
+      { id: 'motorL', type: 'wokwi-dc-motor', x: 60, y: 60, pinMapping: {} },
+      { id: 'motorR', type: 'wokwi-dc-motor', x: 60, y: 200, pinMapping: {} },
+      { id: 'battery1', type: 'wokwi-battery-pack', x: 400, y: 120, pinMapping: {} },
+    ],
+    connections: [
+      [`${BOARD}:GPIO${ROBOT_DELIVERY_PINS.MOTOR_L_IN1}`, 'l298n1:IN1'],
+      [`${BOARD}:GPIO${ROBOT_DELIVERY_PINS.MOTOR_L_IN2}`, 'l298n1:IN2'],
+      [`${BOARD}:GPIO${ROBOT_DELIVERY_PINS.MOTOR_R_IN1}`, 'l298n1:IN3'],
+      [`${BOARD}:GPIO${ROBOT_DELIVERY_PINS.MOTOR_R_IN2}`, 'l298n1:IN4'],
+      [`${BOARD}:GPIO${ROBOT_DELIVERY_PINS.MOTOR_ENA}`, 'l298n1:ENA'],
+      [`${BOARD}:GPIO${ROBOT_DELIVERY_PINS.MOTOR_ENB}`, 'l298n1:ENB'],
+      ['motorL:terminal1', 'l298n1:OUT1'],
+      ['motorL:terminal2', 'l298n1:OUT2'],
+      ['motorR:terminal1', 'l298n1:OUT3'],
+      ['motorR:terminal2', 'l298n1:OUT4'],
+      ['battery1:+', 'l298n1:VIN'],
+      ['battery1:-', 'l298n1:GND'],
+      ['l298n1:GND', GND],
+    ],
+  },
+  expectedBehavior: 'Card L298N/2 motor đổi trạng thái đúng chu trình FORWARD -> STOP -> TURN LEFT -> STOP -> TURN RIGHT -> STOP; trong TURN LEFT, motor phải quay còn motor trái dừng (và ngược lại khi TURN RIGHT).',
+  testSteps: [
+    'Bấm Run/Compile.',
+    'Quan sát 2 card motor đổi trạng thái ĐÚNG chu trình và ĐÚNG động cơ (rẽ trái: motor trái STOP, motor phải FORWARD — không phải ngược lại).',
+    'Đối chiếu Serial Monitor khớp từng trạng thái.',
+  ],
+  serialExpectedOutput: 'Trang thai: FORWARD\nTrang thai: STOP\nTrang thai: TURN LEFT\nTrang thai: STOP\nTrang thai: TURN RIGHT\nTrang thai: STOP\n...',
+  teacherNotes: 'Yêu cầu hoàn thành LAB02. Đây là nền tảng robot 2 bánh dùng lại nguyên vẹn cho LAB06-LAB08 — không đổi số GPIO từ bài này trở đi.',
+  limitations: 'Không có mô phỏng vật lý chuyển động thật trên mặt phẳng — chỉ đúng trạng thái điện của từng động cơ.',
+};
+
+// ----------------------------------------------------------------------------
+// LAB04 — HC-SR04 Distance (QEMU, chưa có động cơ)
+// ----------------------------------------------------------------------------
+const lab04StarterCode = `// Robot Delivery Mini - LAB04: Doc khoang cach HC-SR04
+// ESP32 DevKit v1 - HC-SR04: TRIG=${ROBOT_DELIVERY_PINS.HC_TRIG}, ECHO=${ROBOT_DELIVERY_PINS.HC_ECHO}
+
+const int TRIG_PIN = ${ROBOT_DELIVERY_PINS.HC_TRIG};
+const int ECHO_PIN = ${ROBOT_DELIVERY_PINS.HC_ECHO};
+
+float readDistanceCm() {
+  digitalWrite(TRIG_PIN, LOW);
+  delayMicroseconds(2);
+  digitalWrite(TRIG_PIN, HIGH);
+  delayMicroseconds(10);
+  digitalWrite(TRIG_PIN, LOW);
+  unsigned long duration = pulseIn(ECHO_PIN, HIGH, 30000UL);
+  return duration / 58.0;
+}
+
+void setup() {
+  Serial.begin(115200);
+  pinMode(TRIG_PIN, OUTPUT);
+  pinMode(ECHO_PIN, INPUT);
+}
+
+void loop() {
+  float distance = readDistanceCm();
+  Serial.print("Khoang cach: ");
+  Serial.print(distance);
+  Serial.println(" cm");
+  delay(500);
+}
+`;
+
+const robotDeliveryLab04: VirtualLabSampleExercise = {
+  title: '[Robot Giao Hàng Mini] LAB04 — HC-SR04 Đọc Khoảng Cách',
+  slug: 'robot-delivery-lab04-hc-sr04-distance',
+  category: 'robotics',
+  level: 'beginner',
+  estimatedTimeMinutes: 20,
+  objective: 'Hiểu cơ chế pulseIn() đọc khoảng cách từ HC-SR04 qua Sensor Input Bridge (kịch bản timeline), tách biệt với logic điều khiển động cơ.',
+  description: 'Không yêu cầu tiên quyết (độc lập với LAB01-03). Đọc khoảng cách mỗi 500ms và in Serial, chưa điều khiển động cơ. Input: xung ECHO mô phỏng theo kịch bản. Output: giá trị khoảng cách (cm) qua Serial.',
+  components: ['wokwi-hc-sr04'],
+  supportedLevel: 'wokwi-hc-sr04: giá trị khoảng cách mô phỏng qua kịch bản (Sensor Input Bridge) — pulseIn() đọc đúng giá trị đã cấu hình theo mốc thời gian, KHÔNG phải đo khoảng cách vật lý thật trong scene.',
+  wiringGuide: [
+    'Đặt ESP32 DevKit v1 và 1 HC-SR04 lên canvas.',
+    `Nối HC-SR04: VCC -> 3V3, GND -> GND, TRIG -> GPIO${ROBOT_DELIVERY_PINS.HC_TRIG}, ECHO -> GPIO${ROBOT_DELIVERY_PINS.HC_ECHO}.`,
+  ],
+  starterCode: lab04StarterCode,
+  circuitConfig: {
+    board: 'esp32_devkit_v1',
+    parts: [{ id: 'us1', type: 'wokwi-hc-sr04', x: 220, y: 120, pinMapping: { TRIG: ROBOT_DELIVERY_PINS.HC_TRIG, ECHO: ROBOT_DELIVERY_PINS.HC_ECHO } }],
+    connections: [
+      [`${BOARD}:3V3`, 'us1:VCC'],
+      [`${BOARD}:GPIO${ROBOT_DELIVERY_PINS.HC_TRIG}`, 'us1:TRIG'],
+      [`${BOARD}:GPIO${ROBOT_DELIVERY_PINS.HC_ECHO}`, 'us1:ECHO'],
+      ['us1:GND', GND],
+    ],
+    sensorScenario: {
+      sensors: {
+        us1: {
+          type: 'wokwi-hc-sr04',
+          timeline: [
+            { timeMs: 0, distanceCm: 100 },
+            { timeMs: 4000, distanceCm: 50 },
+            { timeMs: 8000, distanceCm: 20 },
+          ],
+        },
+      },
+    },
+  },
+  expectedBehavior: 'Serial Monitor in đúng 3 mốc khoảng cách theo kịch bản: 100cm (0-4s) -> 50cm (4-8s) -> 20cm (sau 8s).',
+  testSteps: [
+    'Bấm Run/Compile.',
+    'Theo dõi Serial Monitor: giá trị "Khoang cach" khớp đúng 3 mốc kịch bản 100 -> 50 -> 20 cm.',
+  ],
+  serialExpectedOutput: 'Khoang cach: 100.00 cm\n...\nKhoang cach: 50.00 cm\n...\nKhoang cach: 20.00 cm\n...',
+  teacherNotes: 'Có thể chạy song song với LAB01-03 (không phụ thuộc nhau) — cả hai nhánh hội tụ ở LAB06.',
+  limitations: 'Khoảng cách là kịch bản định sẵn theo thời gian, không đo vật cản thật trong scene.',
+};
+
+// ----------------------------------------------------------------------------
+// LAB05 — Obstacle Warning (QEMU, LED cảnh báo, chưa có động cơ)
+// ----------------------------------------------------------------------------
+const lab05StarterCode = `// Robot Delivery Mini - LAB05: Canh bao vat can bang LED
+// ESP32 DevKit v1 - HC-SR04 nhu LAB04; LED canh bao: GPIO${ROBOT_DELIVERY_PINS.WARNING_LED}
+
+const int TRIG_PIN = ${ROBOT_DELIVERY_PINS.HC_TRIG};
+const int ECHO_PIN = ${ROBOT_DELIVERY_PINS.HC_ECHO};
+const int WARNING_LED_PIN = ${ROBOT_DELIVERY_PINS.WARNING_LED};
+const float WARNING_THRESHOLD_CM = 20.0;
+
+float readDistanceCm() {
+  digitalWrite(TRIG_PIN, LOW);
+  delayMicroseconds(2);
+  digitalWrite(TRIG_PIN, HIGH);
+  delayMicroseconds(10);
+  digitalWrite(TRIG_PIN, LOW);
+  unsigned long duration = pulseIn(ECHO_PIN, HIGH, 30000UL);
+  return duration / 58.0;
+}
+
+void setup() {
+  Serial.begin(115200);
+  pinMode(TRIG_PIN, OUTPUT);
+  pinMode(ECHO_PIN, INPUT);
+  pinMode(WARNING_LED_PIN, OUTPUT);
+}
+
+void loop() {
+  float distance = readDistanceCm();
+  Serial.print("Khoang cach: ");
+  Serial.print(distance);
+  Serial.println(" cm");
+
+  if (distance <= WARNING_THRESHOLD_CM) {
+    digitalWrite(WARNING_LED_PIN, HIGH);
+    Serial.println("Trang thai: WARNING ON");
+  } else {
+    digitalWrite(WARNING_LED_PIN, LOW);
+    Serial.println("Trang thai: WARNING OFF");
+  }
+
+  delay(500);
+}
+`;
+
+const robotDeliveryLab05: VirtualLabSampleExercise = {
+  title: '[Robot Giao Hàng Mini] LAB05 — Cảnh Báo Vật Cản',
+  slug: 'robot-delivery-lab05-obstacle-warning',
+  category: 'robotics',
+  level: 'beginner',
+  estimatedTimeMinutes: 20,
+  objective: 'Áp dụng logic ngưỡng (threshold) trên giá trị HC-SR04 để bật/tắt tín hiệu cảnh báo — bước trung gian trước khi điều khiển động cơ ở LAB06.',
+  description: 'Yêu cầu hoàn thành LAB04. LED cảnh báo bật khi khoảng cách <= 20cm, tắt khi > 20cm. Input: khoảng cách HC-SR04. Output: 1 tín hiệu digital LED cảnh báo.',
+  components: ['wokwi-hc-sr04', 'wokwi-led'],
+  supportedLevel: 'wokwi-hc-sr04: như LAB04. wokwi-led: Mô phỏng đầy đủ.',
+  wiringGuide: [
+    'Nối HC-SR04 giống hệt LAB04.',
+    `Thêm 1 LED cảnh báo: A -> GPIO${ROBOT_DELIVERY_PINS.WARNING_LED}, C -> GND.`,
+  ],
+  starterCode: lab05StarterCode,
+  circuitConfig: {
+    board: 'esp32_devkit_v1',
+    parts: [
+      { id: 'us1', type: 'wokwi-hc-sr04', x: 220, y: 120, pinMapping: { TRIG: ROBOT_DELIVERY_PINS.HC_TRIG, ECHO: ROBOT_DELIVERY_PINS.HC_ECHO } },
+      { id: 'led1', type: 'wokwi-led', x: 400, y: 120, pinMapping: { A: ROBOT_DELIVERY_PINS.WARNING_LED } },
+    ],
+    connections: [
+      [`${BOARD}:3V3`, 'us1:VCC'],
+      [`${BOARD}:GPIO${ROBOT_DELIVERY_PINS.HC_TRIG}`, 'us1:TRIG'],
+      [`${BOARD}:GPIO${ROBOT_DELIVERY_PINS.HC_ECHO}`, 'us1:ECHO'],
+      ['us1:GND', GND],
+      [`${BOARD}:GPIO${ROBOT_DELIVERY_PINS.WARNING_LED}`, 'led1:A'],
+      ['led1:C', GND],
+    ],
+    sensorScenario: {
+      sensors: {
+        us1: {
+          type: 'wokwi-hc-sr04',
+          timeline: [
+            { timeMs: 0, distanceCm: 100 },
+            { timeMs: 4000, distanceCm: 10 },
+            { timeMs: 8000, distanceCm: 100 },
+          ],
+        },
+      },
+    },
+  },
+  expectedBehavior: 'LED cảnh báo OFF (0-4s, 100cm) -> ON (4-8s, 10cm) -> OFF (sau 8s, 100cm trở lại).',
+  testSteps: [
+    'Bấm Run/Compile.',
+    'Xác nhận LED cảnh báo CHỈ bật đúng khoảng khoảng cách <= 20cm (mốc 4-8s).',
+    'Đối chiếu Serial Monitor "WARNING ON"/"WARNING OFF" khớp đúng mốc.',
+  ],
+  serialExpectedOutput: 'Khoang cach: 100.00 cm\nTrang thai: WARNING OFF\n...\nKhoang cach: 10.00 cm\nTrang thai: WARNING ON\n...',
+  teacherNotes: 'Yêu cầu hoàn thành LAB04. Ngưỡng cảnh báo (20cm) khác ngưỡng dừng xe ở LAB06 (30cm) một cách có chủ đích — cảnh báo sớm hơn hành động dừng thật.',
+  limitations: 'Chưa có động cơ — thuần logic cảnh báo. Khoảng cách vẫn là kịch bản định sẵn.',
+};
+
+// ----------------------------------------------------------------------------
+// LAB06 — Robot Stop on Obstacle (QEMU) — CỔNG TÍCH HỢP QUAN TRỌNG NHẤT
+// ----------------------------------------------------------------------------
+const lab06StarterCode = `// Robot Delivery Mini - LAB06: Dung xe khi gap vat can (tich hop dau tien)
+// ESP32 DevKit v1 - L298N 2 dong co nhu LAB03; HC-SR04 nhu LAB04
+
+const int IN1 = ${ROBOT_DELIVERY_PINS.MOTOR_L_IN1}, IN2 = ${ROBOT_DELIVERY_PINS.MOTOR_L_IN2};
+const int IN3 = ${ROBOT_DELIVERY_PINS.MOTOR_R_IN1}, IN4 = ${ROBOT_DELIVERY_PINS.MOTOR_R_IN2};
+const int ENA = ${ROBOT_DELIVERY_PINS.MOTOR_ENA}, ENB = ${ROBOT_DELIVERY_PINS.MOTOR_ENB};
+const int TRIG_PIN = ${ROBOT_DELIVERY_PINS.HC_TRIG}, ECHO_PIN = ${ROBOT_DELIVERY_PINS.HC_ECHO};
+const float STOP_DISTANCE_CM = 30.0;
+
+void forward()  { digitalWrite(IN1, HIGH); digitalWrite(IN2, LOW);  digitalWrite(IN3, HIGH); digitalWrite(IN4, LOW);  Serial.println("Trang thai: FORWARD"); }
+void stopCar()   { digitalWrite(IN1, LOW);  digitalWrite(IN2, LOW);  digitalWrite(IN3, LOW);  digitalWrite(IN4, LOW);  Serial.println("Trang thai: STOP"); }
+
+float readDistanceCm() {
+  digitalWrite(TRIG_PIN, LOW);
+  delayMicroseconds(2);
+  digitalWrite(TRIG_PIN, HIGH);
+  delayMicroseconds(10);
+  digitalWrite(TRIG_PIN, LOW);
+  unsigned long duration = pulseIn(ECHO_PIN, HIGH, 30000UL);
+  return duration / 58.0;
+}
+
+void setup() {
+  Serial.begin(115200);
+  pinMode(IN1, OUTPUT); pinMode(IN2, OUTPUT);
+  pinMode(IN3, OUTPUT); pinMode(IN4, OUTPUT);
+  pinMode(ENA, OUTPUT); pinMode(ENB, OUTPUT);
+  digitalWrite(ENA, HIGH);
+  digitalWrite(ENB, HIGH);
+  pinMode(TRIG_PIN, OUTPUT);
+  pinMode(ECHO_PIN, INPUT);
+}
+
+void loop() {
+  float distance = readDistanceCm();
+  Serial.print("Khoang cach: ");
+  Serial.print(distance);
+  Serial.println(" cm");
+
+  if (distance > STOP_DISTANCE_CM) {
+    forward();
+  } else {
+    stopCar();
+  }
+
+  delay(300);
+}
+`;
+
+const robotDeliveryLab06: VirtualLabSampleExercise = {
+  title: '[Robot Giao Hàng Mini] LAB06 — Dừng Xe Khi Gặp Vật Cản (Tích Hợp)',
+  slug: 'robot-delivery-lab06-stop-on-obstacle',
+  category: 'robotics',
+  level: 'intermediate',
+  estimatedTimeMinutes: 30,
+  objective: 'CỔNG KIẾN TRÚC QUAN TRỌNG NHẤT của module: lần đầu tích hợp đồng thời HC-SR04 (cảm biến) + L298N + 2 động cơ (chấp hành) trong 1 chương trình duy nhất.',
+  description: 'Yêu cầu hoàn thành LAB03 và LAB05. Logic: khoảng cách > 30cm -> cả 2 motor FORWARD; khoảng cách <= 30cm -> cả 2 motor STOP. Input: khoảng cách HC-SR04. Output: trạng thái 2 động cơ.',
+  components: ['wokwi-l298n', 'wokwi-dc-motor', 'wokwi-battery-pack', 'wokwi-hc-sr04'],
+  supportedLevel: 'wokwi-l298n/wokwi-dc-motor: như LAB03. wokwi-hc-sr04: như LAB04/05. Cả 2 nhóm linh kiện đã verify độc lập ở các bài trước — bài này verify chúng hoạt động ĐÚNG khi chạy CHUNG 1 firmware QEMU.',
+  wiringGuide: [
+    'Nối L298N + 2 DC Motor + Battery Pack giống hệt LAB03.',
+    'Đặt thêm 1 HC-SR04 phía trước robot, nối giống hệt LAB04/05.',
+  ],
+  starterCode: lab06StarterCode,
+  circuitConfig: {
+    board: 'esp32_devkit_v1',
+    parts: [
+      { id: 'l298n1', type: 'wokwi-l298n', x: 220, y: 120, pinMapping: { IN1: ROBOT_DELIVERY_PINS.MOTOR_L_IN1, IN2: ROBOT_DELIVERY_PINS.MOTOR_L_IN2, IN3: ROBOT_DELIVERY_PINS.MOTOR_R_IN1, IN4: ROBOT_DELIVERY_PINS.MOTOR_R_IN2, ENA: ROBOT_DELIVERY_PINS.MOTOR_ENA, ENB: ROBOT_DELIVERY_PINS.MOTOR_ENB } },
+      { id: 'motorL', type: 'wokwi-dc-motor', x: 60, y: 60, pinMapping: {} },
+      { id: 'motorR', type: 'wokwi-dc-motor', x: 60, y: 200, pinMapping: {} },
+      { id: 'battery1', type: 'wokwi-battery-pack', x: 400, y: 120, pinMapping: {} },
+      { id: 'us1', type: 'wokwi-hc-sr04', x: 220, y: 260, pinMapping: { TRIG: ROBOT_DELIVERY_PINS.HC_TRIG, ECHO: ROBOT_DELIVERY_PINS.HC_ECHO } },
+    ],
+    connections: [
+      [`${BOARD}:GPIO${ROBOT_DELIVERY_PINS.MOTOR_L_IN1}`, 'l298n1:IN1'],
+      [`${BOARD}:GPIO${ROBOT_DELIVERY_PINS.MOTOR_L_IN2}`, 'l298n1:IN2'],
+      [`${BOARD}:GPIO${ROBOT_DELIVERY_PINS.MOTOR_R_IN1}`, 'l298n1:IN3'],
+      [`${BOARD}:GPIO${ROBOT_DELIVERY_PINS.MOTOR_R_IN2}`, 'l298n1:IN4'],
+      [`${BOARD}:GPIO${ROBOT_DELIVERY_PINS.MOTOR_ENA}`, 'l298n1:ENA'],
+      [`${BOARD}:GPIO${ROBOT_DELIVERY_PINS.MOTOR_ENB}`, 'l298n1:ENB'],
+      ['motorL:terminal1', 'l298n1:OUT1'],
+      ['motorL:terminal2', 'l298n1:OUT2'],
+      ['motorR:terminal1', 'l298n1:OUT3'],
+      ['motorR:terminal2', 'l298n1:OUT4'],
+      ['battery1:+', 'l298n1:VIN'],
+      ['battery1:-', 'l298n1:GND'],
+      ['l298n1:GND', GND],
+      [`${BOARD}:3V3`, 'us1:VCC'],
+      [`${BOARD}:GPIO${ROBOT_DELIVERY_PINS.HC_TRIG}`, 'us1:TRIG'],
+      [`${BOARD}:GPIO${ROBOT_DELIVERY_PINS.HC_ECHO}`, 'us1:ECHO'],
+      ['us1:GND', GND],
+    ],
+    sensorScenario: {
+      sensors: {
+        us1: {
+          type: 'wokwi-hc-sr04',
+          timeline: [
+            { timeMs: 0, distanceCm: 100 },
+            { timeMs: 5000, distanceCm: 15 },
+          ],
+        },
+      },
+    },
+  },
+  expectedBehavior: 'distance=100cm (0-5s) -> cả 2 motor FORWARD. distance=15cm (sau 5s) -> cả 2 motor STOP, không cần restart phiên chạy.',
+  testSteps: [
+    'Bấm Run/Compile.',
+    'Xác nhận cả 2 card motor FORWARD trong 0-5s.',
+    'Xác nhận cả 2 card motor chuyển STOP ngay sau mốc 5s (distance=15cm), giữ nguyên trong CÙNG 1 lần chạy.',
+    'NẾU bài này FAIL: KHÔNG được sang LAB07/LAB08 — đây là cổng kiến trúc bắt buộc.',
+  ],
+  serialExpectedOutput: 'Khoang cach: 100.00 cm\nTrang thai: FORWARD\n...\nKhoang cach: 15.00 cm\nTrang thai: STOP\n...',
+  teacherNotes: 'Yêu cầu hoàn thành LAB03 và LAB05. Đây là bài quan trọng nhất module — xác nhận kiến trúc tích hợp cảm biến+chấp hành hoạt động trước khi thêm hành vi phức tạp hơn (rẽ, chuỗi trạng thái).',
+  limitations: 'Không rẽ tránh — chỉ dừng hẳn khi gặp vật cản. Hành vi rẽ được thêm ở LAB07.',
+};
+
+// ----------------------------------------------------------------------------
+// LAB07 — Obstacle Avoidance State Sequence (QEMU)
+// ----------------------------------------------------------------------------
+const lab07StarterCode = `// Robot Delivery Mini - LAB07: Chuoi trang thai tranh vat can (Forward->Stop->Turn->Forward)
+// ESP32 DevKit v1 - L298N+HC-SR04 nhu LAB06
+
+const int IN1 = ${ROBOT_DELIVERY_PINS.MOTOR_L_IN1}, IN2 = ${ROBOT_DELIVERY_PINS.MOTOR_L_IN2};
+const int IN3 = ${ROBOT_DELIVERY_PINS.MOTOR_R_IN1}, IN4 = ${ROBOT_DELIVERY_PINS.MOTOR_R_IN2};
+const int ENA = ${ROBOT_DELIVERY_PINS.MOTOR_ENA}, ENB = ${ROBOT_DELIVERY_PINS.MOTOR_ENB};
+const int TRIG_PIN = ${ROBOT_DELIVERY_PINS.HC_TRIG}, ECHO_PIN = ${ROBOT_DELIVERY_PINS.HC_ECHO};
+const float SAFE_DISTANCE_CM = 20.0;
+
+void forward()    { digitalWrite(IN1, HIGH); digitalWrite(IN2, LOW);  digitalWrite(IN3, HIGH); digitalWrite(IN4, LOW); Serial.println("Trang thai: FORWARD"); }
+void turnRight()   { digitalWrite(IN1, HIGH); digitalWrite(IN2, LOW);  digitalWrite(IN3, LOW);  digitalWrite(IN4, LOW); Serial.println("Trang thai: TURN"); }
+void stopCar()     { digitalWrite(IN1, LOW);  digitalWrite(IN2, LOW);  digitalWrite(IN3, LOW);  digitalWrite(IN4, LOW); Serial.println("Trang thai: STOP"); }
+
+float readDistanceCm() {
+  digitalWrite(TRIG_PIN, LOW);
+  delayMicroseconds(2);
+  digitalWrite(TRIG_PIN, HIGH);
+  delayMicroseconds(10);
+  digitalWrite(TRIG_PIN, LOW);
+  unsigned long duration = pulseIn(ECHO_PIN, HIGH, 30000UL);
+  return duration / 58.0;
+}
+
+void setup() {
+  Serial.begin(115200);
+  pinMode(IN1, OUTPUT); pinMode(IN2, OUTPUT);
+  pinMode(IN3, OUTPUT); pinMode(IN4, OUTPUT);
+  pinMode(ENA, OUTPUT); pinMode(ENB, OUTPUT);
+  digitalWrite(ENA, HIGH);
+  digitalWrite(ENB, HIGH);
+  pinMode(TRIG_PIN, OUTPUT);
+  pinMode(ECHO_PIN, INPUT);
+}
+
+void loop() {
+  float distance = readDistanceCm();
+  Serial.print("Khoang cach: ");
+  Serial.print(distance);
+  Serial.println(" cm");
+
+  if (distance > SAFE_DISTANCE_CM) {
+    forward();
+  } else {
+    stopCar();
+    delay(300);
+    turnRight();
+    delay(500);
+  }
+
+  delay(300);
+}
+`;
+
+const robotDeliveryLab07: VirtualLabSampleExercise = {
+  title: '[Robot Giao Hàng Mini] LAB07 — Chuỗi Trạng Thái Tránh Vật Cản',
+  slug: 'robot-delivery-lab07-obstacle-avoidance-sequence',
+  category: 'robotics',
+  level: 'intermediate',
+  estimatedTimeMinutes: 30,
+  objective: 'Mở rộng LAB06 thành chuỗi hành vi Forward -> Stop -> Turn -> Forward (chỉ dùng trạng thái động cơ điện, không mô phỏng vật lý 2D).',
+  description: 'Yêu cầu hoàn thành LAB06 (bắt buộc PASS). Robot đi thẳng khi khoảng cách > 20cm; khi <= 20cm thì dừng rồi rẽ phải để tránh, sau đó tiếp tục đi thẳng khi đường lại thông thoáng. Input: khoảng cách HC-SR04. Output: chuỗi trạng thái động cơ FORWARD/STOP/TURN.',
+  components: ['wokwi-l298n', 'wokwi-dc-motor', 'wokwi-battery-pack', 'wokwi-hc-sr04'],
+  supportedLevel: 'Như LAB06 — không thêm linh kiện mới, chỉ mở rộng logic điều khiển.',
+  wiringGuide: ['Sơ đồ nối dây giống hệt LAB06 (không đổi).'],
+  starterCode: lab07StarterCode,
+  circuitConfig: {
+    board: 'esp32_devkit_v1',
+    parts: [
+      { id: 'l298n1', type: 'wokwi-l298n', x: 220, y: 120, pinMapping: { IN1: ROBOT_DELIVERY_PINS.MOTOR_L_IN1, IN2: ROBOT_DELIVERY_PINS.MOTOR_L_IN2, IN3: ROBOT_DELIVERY_PINS.MOTOR_R_IN1, IN4: ROBOT_DELIVERY_PINS.MOTOR_R_IN2, ENA: ROBOT_DELIVERY_PINS.MOTOR_ENA, ENB: ROBOT_DELIVERY_PINS.MOTOR_ENB } },
+      { id: 'motorL', type: 'wokwi-dc-motor', x: 60, y: 60, pinMapping: {} },
+      { id: 'motorR', type: 'wokwi-dc-motor', x: 60, y: 200, pinMapping: {} },
+      { id: 'battery1', type: 'wokwi-battery-pack', x: 400, y: 120, pinMapping: {} },
+      { id: 'us1', type: 'wokwi-hc-sr04', x: 220, y: 260, pinMapping: { TRIG: ROBOT_DELIVERY_PINS.HC_TRIG, ECHO: ROBOT_DELIVERY_PINS.HC_ECHO } },
+    ],
+    connections: [
+      [`${BOARD}:GPIO${ROBOT_DELIVERY_PINS.MOTOR_L_IN1}`, 'l298n1:IN1'],
+      [`${BOARD}:GPIO${ROBOT_DELIVERY_PINS.MOTOR_L_IN2}`, 'l298n1:IN2'],
+      [`${BOARD}:GPIO${ROBOT_DELIVERY_PINS.MOTOR_R_IN1}`, 'l298n1:IN3'],
+      [`${BOARD}:GPIO${ROBOT_DELIVERY_PINS.MOTOR_R_IN2}`, 'l298n1:IN4'],
+      [`${BOARD}:GPIO${ROBOT_DELIVERY_PINS.MOTOR_ENA}`, 'l298n1:ENA'],
+      [`${BOARD}:GPIO${ROBOT_DELIVERY_PINS.MOTOR_ENB}`, 'l298n1:ENB'],
+      ['motorL:terminal1', 'l298n1:OUT1'],
+      ['motorL:terminal2', 'l298n1:OUT2'],
+      ['motorR:terminal1', 'l298n1:OUT3'],
+      ['motorR:terminal2', 'l298n1:OUT4'],
+      ['battery1:+', 'l298n1:VIN'],
+      ['battery1:-', 'l298n1:GND'],
+      ['l298n1:GND', GND],
+      [`${BOARD}:3V3`, 'us1:VCC'],
+      [`${BOARD}:GPIO${ROBOT_DELIVERY_PINS.HC_TRIG}`, 'us1:TRIG'],
+      [`${BOARD}:GPIO${ROBOT_DELIVERY_PINS.HC_ECHO}`, 'us1:ECHO'],
+      ['us1:GND', GND],
+    ],
+    sensorScenario: {
+      sensors: {
+        us1: {
+          type: 'wokwi-hc-sr04',
+          timeline: [
+            { timeMs: 0, distanceCm: 100 },
+            { timeMs: 4000, distanceCm: 45 },
+            { timeMs: 7000, distanceCm: 10 },
+            { timeMs: 10000, distanceCm: 100 },
+          ],
+        },
+      },
+    },
+  },
+  expectedBehavior: 'FORWARD (0-7s, 100/45cm) -> STOP rồi TURN tại mốc 7s (10cm) -> FORWARD lại sau mốc 10s (100cm trở lại) — đúng chuỗi Forward->Stop->Turn->Forward theo kịch bản.',
+  testSteps: [
+    'Bấm Run/Compile.',
+    'Xác nhận đúng thứ tự sự kiện: FORWARD -> STOP -> TURN -> FORWARD, không lệch thứ tự.',
+    'Đối chiếu Serial Monitor khớp từng mốc thời gian trong sensorScenario.',
+  ],
+  serialExpectedOutput: 'Khoang cach: 100.00 cm\nTrang thai: FORWARD\n...\nKhoang cach: 10.00 cm\nTrang thai: STOP\nTrang thai: TURN\n...\nKhoang cach: 100.00 cm\nTrang thai: FORWARD',
+  teacherNotes: 'Yêu cầu hoàn thành LAB06 (PASS bắt buộc — LAB06 là cổng kiến trúc). Đây vẫn là mô phỏng trạng thái điện/thời gian, không có toạ độ 2D thật (đúng scope "No robot physics required" của module).',
+  limitations: 'Không có mô phỏng vật lý 2D thật — chuỗi trạng thái xác định hoàn toàn theo kịch bản thời gian, không phải cảm biến "nhìn thấy" vật cản trong không gian.',
+};
+
+// ----------------------------------------------------------------------------
+// LAB08 — Complete Mini Delivery Robot (QEMU) — tích hợp cuối cùng + BOM cơ khí
+// ----------------------------------------------------------------------------
+const lab08StarterCode = `// Robot Delivery Mini - LAB08: Robot giao hang mini hoan chinh
+// ESP32 DevKit v1 - L298N+HC-SR04 nhu LAB07; chassis/wheel/caster/delivery box chi hien thi
+
+const int IN1 = ${ROBOT_DELIVERY_PINS.MOTOR_L_IN1}, IN2 = ${ROBOT_DELIVERY_PINS.MOTOR_L_IN2};
+const int IN3 = ${ROBOT_DELIVERY_PINS.MOTOR_R_IN1}, IN4 = ${ROBOT_DELIVERY_PINS.MOTOR_R_IN2};
+const int ENA = ${ROBOT_DELIVERY_PINS.MOTOR_ENA}, ENB = ${ROBOT_DELIVERY_PINS.MOTOR_ENB};
+const int TRIG_PIN = ${ROBOT_DELIVERY_PINS.HC_TRIG}, ECHO_PIN = ${ROBOT_DELIVERY_PINS.HC_ECHO};
+const float SAFE_DISTANCE_CM = 20.0;
+const unsigned long DELIVERY_TIME_MS = 8000UL;
+
+void forward()   { digitalWrite(IN1, HIGH); digitalWrite(IN2, LOW);  digitalWrite(IN3, HIGH); digitalWrite(IN4, LOW); }
+void turnRight()  { digitalWrite(IN1, HIGH); digitalWrite(IN2, LOW);  digitalWrite(IN3, LOW);  digitalWrite(IN4, LOW); }
+void stopCar()    { digitalWrite(IN1, LOW);  digitalWrite(IN2, LOW);  digitalWrite(IN3, LOW);  digitalWrite(IN4, LOW); }
+
+float readDistanceCm() {
+  digitalWrite(TRIG_PIN, LOW);
+  delayMicroseconds(2);
+  digitalWrite(TRIG_PIN, HIGH);
+  delayMicroseconds(10);
+  digitalWrite(TRIG_PIN, LOW);
+  unsigned long duration = pulseIn(ECHO_PIN, HIGH, 30000UL);
+  return duration / 58.0;
+}
+
+unsigned long tripStart = 0;
+bool delivered = false;
+
+void setup() {
+  Serial.begin(115200);
+  pinMode(IN1, OUTPUT); pinMode(IN2, OUTPUT);
+  pinMode(IN3, OUTPUT); pinMode(IN4, OUTPUT);
+  pinMode(ENA, OUTPUT); pinMode(ENB, OUTPUT);
+  digitalWrite(ENA, HIGH);
+  digitalWrite(ENB, HIGH);
+  pinMode(TRIG_PIN, OUTPUT);
+  pinMode(ECHO_PIN, INPUT);
+  tripStart = millis();
+  Serial.println("Trang thai: BAT DAU GIAO HANG");
+}
+
+void loop() {
+  if (delivered) {
+    stopCar();
+    delay(1000);
+    return;
+  }
+
+  if (millis() - tripStart >= DELIVERY_TIME_MS) {
+    stopCar();
+    delivered = true;
+    Serial.println("Trang thai: DELIVERED");
+    return;
+  }
+
+  float distance = readDistanceCm();
+  Serial.print("Khoang cach: ");
+  Serial.print(distance);
+  Serial.println(" cm");
+
+  if (distance > SAFE_DISTANCE_CM) {
+    forward();
+    Serial.println("Trang thai: MOVING");
+  } else {
+    stopCar();
+    Serial.println("Trang thai: OBSTACLE");
+    delay(300);
+    turnRight();
+    Serial.println("Trang thai: TURNING");
+    delay(500);
+  }
+
+  delay(300);
+}
+`;
+
+const robotDeliveryLab08: VirtualLabSampleExercise = {
+  title: '[Robot Giao Hàng Mini] LAB08 — Robot Giao Hàng Mini Hoàn Chỉnh',
+  slug: 'robot-delivery-lab08-complete-mini-delivery-robot',
+  category: 'robotics',
+  level: 'intermediate',
+  estimatedTimeMinutes: 40,
+  objective: 'Bài tổng hợp cuối module: kết hợp toàn bộ LAB01-07 (output cơ bản, động cơ, cảm biến, chuỗi trạng thái, đếm thời gian) thành 1 robot giao hàng hoàn chỉnh, cộng thêm BOM cơ khí trực quan.',
+  description: 'Yêu cầu hoàn thành LAB07. Robot di chuyển và tránh vật cản (như LAB07) trong 8 giây, sau đó tự dừng và báo "DELIVERED". Các linh kiện cơ khí (khung robot/bánh xe/bánh lái/hộp hàng) CHỈ hiển thị (visual-only), KHÔNG bắt buộc cho mô phỏng điện — không nối dây, không vào netlist, không ảnh hưởng compile/run.',
+  components: [
+    'wokwi-l298n',
+    'wokwi-dc-motor',
+    'wokwi-battery-pack',
+    'wokwi-hc-sr04',
+    'wokwi-robot-chassis',
+    'wokwi-robot-wheel',
+    'wokwi-caster-wheel',
+    'wokwi-delivery-box',
+  ],
+  supportedLevel: 'wokwi-l298n/wokwi-dc-motor/wokwi-hc-sr04: như LAB06/07. wokwi-robot-chassis/wokwi-robot-wheel/wokwi-caster-wheel/wokwi-delivery-box: Chỉ hiển thị (không có chân điện, không vào netlist, không ảnh hưởng compile/run) — mô phỏng KHÔNG bị chặn bởi các linh kiện này.',
+  wiringGuide: [
+    'Nối L298N + 2 DC Motor + Battery Pack + HC-SR04 giống hệt LAB06/LAB07.',
+    'Kéo thả thêm (không cần nối dây): Robot Chassis, 2x Robot Wheel, 1x Caster Wheel, 1x Mini Delivery Box để hoàn thiện hình dáng robot trên canvas.',
+  ],
+  starterCode: lab08StarterCode,
+  circuitConfig: {
+    board: 'esp32_devkit_v1',
+    parts: [
+      { id: 'l298n1', type: 'wokwi-l298n', x: 220, y: 120, pinMapping: { IN1: ROBOT_DELIVERY_PINS.MOTOR_L_IN1, IN2: ROBOT_DELIVERY_PINS.MOTOR_L_IN2, IN3: ROBOT_DELIVERY_PINS.MOTOR_R_IN1, IN4: ROBOT_DELIVERY_PINS.MOTOR_R_IN2, ENA: ROBOT_DELIVERY_PINS.MOTOR_ENA, ENB: ROBOT_DELIVERY_PINS.MOTOR_ENB } },
+      { id: 'motorL', type: 'wokwi-dc-motor', x: 60, y: 60, pinMapping: {} },
+      { id: 'motorR', type: 'wokwi-dc-motor', x: 60, y: 200, pinMapping: {} },
+      { id: 'battery1', type: 'wokwi-battery-pack', x: 400, y: 120, pinMapping: {} },
+      { id: 'us1', type: 'wokwi-hc-sr04', x: 220, y: 260, pinMapping: { TRIG: ROBOT_DELIVERY_PINS.HC_TRIG, ECHO: ROBOT_DELIVERY_PINS.HC_ECHO } },
+      { id: 'chassis1', type: 'wokwi-robot-chassis', x: 180, y: 320, pinMapping: {} },
+      { id: 'wheelL', type: 'wokwi-robot-wheel', x: 30, y: 60, pinMapping: {} },
+      { id: 'wheelR', type: 'wokwi-robot-wheel', x: 30, y: 260, pinMapping: {} },
+      { id: 'caster1', type: 'wokwi-caster-wheel', x: 430, y: 320, pinMapping: {} },
+      { id: 'box1', type: 'wokwi-delivery-box', x: 220, y: 380, pinMapping: {} },
+    ],
+    connections: [
+      [`${BOARD}:GPIO${ROBOT_DELIVERY_PINS.MOTOR_L_IN1}`, 'l298n1:IN1'],
+      [`${BOARD}:GPIO${ROBOT_DELIVERY_PINS.MOTOR_L_IN2}`, 'l298n1:IN2'],
+      [`${BOARD}:GPIO${ROBOT_DELIVERY_PINS.MOTOR_R_IN1}`, 'l298n1:IN3'],
+      [`${BOARD}:GPIO${ROBOT_DELIVERY_PINS.MOTOR_R_IN2}`, 'l298n1:IN4'],
+      [`${BOARD}:GPIO${ROBOT_DELIVERY_PINS.MOTOR_ENA}`, 'l298n1:ENA'],
+      [`${BOARD}:GPIO${ROBOT_DELIVERY_PINS.MOTOR_ENB}`, 'l298n1:ENB'],
+      ['motorL:terminal1', 'l298n1:OUT1'],
+      ['motorL:terminal2', 'l298n1:OUT2'],
+      ['motorR:terminal1', 'l298n1:OUT3'],
+      ['motorR:terminal2', 'l298n1:OUT4'],
+      ['battery1:+', 'l298n1:VIN'],
+      ['battery1:-', 'l298n1:GND'],
+      ['l298n1:GND', GND],
+      [`${BOARD}:3V3`, 'us1:VCC'],
+      [`${BOARD}:GPIO${ROBOT_DELIVERY_PINS.HC_TRIG}`, 'us1:TRIG'],
+      [`${BOARD}:GPIO${ROBOT_DELIVERY_PINS.HC_ECHO}`, 'us1:ECHO'],
+      ['us1:GND', GND],
+    ],
+    sensorScenario: {
+      sensors: {
+        us1: {
+          type: 'wokwi-hc-sr04',
+          timeline: [
+            { timeMs: 0, distanceCm: 100 },
+            { timeMs: 4000, distanceCm: 12 },
+            { timeMs: 5500, distanceCm: 100 },
+          ],
+        },
+      },
+    },
+  },
+  expectedBehavior: 'Robot MOVING trong 8 giây (có 1 lần OBSTACLE/TURNING khi khoảng cách=12cm ở giây thứ 4), sau đó dừng hẳn và in "DELIVERED" đúng 1 lần, không lặp lại.',
+  testSteps: [
+    'Bấm Run/Compile.',
+    'Theo dõi Serial Monitor đủ trình tự: BAT DAU GIAO HANG -> nhiều dòng MOVING -> OBSTACLE -> TURNING -> MOVING tiếp -> DELIVERED (đúng 1 lần).',
+    'Xác nhận sau khi DELIVERED, robot đứng yên hoàn toàn (không còn đổi trạng thái motor).',
+    'Xác nhận việc thêm/xoá linh kiện cơ khí (chassis/wheel/caster/box) KHÔNG làm compile/run thất bại.',
+  ],
+  serialExpectedOutput: 'Trang thai: BAT DAU GIAO HANG\nKhoang cach: 100.00 cm\nTrang thai: MOVING\n...\nTrang thai: DELIVERED',
+  teacherNotes: 'Yêu cầu hoàn thành LAB07. Bài tổng hợp cuối module — nên giao sau khi học sinh đã PASS toàn bộ LAB01-07. Có thể yêu cầu học sinh tự đổi DELIVERY_TIME_MS hoặc thêm mốc vật cản thứ 2 trong sensorScenario.',
+  limitations: 'Không có toạ độ di chuyển thật, không phát hiện "tới đích" bằng vị trí — chỉ dùng millis() để giả lập hoàn thành hành trình. Delivery box không rơi/thả hàng thật. Linh kiện cơ khí (wheel/chassis/caster/box) mang tính minh hoạ, không có mô phỏng vật lý.',
+};
+
+export const ROBOT_DELIVERY_MINI_LABS: VirtualLabSampleExercise[] = [
+  robotDeliveryLab01,
+  robotDeliveryLab02,
+  robotDeliveryLab03,
+  robotDeliveryLab04,
+  robotDeliveryLab05,
+  robotDeliveryLab06,
+  robotDeliveryLab07,
+  robotDeliveryLab08,
+];
+
 export const VIRTUAL_LAB_SAMPLE_EXERCISES: VirtualLabSampleExercise[] = [
   led1,
   buzzer1,
@@ -1159,4 +2021,5 @@ export const VIRTUAL_LAB_SAMPLE_EXERCISES: VirtualLabSampleExercise[] = [
   rainAlert,
   soilMoisture,
   vibrationAlert,
+  ...ROBOT_DELIVERY_MINI_LABS,
 ];

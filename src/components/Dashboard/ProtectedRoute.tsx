@@ -36,7 +36,7 @@ import {
   PaymentsPage,
   AiQuotaPage,
 } from '@/pages/dashboard/school-admin';
-import { SchoolsPage, UsersPage, PackagesManagementPage } from '@/pages/dashboard/master-admin';
+import { SchoolsPage, UsersPage, PackagesManagementPage, SyllabusesPage, SyllabusDetailPage } from '@/pages/dashboard/master-admin';
 import React from 'react';
 
 interface RouteConfig {
@@ -112,9 +112,20 @@ export const dashboardRoutes = [
         element: <ProtectedElement element={<SchoolsPage />} allowedRoles={['master_admin']} />,
       },
       // Packages Management (Master Admin only)
-      { 
-        path: 'packages', 
+      {
+        path: 'packages',
         element: <ProtectedElement element={<PackagesManagementPage />} allowedRoles={['master_admin']} />,
+      },
+      // Standard Syllabus (Master Admin only for write; read is open to any
+      // authenticated role at the API level, but this admin UI is Master
+      // Admin-only per the RED-2 "FE minimum" scope).
+      {
+        path: 'syllabuses',
+        element: <ProtectedElement element={<SyllabusesPage />} allowedRoles={['master_admin']} />,
+      },
+      {
+        path: 'syllabuses/:id',
+        element: <ProtectedElement element={<SyllabusDetailPage />} allowedRoles={['master_admin']} />,
       },
       // Requests (Master Admin only)
       { 

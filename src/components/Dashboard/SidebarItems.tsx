@@ -10,6 +10,7 @@ const roleSidebarItems: Record<UserRole, SidebarItem[]> = {
   master_admin: [
     { label: 'Quản lý trường', path: '/dashboard/schools', icon: 'Building2' },
     { label: 'Quản lý gói token', path: '/dashboard/packages', icon: 'Package' },
+    { label: 'Standard Syllabus', path: '/dashboard/syllabuses', icon: 'BookOpen' },
     { label: 'Thông báo', path: '/dashboard/notifications', icon: 'Bell' },
     { label: 'Hồ sơ', path: '/dashboard/profile', icon: 'User' },
   ],

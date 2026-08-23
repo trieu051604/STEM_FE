@@ -221,7 +221,16 @@ function renderFallbackCard(type: string, rawType: string, partState: PartVisual
         {showCloudDot && (
           <span className="absolute top-1 right-1 h-2 w-2 rounded-full bg-emerald-400 animate-pulse" title="Đang nhận dữ liệu cloud" />
         )}
-        <div className="absolute bottom-0 left-0 right-0 bg-black/60 px-1 py-0.5">
+        <div
+          className={`absolute left-0 right-0 bg-black/60 px-1 py-0.5 ${
+            // L298N (ảnh thật): nửa dưới ảnh là hàng pin VIN/GND/5V/ENA-ENB —
+            // nhãn phủ ở bottom-0 sẽ đè lên đúng terminal đó. Nửa trên ảnh chỉ
+            // có heatsink/lỗ vít (không có pin), nên đặt nhãn ở top-0 thay vì
+            // bottom-0 chỉ cho riêng type này (các fallback card khác vẫn giữ
+            // nguyên bottom-0 — pin của chúng không nằm ở nửa dưới card).
+            type === 'l298n' ? 'top-0' : 'bottom-0'
+          }`}
+        >
           <span className="block text-[9px] font-medium text-center leading-tight text-slate-100 truncate">
             {config.label}
           </span>

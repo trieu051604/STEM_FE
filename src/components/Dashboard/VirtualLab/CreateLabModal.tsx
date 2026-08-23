@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { DialogHeader, DialogContent, DialogFooter, DialogTitle } from '@/components/ui/dialog';
-import { X, ExternalLink, RefreshCw } from 'lucide-react';
+import { X, ExternalLink, RefreshCw, Wrench, BookOpen } from 'lucide-react';
 import { WokwiLinkValidator } from './WokwiLinkValidator';
 import { CircuitBuilderTeacherMode } from './Sandbox/CircuitBuilderTeacherMode';
 import type {
@@ -59,6 +59,14 @@ interface CreateLabModalProps {
   templateData?: CreateLabTemplateData | null;
   isSaving?: boolean;
   error?: string | null;
+  // ROBOT DELIVERY TEMPLATE UI INTEGRATION fix — khi Teacher mở modal này từ
+  // 1 trong 2 lối vào KHÔNG đi qua TemplatePickerModal ("Tạo phòng thí
+  // nghiệm mới" ở header, hoặc thẻ "Tạo Lab Mới" trong lưới lab), modal vẫn
+  // phải cho họ cơ hội quay lại chọn mẫu thay vì chỉ có đường "tạo mạch thủ
+  // công". Optional — khi không truyền, modal giữ nguyên hành vi cũ (không
+  // hiện bước chọn, vào thẳng form thủ công) để không phá bất kỳ nơi gọi
+  // nào khác.
+  onRequestTemplatePicker?: () => void;
 }
 
 const categories: Array<{ value: LabCategory; label: string }> = [
@@ -156,18 +164,24 @@ export const CreateLabModal = ({
   templateData,
   isSaving,
   error,
+  onRequestTemplatePicker,
 }: CreateLabModalProps) => {
   const [formData, setFormData] = useState(defaultFormData);
   const [isWokwiValid, setIsWokwiValid] = useState(false);
   const [wokwiValidation, setWokwiValidation] =
     useState<ValidateWokwiProjectResponse | null>(null);
   const [localError, setLocalError] = useState<string | null>(null);
+  // Chỉ có ý nghĩa khi tạo mới hoàn toàn (không sửa lab có sẵn, không đã có
+  // templateData sẵn từ TemplatePickerModal) — 'choose' hiện bước chọn
+  // "thủ công" hay "từ mẫu" trước khi vào form thật.
+  const [entryMode, setEntryMode] = useState<'choose' | 'manual'>('manual');
 
   useEffect(() => {
     if (!isOpen) return;
 
     const initialFormData = getInitialFormData(initialLab, templateData);
     setFormData(initialFormData);
+    setEntryMode(!initialLab && !templateData && onRequestTemplatePicker ? 'choose' : 'manual');
     setIsWokwiValid(
       initialFormData.simulationMode === 'wokwi_iframe' &&
         Boolean(initialLab?.wokwiProjectId)
@@ -198,6 +212,58 @@ export const CreateLabModal = ({
 
   const isEditing = Boolean(initialLab);
   const isWokwiMode = formData.simulationMode === 'wokwi_iframe';
+
+  if (entryMode === 'choose') {
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+        <div className="bg-card border border-border rounded-xl shadow-xl w-full max-w-xl flex flex-col">
+          <DialogHeader className="flex items-center justify-between gap-4 shrink-0">
+            <DialogTitle>Tạo phòng thí nghiệm mới</DialogTitle>
+            <button
+              type="button"
+              onClick={onClose}
+              className="w-9 h-9 flex items-center justify-center rounded-full hover:bg-accent text-muted-foreground hover:text-foreground transition-colors shrink-0"
+              aria-label="Đóng"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </DialogHeader>
+          <DialogContent className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              Bắt đầu từ đâu?
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <button
+                type="button"
+                onClick={() => setEntryMode('manual')}
+                className="rounded-xl border border-border p-5 flex flex-col items-center text-center gap-2 hover:border-indigo-500/40 hover:bg-accent transition-colors"
+              >
+                <Wrench className="w-6 h-6 text-indigo-400" />
+                <span className="font-semibold text-foreground">Tạo mạch thủ công</span>
+                <span className="text-xs text-muted-foreground">
+                  Tự chọn board, linh kiện và thiết kế mạch từ đầu.
+                </span>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  onClose();
+                  onRequestTemplatePicker?.();
+                }}
+                className="rounded-xl border border-border p-5 flex flex-col items-center text-center gap-2 hover:border-indigo-500/40 hover:bg-accent transition-colors"
+              >
+                <BookOpen className="w-6 h-6 text-indigo-400" />
+                <span className="font-semibold text-foreground">Chọn bài tập mẫu</span>
+                <span className="text-xs text-muted-foreground">
+                  Bao gồm module Robot Giao Hàng Mini (LAB01-08) — đã có sẵn sơ đồ + code.
+                </span>
+              </button>
+            </div>
+          </DialogContent>
+        </div>
+      </div>
+    );
+  }
   const circuitParts = Array.isArray(formData.circuitConfig.parts)
     ? formData.circuitConfig.parts
     : [];

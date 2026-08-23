@@ -592,6 +592,7 @@ export const VirtualLabPage = () => {
         templateData={templateData}
         isSaving={isSaving}
         error={formError}
+        onRequestTemplatePicker={() => setIsTemplatePickerOpen(true)}
       />
 
       <TemplatePickerModal

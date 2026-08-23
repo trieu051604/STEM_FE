@@ -1,5 +1,4 @@
 import { Icon } from '@/components/ui/Icon';
-import { cn } from '@/lib/utils';
 import { Edit2, Trash2, AlertTriangle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import type { LabEntity } from '@/services/dashboardApi';
@@ -11,28 +10,11 @@ interface LabCardProps {
   onDelete?: (lab: LabEntity) => void;
 }
 
-// Badge này đè lên ảnh thumbnail thật (độ sáng/màu bất định), không phải trên bg-card —
-// nền phải gần như đặc (không dùng opacity thấp kiểu /10) để luôn đọc được bất kể ảnh nền.
-const categoryMeta: Record<string, { label: string; color: string }> = {
-  physics: { label: 'Vật lý', color: 'bg-slate-950/80 backdrop-blur-sm text-blue-300 border border-blue-400/30' },
-  chemistry: { label: 'Hóa học', color: 'bg-slate-950/80 backdrop-blur-sm text-emerald-300 border border-emerald-400/30' },
-  biology: { label: 'Sinh học', color: 'bg-slate-950/80 backdrop-blur-sm text-teal-300 border border-teal-400/30' },
-  robotics: { label: 'Robot', color: 'bg-slate-950/80 backdrop-blur-sm text-orange-300 border border-orange-400/30' },
-};
-
 const fallbackImage =
   'https://images.unsplash.com/photo-1532094349884-543bc11b234d?auto=format&fit=crop&q=80&w=600';
 
-function getCategoryMeta(category: string) {
-  return categoryMeta[category] ?? {
-    label: category || 'LAB',
-    color: 'bg-slate-950/80 backdrop-blur-sm text-slate-200 border border-white/20',
-  };
-}
-
 export const LabCard = ({ lab, canManage, onEdit, onDelete }: LabCardProps) => {
   const navigate = useNavigate();
-  const meta = getCategoryMeta(lab.category);
   const studentCount = lab.stats?.studentCount ?? 0;
   const visibleClasses = lab.classes.slice(0, 2);
   const extraClasses = Math.max(0, lab.classes.length - visibleClasses.length);
@@ -45,21 +27,13 @@ export const LabCard = ({ lab, canManage, onEdit, onDelete }: LabCardProps) => {
           alt={lab.title}
           className="w-full h-full object-cover transition-transform group-hover:scale-105 duration-500"
         />
-        <div className="absolute top-4 left-4 flex flex-col gap-2">
-          <span
-            className={cn(
-              'text-xs font-semibold px-3 py-1 rounded-full inline-block w-max',
-              meta.color
-            )}
-          >
-            {meta.label}
-          </span>
-          {lab.status === 'draft' && (
+        {lab.status === 'draft' && (
+          <div className="absolute top-4 left-4">
             <span className="text-xs font-semibold px-3 py-1 rounded-full bg-slate-950/80 backdrop-blur-sm text-amber-300 border border-amber-400/30 inline-block w-max">
               Bản nháp
             </span>
-          )}
-        </div>
+          </div>
+        )}
       </div>
 
       <div className="p-6 flex-1 flex flex-col">

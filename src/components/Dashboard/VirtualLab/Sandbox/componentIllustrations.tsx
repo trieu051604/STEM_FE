@@ -127,42 +127,76 @@ export function getFallbackIllustration(type: string, width: number, height: num
   const svgProps = { viewBox: vb, width: '100%', height: '100%', preserveAspectRatio: 'xMidYMid meet' as const };
 
   switch (type) {
-    case 'l298n':
+    case 'l298n': {
+      // Vị trí terminal LẤY THẲNG từ L298N_PINS (pinMaps.ts) — mỗi khối vàng
+      // vẽ đúng tâm tại toạ độ pin thật, không suy đoán/nội suy riêng, để
+      // hitbox 7x7 vô hình (renderPinDots trong CircuitCanvas.tsx) luôn nằm
+      // đúng trên khối terminal nhìn thấy được (Phase "Real Component Visual
+      // Completion" — trước đây có 7 khối vẽ đều nhau cho hàng trên dù chỉ có
+      // 6 pin thật, gây lệch tối đa ~5.5px và 1 khối không tương ứng pin nào).
+      const topRow: Array<[string, number]> = [
+        ['O1', 15], ['O2', 40], ['VI', 90], ['GN', 115], ['O3', 140], ['O4', 165],
+      ];
+      const bottomRow: Array<[string, number]> = [
+        ['EA', 15], ['I1', 40], ['I2', 65], ['I3', 90], ['I4', 115], ['EB', 140], ['5V', 165],
+      ];
       return (
         <svg {...svgProps}>
           <rect x={2} y={2} width={width - 4} height={height - 4} rx={4} fill="#14532d" stroke="#166534" strokeWidth={1} />
-          {/* Terminal blocks hàng trên (OUT1-4/VIN/GND) và hàng dưới (ENA/IN1-4/ENB/5V) */}
-          <rect x={8} y={4} width={width - 16} height={10} rx={1.5} fill="#1d4ed8" />
-          <rect x={8} y={height - 14} width={width - 16} height={10} rx={1.5} fill="#1d4ed8" />
-          {Array.from({ length: 7 }).map((_, i) => (
-            <rect key={`t-${i}`} x={11 + i * ((width - 22) / 6)} y={5.5} width={3} height={7} fill="#facc15" />
+          {/* Dải xanh nền cho 2 hàng terminal (OUT1-4/VIN/GND phía trên, ENA/IN1-4/ENB/5V phía dưới) */}
+          <rect x={8} y={4} width={width - 16} height={12} rx={1.5} fill="#1d4ed8" />
+          <rect x={8} y={height - 16} width={width - 16} height={12} rx={1.5} fill="#1d4ed8" />
+          {topRow.map(([label, x]) => (
+            <g key={`t-${label}`}>
+              <rect x={x - 4} y={5} width={8} height={9} fill="#facc15" stroke="#a16207" strokeWidth={0.5} />
+              <text x={x} y={4} fontSize={4.5} fill="#e4e4e7" textAnchor="middle" fontFamily="monospace">{label}</text>
+            </g>
           ))}
-          {Array.from({ length: 7 }).map((_, i) => (
-            <rect key={`b-${i}`} x={11 + i * ((width - 22) / 6)} y={height - 12.5} width={3} height={7} fill="#facc15" />
+          {bottomRow.map(([label, x]) => (
+            <g key={`b-${label}`}>
+              <rect x={x - 4} y={height - 14} width={8} height={9} fill="#facc15" stroke="#a16207" strokeWidth={0.5} />
+              <text x={x} y={height - 1} fontSize={4.5} fill="#e4e4e7" textAnchor="middle" fontFamily="monospace">{label}</text>
+            </g>
           ))}
           {/* Heatsink/chip trung tâm */}
           <rect x={width / 2 - 22} y={height / 2 - 16} width={44} height={32} rx={2} fill="#27272a" stroke="#52525b" strokeWidth={1} />
           <circle cx={width / 2 - 14} cy={height / 2} r={2} fill="#ef4444" />
         </svg>
       );
+    }
     case 'dc-motor':
+      // DC_MOTOR_PINS (pinMaps.ts): terminal1 x=6 (trái), terminal2 x=54
+      // (phải), cả 2 y=25. Bản vẽ cũ chỉ có 2 dây chì bên PHẢI (quanh x=56-62)
+      // — hitbox vô hình của terminal1 (x=6) nằm trên khung gắn màu vàng,
+      // KHÔNG có dây nào ở đó -> đúng lỗi "pin 1 chỗ, dây xuất phát chỗ khác"
+      // (Phase "Real Component Visual Completion"). Vẽ lại: thân động cơ ở
+      // giữa, 1 dây chì mỗi bên, đúng khớp toạ độ terminal1/terminal2.
       return (
         <svg {...svgProps}>
-          <rect x={2} y={height * 0.2} width={width * 0.4} height={height * 0.6} rx={3} fill="#eab308" />
-          <circle cx={width * 0.62} cy={height / 2} r={height * 0.42} fill="#a1a1aa" stroke="#71717a" strokeWidth={1.5} />
-          <circle cx={width * 0.62} cy={height / 2} r={height * 0.14} fill="#52525b" />
-          <line x1={width - 4} y1={height / 2 - 4} x2={width + 2} y2={height / 2 - 8} stroke="#ef4444" strokeWidth={2} />
-          <line x1={width - 4} y1={height / 2 + 4} x2={width + 2} y2={height / 2 + 8} stroke="#18181b" strokeWidth={2} />
+          <circle cx={width / 2} cy={height / 2} r={height * 0.42} fill="#a1a1aa" stroke="#71717a" strokeWidth={1.5} />
+          <circle cx={width / 2} cy={height / 2} r={height * 0.16} fill="#52525b" />
+          <circle cx={width / 2} cy={height / 2} r={height * 0.05} fill="#d4d4d8" />
+          {/* Dây chì trái -> terminal1 (đỏ, +), dây chì phải -> terminal2 (đen, -) */}
+          <line x1={width / 2 - height * 0.42} y1={height / 2} x2={6} y2={25} stroke="#ef4444" strokeWidth={2} />
+          <line x1={width / 2 + height * 0.42} y1={height / 2} x2={54} y2={25} stroke="#18181b" strokeWidth={2} />
+          <circle cx={6} cy={25} r={2} fill="#ef4444" />
+          <circle cx={54} cy={25} r={2} fill="#18181b" />
         </svg>
       );
     case 'battery-pack':
+      // BATTERY_PACK_PINS (pinMaps.ts): + tại x=10, - tại x=80 (y=25 cả 2).
+      // Dây chì vẽ ĐÚNG TỚI toạ độ pin thay vì kéo dài ra ngoài bounding box
+      // (bản cũ: đầu dây ở x=-4/x=94, lệch ~14px so với hitbox thật tại
+      // x=10/x=80) — Phase "Real Component Visual Completion".
       return (
         <svg {...svgProps}>
           <rect x={4} y={height * 0.15} width={width - 8} height={height * 0.7} rx={5} fill="#18181b" stroke="#3f3f46" strokeWidth={1} />
           <rect x={width * 0.15} y={height * 0.28} width={width * 0.3} height={height * 0.44} rx={4} fill="#3f3f46" />
           <rect x={width * 0.55} y={height * 0.28} width={width * 0.3} height={height * 0.44} rx={4} fill="#3f3f46" />
-          <line x1={2} y1={height / 2} x2={-4} y2={height / 2} stroke="#ef4444" strokeWidth={2.5} />
-          <line x1={width - 2} y1={height / 2} x2={width + 4} y2={height / 2} stroke="#18181b" strokeWidth={2.5} />
+          <line x1={4} y1={25} x2={10} y2={25} stroke="#ef4444" strokeWidth={2.5} />
+          <line x1={width - 4} y1={25} x2={80} y2={25} stroke="#e4e4e7" strokeWidth={2.5} />
+          <circle cx={10} cy={25} r={2} fill="#ef4444" />
+          <circle cx={80} cy={25} r={2} fill="#e4e4e7" />
           <text x={6} y={height * 0.12} fontSize={8} fill="#ef4444" fontWeight="bold">+</text>
           <text x={width - 12} y={height * 0.12} fontSize={8} fill="#e4e4e7" fontWeight="bold">-</text>
         </svg>

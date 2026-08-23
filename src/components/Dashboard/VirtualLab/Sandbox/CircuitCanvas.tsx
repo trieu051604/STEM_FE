@@ -1,5 +1,5 @@
 import '@wokwi/elements';
-import React, { createElement, useCallback, useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from 'react';
+import React, { createElement, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { SimulationEngine } from './SimulationEngine';
 import { attachLed } from './glue/led';
 import { attachButton } from './glue/button';
@@ -323,6 +323,14 @@ function getAutoWireColor(sourcePin: string, targetPin: string) {
   if (isAnalog(sourcePin) || isAnalog(targetPin)) return 'blue';
   return 'green';
 }
+
+// WIRE ROUTING tuning — xem autoRoutedWaypoints (bên trong CircuitCanvas) cho
+// thuật toán đầy đủ. WIRE_LANE_GAP: khoảng cách tối thiểu giữa 2 lane (đoạn
+// trunk thẳng đứng) trước khi coi là va chạm. PIN_ESCAPE_DISTANCE: khoảng
+// cách tối thiểu dây phải đi thẳng ra khỏi pin trước khi được phép đổi
+// hướng (không đổi hướng ngay tại pin).
+const WIRE_LANE_GAP = 8;
+const PIN_ESCAPE_DISTANCE = 14;
 
 function getElbowPath(x1: number, y1: number, x2: number, y2: number) {
   const midX = x1 + (x2 - x1) / 2;
@@ -674,6 +682,83 @@ export const CircuitCanvas = ({
     },
     [arduinoPos, components]
   );
+
+  // WIRE ROUTING — fan-out/fan-in với lane riêng cho từng dây, thay cho
+  // getDefaultWaypoints() cũ (đã lỗi thời, giữ lại chỉ làm fallback cuối cùng
+  // bên dưới): getDefaultWaypoints() tính midX ĐỘC LẬP cho từng dây, chỉ dựa
+  // vào src.x/tgt.x của chính nó — khi nhiều dây nối giữa 2 cụm linh kiện gần
+  // nhau (vd 4 GPIO ESP32 -> 4 chân L298N, các chân cách nhau ~25px) thì
+  // midX của chúng gần như trùng nhau, khiến đoạn trunk (thân dây thẳng
+  // đứng) chồng lên nhau nhìn như 1 "bó" dây duy nhất.
+  //
+  // Thuật toán mới xử lý TOÀN BỘ connections theo thứ tự index ổn định
+  // (deterministic — không Math.random(), cùng 1 diagram JSON luôn ra cùng 1
+  // kết quả): mỗi dây thử đặt lane tại midX tự nhiên trước; nếu đoạn trunk
+  // đó (đường thẳng đứng tại 1 toạ độ X, trải theo khoảng Y từ src tới tgt)
+  // chồng Y-range với 1 trunk đã đăng ký ở X cách đó < WIRE_LANE_GAP, thì
+  // dịch sang lane kế tiếp (+gap, -gap, +2*gap, -2*gap, ...) và thử lại —
+  // đúng yêu cầu "detect collision -> tăng lane offset -> thử lại". Lane
+  // cũng bị ép cách CẢ src.x lẫn tgt.x tối thiểu PIN_ESCAPE_DISTANCE, để dây
+  // không đổi hướng ngay tại pin.
+  //
+  // CHỈ áp dụng cho dây CHƯA có waypoint tuỳ chỉnh đã lưu (storedWaypoints) —
+  // dây người dùng tự kéo tay giữ nguyên 100% hành vi cũ, không bị auto-route
+  // đè lên, và không tính vào danh sách occupied (đó là lựa chọn có chủ ý
+  // của người dùng, không phải đối tượng auto-router cần né).
+  const autoRoutedWaypoints = useMemo(() => {
+    type OccupiedTrunk = { x: number; yMin: number; yMax: number };
+    const occupied: OccupiedTrunk[] = [];
+    const results: Array<[Waypoint, Waypoint] | null> = [];
+
+    const collidesAt = (x: number, yMin: number, yMax: number) =>
+      occupied.some((seg) => Math.abs(seg.x - x) < WIRE_LANE_GAP && yMin <= seg.yMax && yMax >= seg.yMin);
+
+    connections.forEach((conn, index) => {
+      const [src, tgt, , storedWaypoints] = conn;
+      if (getValidStoredWaypoints(storedWaypoints)) {
+        results[index] = null;
+        return;
+      }
+
+      const [srcId, srcPin] = src.split(':');
+      const [tgtId, tgtPin] = tgt.split(':');
+      const srcCoord = getPinAbsCoord(srcId, srcPin) ?? getOwnerFallbackCoord(srcId);
+      const tgtCoord = getPinAbsCoord(tgtId, tgtPin) ?? getOwnerFallbackCoord(tgtId);
+      if (!srcCoord || !tgtCoord) {
+        results[index] = null;
+        return;
+      }
+
+      const dx = tgtCoord.x - srcCoord.x;
+      const naturalMidX = srcCoord.x + dx / 2;
+      const yMin = Math.min(srcCoord.y, tgtCoord.y);
+      const yMax = Math.max(srcCoord.y, tgtCoord.y);
+
+      const minLaneX = Math.min(srcCoord.x, tgtCoord.x) + PIN_ESCAPE_DISTANCE;
+      const maxLaneX = Math.max(srcCoord.x, tgtCoord.x) - PIN_ESCAPE_DISTANCE;
+      // src/tgt quá gần nhau để chừa đủ escape distance cả 2 phía — chấp
+      // nhận midX chưa clamp thay vì ép ra 1 khoảng rỗng (minLaneX>maxLaneX).
+      const clamp = (x: number) => (minLaneX <= maxLaneX ? Math.min(Math.max(x, minLaneX), maxLaneX) : naturalMidX);
+
+      let laneX = clamp(naturalMidX);
+      let attempt = 0;
+      // Giới hạn an toàn — 1 khu vực trong lab giáo dục hiếm khi có quá vài
+      // chục dây chồng nhau; tránh vòng lặp vô hạn nếu có.
+      while (collidesAt(laneX, yMin, yMax) && attempt < 40) {
+        attempt++;
+        const step = Math.ceil(attempt / 2) * WIRE_LANE_GAP * (attempt % 2 === 0 ? -1 : 1);
+        laneX = clamp(naturalMidX + step);
+      }
+
+      occupied.push({ x: laneX, yMin, yMax });
+      results[index] = [
+        { x: laneX, y: srcCoord.y },
+        { x: laneX, y: tgtCoord.y },
+      ];
+    });
+
+    return results;
+  }, [connections, getPinAbsCoord, getOwnerFallbackCoord]);
 
   const handlePointerMove = (e: React.PointerEvent) => {
     if (!containerRef.current) return;
@@ -1038,7 +1123,14 @@ export const CircuitCanvas = ({
 
             const isBroken = !srcResolvedCoord || !tgtResolvedCoord;
             const isSelected = selectedWireIndex === index;
-            const waypoints = getValidStoredWaypoints(storedWaypoints) ?? getDefaultWaypoints(srcCoord, tgtCoord);
+            // Waypoint tuỳ chỉnh đã lưu (người dùng tự kéo) > lane tự động
+            // (autoRoutedWaypoints — fan-out/fan-in không chồng lane) >
+            // getDefaultWaypoints (fallback cuối, chỉ dùng khi vì lý do gì đó
+            // pin không resolve được trong lúc tính autoRoutedWaypoints).
+            const waypoints =
+              getValidStoredWaypoints(storedWaypoints) ??
+              autoRoutedWaypoints[index] ??
+              getDefaultWaypoints(srcCoord, tgtCoord);
             const pathD = getWaypointPath(srcCoord, waypoints[0], waypoints[1], tgtCoord);
 
             return (

@@ -193,7 +193,10 @@ function renderFallbackCard(type: string, rawType: string, partState: PartVisual
   const Icon = config.icon;
   // L298N — trạng thái động cơ suy ra THẬT từ QEMU (L298nModel.cs), không
   // phải giả lập UI. Chưa có event nào (undefined) hiện "—" thay vì bịa trạng
-  // thái mặc định.
+  // thái mặc định. Nhãn "T"/"P" (Trái/Phải) thay cho "A"/"B" kỹ thuật — L298N
+  // trong app này chỉ dùng cho robot 2 bánh (motorA=trái, motorB=phải theo
+  // ROBOT_DELIVERY_PINS/circuitConfig của mọi bài robotics), nên nhãn theo
+  // ngữ nghĩa dễ đọc hơn cho học sinh khi demo (Phase 6 hardening).
   const showMotorState = type === 'l298n';
   // Relay Module — trạng thái ON/OFF suy ra thật từ digitalWrite trên chân IN
   // (RelayModel.cs, Educational runner). Không animation phức tạp, chỉ nhãn.
@@ -225,11 +228,11 @@ function renderFallbackCard(type: string, rawType: string, partState: PartVisual
           {showMotorState && (
             <span className="block text-[8px] font-mono leading-tight text-center">
               <span className={MOTOR_STATE_COLOR[partState?.motorA ?? 'stopped']}>
-                A:{partState?.motorA ? MOTOR_STATE_LABEL[partState.motorA] : '—'}
+                T:{partState?.motorA ? MOTOR_STATE_LABEL[partState.motorA] : '—'}
               </span>
               {' '}
               <span className={MOTOR_STATE_COLOR[partState?.motorB ?? 'stopped']}>
-                B:{partState?.motorB ? MOTOR_STATE_LABEL[partState.motorB] : '—'}
+                P:{partState?.motorB ? MOTOR_STATE_LABEL[partState.motorB] : '—'}
               </span>
             </span>
           )}

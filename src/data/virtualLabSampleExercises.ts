@@ -58,6 +58,19 @@ export interface VirtualLabSampleExercise {
   serialExpectedOutput?: string;
   teacherNotes: string;
   limitations: string;
+  /**
+   * Nhãn module cho các bài thuộc 1 chuỗi tiến trình nhiều Lab (ví dụ "Robot
+   * Giao Hàng Mini" cho LAB01-08) — dùng để TemplatePickerModal gom nhóm hiển
+   * thị dưới 1 tiêu đề thay vì trộn lẫn với các bài đơn lẻ khác. Optional —
+   * undefined nghĩa là bài đơn lẻ, không thuộc module nào (14 bài gốc).
+   */
+  module?: string;
+  /** STEP 13 (Phase 6 hardening) — "Kiến thức cần nhớ", concise, per-lab. Optional: only the 8 Robot Delivery labs populate this. */
+  keyConcepts?: string[];
+  /** "Gợi ý" — 1 gợi ý gỡ lỗi ngắn cho lỗi thường gặp nhất của bài, không phải đáp án đầy đủ. */
+  hints?: string[];
+  /** "Câu hỏi mở rộng" — câu hỏi tư duy, không có đáp án cố định trong bài. */
+  extensionQuestions?: string[];
 }
 
 /** Board part id CỐ ĐỊNH mà VirtualLabDiagramService dùng cho mọi board (kể cả ESP32) trong connections[]. */
@@ -1207,13 +1220,14 @@ void loop() {
 const robotDeliveryLab01: VirtualLabSampleExercise = {
   title: '[Robot Giao Hàng Mini] LAB01 — ESP32 Digital Output',
   slug: 'robot-delivery-lab01-esp32-output',
+  module: 'Robot Giao Hàng Mini',
   category: 'robotics',
   level: 'beginner',
   estimatedTimeMinutes: 15,
   objective: 'Xác minh đường điều khiển digitalWrite/pinMode cơ bản của ESP32 hoạt động đúng trước khi ghép động cơ/cảm biến ở các bài sau.',
   description: 'Bài mở đầu module Robot Giao Hàng Mini (LAB01/8). Không yêu cầu tiên quyết. Nhiệm vụ: nháy LED mỗi 500ms và quan sát Serial Monitor khớp đúng trạng thái. Input: không có tín hiệu vào. Output: 1 tín hiệu digital ra LED.',
   components: ['wokwi-led'],
-  supportedLevel: 'wokwi-led: Mô phỏng được đầy đủ qua Educational runtime (không cần QEMU).',
+  supportedLevel: 'wokwi-led: Mô phỏng được đầy đủ. Code đủ đơn giản để chạy đúng dù hệ thống chọn Educational runtime hay QEMU — runner thực tế do cấu hình toàn hệ thống (SimulationRunner:DefaultMode) quyết định, không có override riêng theo từng Lab.',
   wiringGuide: [
     'Đặt ESP32 DevKit v1 và 1 LED lên canvas.',
     'Nối LED: chân A (anode) -> GPIO13, chân C (cathode) -> ESP32 GND.',
@@ -1237,6 +1251,17 @@ const robotDeliveryLab01: VirtualLabSampleExercise = {
   serialExpectedOutput: 'Trang thai: LED ON\nTrang thai: LED OFF\nTrang thai: LED ON\n...',
   teacherNotes: 'Bài nền tảng cho cả module — không yêu cầu tiên quyết. Học sinh cần hoàn thành PASS bài này trước khi sang LAB02 (giới thiệu L298N).',
   limitations: 'Chưa dùng linh kiện robot thật nào (L298N/HC-SR04) — thuần kiểm tra đường tín hiệu digital output.',
+  keyConcepts: [
+    "digitalWrite()/pinMode() điều khiển GPIO ở mức HIGH/LOW",
+    "delay() tạm dừng chương trình theo mili giây",
+  ],
+  hints: [
+    "Nếu LED không sáng, kiểm tra chiều nối A (dài)/C (ngắn) và đúng GPIO13",
+  ],
+  extensionQuestions: [
+    "Nếu đổi delay(500) thành delay(100), điều gì thay đổi?",
+    "Làm sao nháy LED theo mã Morse (chấm ngắn, gạch dài)?",
+  ],
 };
 
 // ----------------------------------------------------------------------------
@@ -1283,6 +1308,7 @@ void loop() {
 const robotDeliveryLab02: VirtualLabSampleExercise = {
   title: '[Robot Giao Hàng Mini] LAB02 — L298N Một Động Cơ',
   slug: 'robot-delivery-lab02-l298n-one-motor',
+  module: 'Robot Giao Hàng Mini',
   category: 'robotics',
   level: 'beginner',
   estimatedTimeMinutes: 20,
@@ -1327,6 +1353,17 @@ const robotDeliveryLab02: VirtualLabSampleExercise = {
   serialExpectedOutput: 'Trang thai: FORWARD\nTrang thai: STOP\nTrang thai: FORWARD\n...',
   teacherNotes: 'Yêu cầu hoàn thành LAB01. Dùng đúng bộ chân ROBOT_DELIVERY_PINS sẽ được tái sử dụng nguyên vẹn cho LAB03-LAB08 (Motor trái). Nối đủ IN1-IN4 dù chỉ dùng 1 kênh phản ánh đúng module L298N thật (luôn có 4 chân IN cố định).',
   limitations: 'Không có mô phỏng vật lý chuyển động thật — chỉ mô phỏng đúng trạng thái điện của động cơ. Chỉ 1 động cơ có tải thật, kênh B chỉ nối dây làm quen (chưa gắn motor).',
+  keyConcepts: [
+    "L298N là cầu H, dùng 2 chân IN điều khiển 1 động cơ (HIGH/LOW quyết định quay/dừng)",
+    "ENA là chân cho phép động cơ hoạt động (enable)",
+  ],
+  hints: [
+    "Nếu Motor A không đổi trạng thái, kiểm tra ENA đã set HIGH trong setup() chưa",
+  ],
+  extensionQuestions: [
+    "Điều gì xảy ra nếu IN1 và IN2 cùng ở mức HIGH?",
+    "Làm sao đảo chiều quay động cơ mà không đổi code, chỉ đổi cách nối dây?",
+  ],
 };
 
 // ----------------------------------------------------------------------------
@@ -1366,6 +1403,7 @@ void loop() {
 const robotDeliveryLab03: VirtualLabSampleExercise = {
   title: '[Robot Giao Hàng Mini] LAB03 — L298N Hai Động Cơ',
   slug: 'robot-delivery-lab03-two-motors',
+  module: 'Robot Giao Hàng Mini',
   category: 'robotics',
   level: 'beginner',
   estimatedTimeMinutes: 25,
@@ -1413,6 +1451,17 @@ const robotDeliveryLab03: VirtualLabSampleExercise = {
   serialExpectedOutput: 'Trang thai: FORWARD\nTrang thai: STOP\nTrang thai: TURN LEFT\nTrang thai: STOP\nTrang thai: TURN RIGHT\nTrang thai: STOP\n...',
   teacherNotes: 'Yêu cầu hoàn thành LAB02. Đây là nền tảng robot 2 bánh dùng lại nguyên vẹn cho LAB06-LAB08 — không đổi số GPIO từ bài này trở đi.',
   limitations: 'Không có mô phỏng vật lý chuyển động thật trên mặt phẳng — chỉ đúng trạng thái điện của từng động cơ.',
+  keyConcepts: [
+    "2 động cơ độc lập = 2 cặp IN (IN1/IN2 và IN3/IN4) trên cùng 1 module L298N",
+    "Rẽ trái/phải bằng cách 1 bên dừng, bên kia chạy (differential steering đơn giản)",
+  ],
+  hints: [
+    "Nếu cả 2 motor cùng quay lúc rẽ, kiểm tra lại logic turnLeft()/turnRight()",
+  ],
+  extensionQuestions: [
+    "Làm sao rẽ \"gắt\" hơn bằng cách cho 1 bánh lùi thay vì chỉ dừng?",
+    "Nếu muốn xe quay tại chỗ (spin), cần đổi gì trong turnLeft/turnRight?",
+  ],
 };
 
 // ----------------------------------------------------------------------------
@@ -1452,6 +1501,7 @@ void loop() {
 const robotDeliveryLab04: VirtualLabSampleExercise = {
   title: '[Robot Giao Hàng Mini] LAB04 — HC-SR04 Đọc Khoảng Cách',
   slug: 'robot-delivery-lab04-hc-sr04-distance',
+  module: 'Robot Giao Hàng Mini',
   category: 'robotics',
   level: 'beginner',
   estimatedTimeMinutes: 20,
@@ -1494,6 +1544,17 @@ const robotDeliveryLab04: VirtualLabSampleExercise = {
   serialExpectedOutput: 'Khoang cach: 100.00 cm\n...\nKhoang cach: 50.00 cm\n...\nKhoang cach: 20.00 cm\n...',
   teacherNotes: 'Có thể chạy song song với LAB01-03 (không phụ thuộc nhau) — cả hai nhánh hội tụ ở LAB06.',
   limitations: 'Khoảng cách là kịch bản định sẵn theo thời gian, không đo vật cản thật trong scene.',
+  keyConcepts: [
+    "HC-SR04 đo khoảng cách bằng thời gian phản hồi sóng siêu âm (pulseIn)",
+    "Công thức quy đổi: khoảng cách (cm) = thời gian (µs) / 58",
+  ],
+  hints: [
+    "Nếu Serial Monitor không hiện giá trị, kiểm tra Serial.begin(115200) đã gọi trong setup() chưa",
+  ],
+  extensionQuestions: [
+    "Vì sao chia cho 58 mà không phải một số khác?",
+    "Điều gì xảy ra nếu ECHO nối nhầm sang GPIO khác?",
+  ],
 };
 
 // ----------------------------------------------------------------------------
@@ -1545,6 +1606,7 @@ void loop() {
 const robotDeliveryLab05: VirtualLabSampleExercise = {
   title: '[Robot Giao Hàng Mini] LAB05 — Cảnh Báo Vật Cản',
   slug: 'robot-delivery-lab05-obstacle-warning',
+  module: 'Robot Giao Hàng Mini',
   category: 'robotics',
   level: 'beginner',
   estimatedTimeMinutes: 20,
@@ -1593,6 +1655,17 @@ const robotDeliveryLab05: VirtualLabSampleExercise = {
   serialExpectedOutput: 'Khoang cach: 100.00 cm\nTrang thai: WARNING OFF\n...\nKhoang cach: 10.00 cm\nTrang thai: WARNING ON\n...',
   teacherNotes: 'Yêu cầu hoàn thành LAB04. Ngưỡng cảnh báo (20cm) khác ngưỡng dừng xe ở LAB06 (30cm) một cách có chủ đích — cảnh báo sớm hơn hành động dừng thật.',
   limitations: 'Chưa có động cơ — thuần logic cảnh báo. Khoảng cách vẫn là kịch bản định sẵn.',
+  keyConcepts: [
+    "So sánh giá trị cảm biến với 1 ngưỡng (threshold) để ra quyết định bật/tắt",
+    "Toán tử <= dùng để kiểm tra \"nhỏ hơn hoặc bằng\"",
+  ],
+  hints: [
+    "Nếu LED luôn sáng hoặc luôn tắt, kiểm tra lại chiều so sánh (<= hay >=)",
+  ],
+  extensionQuestions: [
+    "Nếu muốn cảnh báo ở 2 mức (gần/rất gần), cần thêm gì vào code?",
+    "Điều gì xảy ra khi khoảng cách đúng bằng 20cm?",
+  ],
 };
 
 // ----------------------------------------------------------------------------
@@ -1650,6 +1723,7 @@ void loop() {
 const robotDeliveryLab06: VirtualLabSampleExercise = {
   title: '[Robot Giao Hàng Mini] LAB06 — Dừng Xe Khi Gặp Vật Cản (Tích Hợp)',
   slug: 'robot-delivery-lab06-stop-on-obstacle',
+  module: 'Robot Giao Hàng Mini',
   category: 'robotics',
   level: 'intermediate',
   estimatedTimeMinutes: 30,
@@ -1712,6 +1786,17 @@ const robotDeliveryLab06: VirtualLabSampleExercise = {
   serialExpectedOutput: 'Khoang cach: 100.00 cm\nTrang thai: FORWARD\n...\nKhoang cach: 15.00 cm\nTrang thai: STOP\n...',
   teacherNotes: 'Yêu cầu hoàn thành LAB03 và LAB05. Đây là bài quan trọng nhất module — xác nhận kiến trúc tích hợp cảm biến+chấp hành hoạt động trước khi thêm hành vi phức tạp hơn (rẽ, chuỗi trạng thái).',
   limitations: 'Không rẽ tránh — chỉ dừng hẳn khi gặp vật cản. Hành vi rẽ được thêm ở LAB07.',
+  keyConcepts: [
+    "Tích hợp: giá trị cảm biến (input) quyết định hành vi động cơ (output) — nền tảng của robot tự hành",
+    "Toàn bộ logic chạy trong 1 vòng loop() duy nhất, không cần 2 chương trình riêng",
+  ],
+  hints: [
+    "Nếu motor không dừng khi có vật cản, kiểm tra lại STOP_DISTANCE_CM và chiều dấu so sánh >",
+  ],
+  extensionQuestions: [
+    "Nếu ngưỡng dừng đổi thành 50cm, robot sẽ dừng sớm hơn hay muộn hơn?",
+    "Vì sao bài này được gọi là \"cổng kiến trúc\" của cả module?",
+  ],
 };
 
 // ----------------------------------------------------------------------------
@@ -1773,6 +1858,7 @@ void loop() {
 const robotDeliveryLab07: VirtualLabSampleExercise = {
   title: '[Robot Giao Hàng Mini] LAB07 — Chuỗi Trạng Thái Tránh Vật Cản',
   slug: 'robot-delivery-lab07-obstacle-avoidance-sequence',
+  module: 'Robot Giao Hàng Mini',
   category: 'robotics',
   level: 'intermediate',
   estimatedTimeMinutes: 30,
@@ -1833,6 +1919,17 @@ const robotDeliveryLab07: VirtualLabSampleExercise = {
   serialExpectedOutput: 'Khoang cach: 100.00 cm\nTrang thai: FORWARD\n...\nKhoang cach: 10.00 cm\nTrang thai: STOP\nTrang thai: TURN\n...\nKhoang cach: 100.00 cm\nTrang thai: FORWARD',
   teacherNotes: 'Yêu cầu hoàn thành LAB06 (PASS bắt buộc — LAB06 là cổng kiến trúc). Đây vẫn là mô phỏng trạng thái điện/thời gian, không có toạ độ 2D thật (đúng scope "No robot physics required" của module).',
   limitations: 'Không có mô phỏng vật lý 2D thật — chuỗi trạng thái xác định hoàn toàn theo kịch bản thời gian, không phải cảm biến "nhìn thấy" vật cản trong không gian.',
+  keyConcepts: [
+    "Chuỗi trạng thái (state sequence): Forward -> Stop -> Turn -> Forward, mỗi trạng thái là 1 hành vi rõ ràng",
+    "delay() giữa các bước tạo đủ thời gian để hành vi \"nhìn thấy được\" trước khi đổi tiếp",
+  ],
+  hints: [
+    "Nếu robot không rẽ đúng lúc, kiểm tra lại delay(300)/delay(500) giữa các bước",
+  ],
+  extensionQuestions: [
+    "Nếu vật cản biến mất ngay giữa lúc đang rẽ, robot có phát hiện kịp không? Vì sao?",
+    "Làm sao thêm hành vi \"lùi lại\" trước khi rẽ?",
+  ],
 };
 
 // ----------------------------------------------------------------------------
@@ -1916,6 +2013,7 @@ void loop() {
 const robotDeliveryLab08: VirtualLabSampleExercise = {
   title: '[Robot Giao Hàng Mini] LAB08 — Robot Giao Hàng Mini Hoàn Chỉnh',
   slug: 'robot-delivery-lab08-complete-mini-delivery-robot',
+  module: 'Robot Giao Hàng Mini',
   category: 'robotics',
   level: 'intermediate',
   estimatedTimeMinutes: 40,
@@ -1993,6 +2091,17 @@ const robotDeliveryLab08: VirtualLabSampleExercise = {
   serialExpectedOutput: 'Trang thai: BAT DAU GIAO HANG\nKhoang cach: 100.00 cm\nTrang thai: MOVING\n...\nTrang thai: DELIVERED',
   teacherNotes: 'Yêu cầu hoàn thành LAB07. Bài tổng hợp cuối module — nên giao sau khi học sinh đã PASS toàn bộ LAB01-07. Có thể yêu cầu học sinh tự đổi DELIVERY_TIME_MS hoặc thêm mốc vật cản thứ 2 trong sensorScenario.',
   limitations: 'Không có toạ độ di chuyển thật, không phát hiện "tới đích" bằng vị trí — chỉ dùng millis() để giả lập hoàn thành hành trình. Delivery box không rơi/thả hàng thật. Linh kiện cơ khí (wheel/chassis/caster/box) mang tính minh hoạ, không có mô phỏng vật lý.',
+  keyConcepts: [
+    "Tách biệt linh kiện điện (ESP32/HC-SR04/L298N/Motor) và linh kiện cơ khí trực quan (khung/bánh xe/hộp hàng) — cơ khí không tham gia mô phỏng điện",
+    "millis() đếm thời gian trôi qua mà không chặn chương trình (khác delay())",
+  ],
+  hints: [
+    "Nếu \"DELIVERED\" in ra nhiều lần liên tục, kiểm tra lại biến delivered đã được set true chưa",
+  ],
+  extensionQuestions: [
+    "Vì sao dùng millis() thay vì đếm số vòng lặp loop()?",
+    "Làm sao thêm 1 mốc vật cản thứ 2 vào hành trình 8 giây?",
+  ],
 };
 
 export const ROBOT_DELIVERY_MINI_LABS: VirtualLabSampleExercise[] = [

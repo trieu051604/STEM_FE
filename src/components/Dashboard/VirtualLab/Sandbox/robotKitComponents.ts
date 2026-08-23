@@ -174,7 +174,7 @@ export const ROBOT_KIT_COMPONENTS: ComponentRegistryEntry[] = [
     runtimeAdapter: 'L298nModel (STEM.Application/UseCases/Simulation/Runners/Educational/Components/L298nModel.cs) — gọi từ QemuEsp32Runner.ComponentIndex',
     renderer: 'fallback-card (không có element @wokwi/elements cho L298N)',
     notes:
-      'Runtime THẬT: đọc digitalWrite trên IN1/IN2 (Motor A) và IN3/IN4 (Motor B) qua SF_EVENT có sẵn từ QEMU, suy ra forward/backward/stopped/brake theo đúng bảng sự thật L298N, emit part-state "l298n" mỗi khi state đổi. FE hiện trực tiếp trên card (A:.../B:...). KHÔNG đọc ENA/ENB (QEMU không instrument analogWrite/ledcWrite PWM) — coi như luôn enabled, đây là giới hạn kỹ thuật đã biết, không phải thiếu sót.',
+      'Runtime THẬT: đọc digitalWrite trên IN1/IN2 (Motor A) và IN3/IN4 (Motor B) qua SF_EVENT có sẵn từ QEMU, suy ra forward/backward/stopped/brake theo đúng bảng sự thật L298N, emit part-state "l298n" mỗi khi state đổi. FE hiện trực tiếp trên card (T:.../P:... — Trái/Phải, Phase 6 đổi nhãn từ A/B cho dễ đọc khi demo robot 2 bánh). KHÔNG đọc ENA/ENB (QEMU không instrument analogWrite/ledcWrite PWM) — coi như luôn enabled, đây là giới hạn kỹ thuật đã biết, không phải thiếu sót.',
   },
   {
     componentType: 'wokwi-dc-motor',

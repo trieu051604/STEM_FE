@@ -69,13 +69,6 @@ interface CreateLabModalProps {
   onRequestTemplatePicker?: () => void;
 }
 
-const categories: Array<{ value: LabCategory; label: string }> = [
-  { value: 'physics', label: 'Vật lý' },
-  { value: 'chemistry', label: 'Hóa học' },
-  { value: 'biology', label: 'Sinh học' },
-  { value: 'robotics', label: 'Robot' },
-];
-
 const defaultCircuitConfig: LabCircuitConfig = {
   board: 'arduino_uno',
   parts: [],
@@ -402,40 +395,18 @@ export const CreateLabModal = ({
               />
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-1.5">
-                <label className="text-sm font-medium text-foreground">Môn học</label>
-                <select
-                  value={formData.category}
-                  onChange={(event) =>
-                    setFormData({
-                      ...formData,
-                      category: event.target.value as LabCategory,
-                    })
-                  }
-                  className={nativeFieldClassName}
-                >
-                  {categories.map((category) => (
-                    <option key={category.value} value={category.value}>
-                      {category.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="space-y-1.5">
-                <label className="text-sm font-medium text-foreground">Trạng thái</label>
-                <select
-                  value={formData.status}
-                  onChange={(event) =>
-                    setFormData({ ...formData, status: event.target.value as LabStatus })
-                  }
-                  className={nativeFieldClassName}
-                >
-                  <option value="published">Xuất bản</option>
-                  <option value="draft">Bản nháp</option>
-                </select>
-              </div>
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium text-foreground">Trạng thái</label>
+              <select
+                value={formData.status}
+                onChange={(event) =>
+                  setFormData({ ...formData, status: event.target.value as LabStatus })
+                }
+                className={nativeFieldClassName}
+              >
+                <option value="published">Xuất bản</option>
+                <option value="draft">Bản nháp</option>
+              </select>
             </div>
 
             <div className="space-y-1.5">

@@ -18,18 +18,26 @@ interface SensorScenarioPanelProps {
 // refactor có rủi ro tới phần canvas selection đã ổn) — thay vào đó liệt kê
 // TẤT CẢ sensor được hỗ trợ đang có trên canvas, mỗi cái có timeline riêng
 // theo componentId.
+//
+// VIỆT HÓA UI (task riêng) — chỉ đổi chữ hiển thị. Field name/shape thật của
+// SensorScenarioConfig/SensorTimeline/SensorTimelineEntry (timeMs, distanceCm,
+// motion, detected, analog, pattern, temperature, humidity, componentId...)
+// giữ NGUYÊN 100% — đây vẫn là đúng JSON gửi/nhận với BE
+// (SensorRuntimeHeaderGenerator.cs đọc đúng các key này). Chỉ riêng "thời
+// gian" hiển thị bằng GIÂY cho dễ đọc — quy đổi 2 chiều ngay tại input
+// (giây hiển thị = timeMs / 1000, lưu lại vẫn là timeMs nguyên).
 const SENSOR_LABEL: Record<string, string> = {
-  'hc-sr04': 'HC-SR04',
-  'pir-motion-sensor': 'PIR Motion Sensor',
-  'line-tracking-3ch': 'Line Tracking (3 kênh)',
-  'line-tracking-5ch': 'Line Tracking (5 kênh)',
-  'water-leak-sensor': 'Water Leak Sensor',
-  'flame-sensor': 'Flame Sensor',
-  'soil-moisture-sensor': 'Soil Moisture Sensor',
-  'rain-sensor': 'Rain Sensor',
-  'vibration-sensor': 'Vibration Sensor (SW-420)',
-  'dht22': 'DHT22',
-  'dht11': 'DHT11',
+  'hc-sr04': 'Cảm biến khoảng cách HC-SR04',
+  'pir-motion-sensor': 'Cảm biến chuyển động PIR',
+  'line-tracking-3ch': 'Cảm biến dò line (3 kênh)',
+  'line-tracking-5ch': 'Cảm biến dò line (5 kênh)',
+  'water-leak-sensor': 'Cảm biến rò rỉ nước',
+  'flame-sensor': 'Cảm biến lửa',
+  'soil-moisture-sensor': 'Cảm biến độ ẩm đất',
+  'rain-sensor': 'Cảm biến mưa',
+  'vibration-sensor': 'Cảm biến rung (SW-420)',
+  'dht22': 'Cảm biến nhiệt độ - độ ẩm DHT22',
+  'dht11': 'Cảm biến nhiệt độ - độ ẩm DHT11',
 };
 
 const SENSOR_ICON: Record<string, React.ComponentType<{ className?: string }>> = {
@@ -55,6 +63,57 @@ const DHT_TYPES = new Set(['dht22', 'dht11']);
 
 const PATTERNS_3CH = ['center', 'left', 'right', 'lost', 'intersection'];
 const PATTERNS_5CH = ['far-left', 'left', 'center', 'right', 'far-right', 'lost', 'intersection'];
+
+// Nhãn hiển thị cho từng giá trị pattern — CHỈ đổi chữ hiển thị, giá trị
+// thật gửi lên vẫn là string gốc bên trái (BE/SensorRuntimeHeaderGenerator
+// so khớp đúng các chuỗi này, không được đổi).
+const PATTERN_LABEL: Record<string, string> = {
+  'center': 'Ở giữa',
+  'left': 'Lệch trái',
+  'right': 'Lệch phải',
+  'lost': 'Mất line',
+  'intersection': 'Giao lộ',
+  'far-left': 'Lệch trái xa',
+  'far-right': 'Lệch phải xa',
+};
+
+// Nhãn boolean thân thiện theo từng loại cảm biến (không hiển thị thẳng
+// true/false cho người dùng) — checked phản ánh đúng field "motion"/"detected"
+// thật trong data, chỉ đổi CHỮ hiển thị cạnh ô tick.
+function booleanStateLabel(type: string, checked: boolean): string {
+  switch (type) {
+    case 'pir-motion-sensor':
+      return checked ? 'Có chuyển động' : 'Không có chuyển động';
+    case 'flame-sensor':
+      return checked ? 'Phát hiện lửa' : 'Không phát hiện lửa';
+    case 'water-leak-sensor':
+      return checked ? 'Phát hiện nước' : 'Khô';
+    case 'vibration-sensor':
+      return checked ? 'Phát hiện rung' : 'Bình thường';
+    case 'rain-sensor':
+      return checked ? 'Có mưa' : 'Không mưa';
+    case 'soil-moisture-sensor':
+      return checked ? 'Đất ẩm' : 'Đất khô';
+    default:
+      return checked ? 'Có' : 'Không';
+  }
+}
+
+// Nhãn cho ô giá trị analog (0-4095) — chỉ đổi CHỮ, field vẫn tên "analog".
+function analogFieldLabel(type: string): string {
+  switch (type) {
+    case 'soil-moisture-sensor':
+      return 'Độ ẩm đất';
+    case 'rain-sensor':
+      return 'Mức mưa';
+    case 'water-leak-sensor':
+      return 'Mức nước';
+    case 'flame-sensor':
+      return 'Cường độ lửa';
+    default:
+      return 'Giá trị analog';
+  }
+}
 
 const SUPPORTED_TYPES = new Set([
   'hc-sr04', 'pir-motion-sensor', 'line-tracking-3ch', 'line-tracking-5ch',
@@ -105,9 +164,10 @@ export const SensorScenarioPanel = ({ open, onClose, components, scenario, onCha
       >
         <div className="flex items-center justify-between border-b border-slate-700 bg-[#171717] px-4 py-3">
           <div>
-            <h3 className="text-sm font-bold text-slate-100">Sensor Scenario (Phase 1+2)</h3>
+            <h3 className="text-sm font-bold text-slate-100">Kịch bản cảm biến</h3>
             <p className="text-[11px] text-slate-500">
-              Kịch bản theo mốc thời gian (ms kể từ lúc Run) — firmware đọc thật qua digitalRead()/analogRead()/pulseIn()/StemFlowDHT.
+              Kịch bản cảm biến cho phép mô phỏng sự thay đổi của môi trường theo thời gian để kiểm tra phản ứng của
+              chương trình.
             </p>
           </div>
           <button
@@ -123,7 +183,7 @@ export const SensorScenarioPanel = ({ open, onClose, components, scenario, onCha
         <div className="flex-1 overflow-y-auto p-3">
           {sensors.length === 0 && (
             <div className="px-2 py-8 text-center text-xs text-slate-500">
-              Chưa có sensor nào hỗ trợ scenario trên canvas — thêm qua nút &quot;+&quot; trước (HC-SR04, PIR, Line
+              Chưa có cảm biến nào hỗ trợ kịch bản trên canvas — thêm qua nút &quot;+&quot; trước (HC-SR04, PIR, Line
               Tracking, Water Leak, Flame, Soil Moisture, Rain, Vibration, DHT11/22).
             </div>
           )}
@@ -142,6 +202,10 @@ export const SensorScenarioPanel = ({ open, onClose, components, scenario, onCha
                   <span className="text-[11px] text-slate-500">({component.id})</span>
                 </div>
 
+                <div className="mb-1.5 text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+                  Các mốc kịch bản
+                </div>
+
                 <div className="space-y-1.5">
                   {entry.timeline.map((row, idx) => {
                     const updateRow = (patch: Partial<SensorTimelineEntry>) => {
@@ -151,17 +215,20 @@ export const SensorScenarioPanel = ({ open, onClose, components, scenario, onCha
 
                     return (
                       <div key={idx} className="flex flex-wrap items-center gap-2">
+                        <span className="text-[11px] text-slate-500">Thời gian:</span>
                         <input
                           type="number"
-                          value={row.timeMs}
-                          onChange={(e) => updateRow({ timeMs: Number(e.target.value) })}
+                          step="0.1"
+                          value={row.timeMs / 1000}
+                          onChange={(e) => updateRow({ timeMs: Math.round(Number(e.target.value) * 1000) })}
                           className="w-20 rounded border border-slate-600 bg-[#1a1a1a] px-2 py-1 text-xs text-slate-100"
-                          placeholder="timeMs"
+                          placeholder="Thời gian"
                         />
-                        <span className="text-[11px] text-slate-500">ms →</span>
+                        <span className="text-[11px] text-slate-500">giây →</span>
 
                         {type === 'hc-sr04' && (
                           <>
+                            <span className="text-[11px] text-slate-500">Khoảng cách:</span>
                             <input
                               type="number"
                               value={row.distanceCm ?? 400}
@@ -175,22 +242,25 @@ export const SensorScenarioPanel = ({ open, onClose, components, scenario, onCha
                         {type === 'pir-motion-sensor' && (
                           <label className="flex items-center gap-1.5 text-xs text-slate-300">
                             <input type="checkbox" checked={row.motion ?? false} onChange={(e) => updateRow({ motion: e.target.checked })} />
-                            motion (HIGH)
+                            {booleanStateLabel(type, row.motion ?? false)}
                           </label>
                         )}
 
                         {LINE_TRACKING_TYPES.has(type) && (
-                          <select
-                            value={row.pattern ?? 'lost'}
-                            onChange={(e) => updateRow({ pattern: e.target.value })}
-                            className="rounded border border-slate-600 bg-[#1a1a1a] px-2 py-1 text-xs text-slate-100"
-                          >
-                            {patternOptions.map((p) => (
-                              <option key={p} value={p}>
-                                {p}
-                              </option>
-                            ))}
-                          </select>
+                          <>
+                            <span className="text-[11px] text-slate-500">Vị trí line:</span>
+                            <select
+                              value={row.pattern ?? 'lost'}
+                              onChange={(e) => updateRow({ pattern: e.target.value })}
+                              className="rounded border border-slate-600 bg-[#1a1a1a] px-2 py-1 text-xs text-slate-100"
+                            >
+                              {patternOptions.map((p) => (
+                                <option key={p} value={p}>
+                                  {PATTERN_LABEL[p] ?? p}
+                                </option>
+                              ))}
+                            </select>
+                          </>
                         )}
 
                         {HAS_DETECTED.has(type) && (
@@ -201,10 +271,11 @@ export const SensorScenarioPanel = ({ open, onClose, components, scenario, onCha
                                 checked={row.detected ?? false}
                                 onChange={(e) => updateRow({ detected: e.target.checked })}
                               />
-                              detected (HIGH)
+                              {booleanStateLabel(type, row.detected ?? false)}
                             </label>
                             {HAS_ANALOG.has(type) && (
                               <>
+                                <span className="text-[11px] text-slate-500">{analogFieldLabel(type)}:</span>
                                 <input
                                   type="number"
                                   min={0}
@@ -214,7 +285,6 @@ export const SensorScenarioPanel = ({ open, onClose, components, scenario, onCha
                                   className="w-20 rounded border border-slate-600 bg-[#1a1a1a] px-2 py-1 text-xs text-slate-100"
                                   placeholder="0-4095"
                                 />
-                                <span className="text-[11px] text-slate-500">analog</span>
                               </>
                             )}
                           </>
@@ -222,6 +292,7 @@ export const SensorScenarioPanel = ({ open, onClose, components, scenario, onCha
 
                         {DHT_TYPES.has(type) && (
                           <>
+                            <span className="text-[11px] text-slate-500">Nhiệt độ:</span>
                             <input
                               type="number"
                               step="0.1"
@@ -230,6 +301,7 @@ export const SensorScenarioPanel = ({ open, onClose, components, scenario, onCha
                               className="w-20 rounded border border-slate-600 bg-[#1a1a1a] px-2 py-1 text-xs text-slate-100"
                             />
                             <span className="text-[11px] text-slate-500">°C</span>
+                            <span className="text-[11px] text-slate-500">Độ ẩm:</span>
                             <input
                               type="number"
                               step="0.1"
@@ -237,7 +309,7 @@ export const SensorScenarioPanel = ({ open, onClose, components, scenario, onCha
                               onChange={(e) => updateRow({ humidity: Number(e.target.value) })}
                               className="w-20 rounded border border-slate-600 bg-[#1a1a1a] px-2 py-1 text-xs text-slate-100"
                             />
-                            <span className="text-[11px] text-slate-500">%RH</span>
+                            <span className="text-[11px] text-slate-500">%</span>
                           </>
                         )}
 
@@ -266,7 +338,7 @@ export const SensorScenarioPanel = ({ open, onClose, components, scenario, onCha
                   }}
                   className="mt-2 flex items-center gap-1 rounded border border-dashed border-slate-600 px-2 py-1 text-[11px] text-slate-400 hover:border-teal-500 hover:text-teal-400"
                 >
-                  <Plus className="h-3 w-3" /> Thêm mốc thời gian
+                  <Plus className="h-3 w-3" /> Thêm mốc
                 </button>
               </div>
             );

@@ -1121,9 +1121,9 @@ export const LabSandboxPage = () => {
             variant="outline"
             onClick={() => setIsSensorPanelOpen(true)}
             className="border-indigo-500/30 text-indigo-400 hover:bg-indigo-500/10 hover:text-indigo-300"
-            title="Cấu hình kịch bản sensor (Phase 1 — scenario/timeline)"
+            title="Cấu hình kịch bản cảm biến theo thời gian"
           >
-            Sensor Scenario
+            Kịch bản cảm biến
           </Button>
           {linkedAssignmentId ? (
           <div className="flex flex-col items-end gap-1">

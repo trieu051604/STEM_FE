@@ -175,23 +175,27 @@ export const HC_SR04_PINS: Record<string, PinCoord> = {
 // khớp đúng width/height khai báo ở đó, vì card đó chính là bounding box thật
 // sẽ được đo qua offsetWidth/offsetHeight.
 
-// Card 180x100 — layout theo đúng thứ tự user yêu cầu: OUT1-4/VIN/GND hàng
-// trên (khối cực động cơ + nguồn), ENA/IN1-4/ENB/5V hàng dưới (khối logic
-// hướng về phía ESP32), mô phỏng cách chia 2 khối trên module L298N thật.
+// Card 140x140 — REAL COMPONENT VISUAL (componentIllustrations.tsx render
+// ảnh thật l298n.png, 535x536 gốc, object-fit: contain trong box 140x140).
+// Toạ độ đo trực tiếp trên ảnh gốc bằng lấy mẫu màu pixel (terminal xanh
+// dương cho OUT1-4/VIN/GND/5V, housing đen cho ENA/IN1-4/ENB), rồi quy đổi
+// theo scale 140/535 (x) và 140/536 (y). Đã verify bằng cách render đè
+// pin-dot lên đúng ảnh này — cả 13 điểm khớp chính xác từng terminal/pin
+// header thật. KHÔNG còn dùng box 180x100 cũ (dành cho SVG tự vẽ trước đây).
 export const L298N_PINS: Record<string, PinCoord> = {
-  'OUT1': { x: 15,  y: 8,  label: 'OUT1 (Motor A)' },
-  'OUT2': { x: 40,  y: 8,  label: 'OUT2 (Motor A)' },
-  'VIN':  { x: 90,  y: 8,  label: 'VIN' },
-  'GND':  { x: 115, y: 8,  label: 'GND' },
-  'OUT3': { x: 140, y: 8,  label: 'OUT3 (Motor B)' },
-  'OUT4': { x: 165, y: 8,  label: 'OUT4 (Motor B)' },
-  'ENA':  { x: 15,  y: 92, label: 'ENA' },
-  'IN1':  { x: 40,  y: 92, label: 'IN1' },
-  'IN2':  { x: 65,  y: 92, label: 'IN2' },
-  'IN3':  { x: 90,  y: 92, label: 'IN3' },
-  'IN4':  { x: 115, y: 92, label: 'IN4' },
-  'ENB':  { x: 140, y: 92, label: 'ENB' },
-  '5V':   { x: 165, y: 92, label: '5V' },
+  'OUT1': { x: 15,  y: 87,  label: 'OUT1 (Motor A)' },
+  'OUT2': { x: 15,  y: 101, label: 'OUT2 (Motor A)' },
+  'VIN':  { x: 32,  y: 125, label: 'VIN' },
+  'GND':  { x: 46,  y: 125, label: 'GND' },
+  'OUT3': { x: 125, y: 101, label: 'OUT3 (Motor B)' },
+  'OUT4': { x: 125, y: 87,  label: 'OUT4 (Motor B)' },
+  'ENA':  { x: 74,  y: 127, label: 'ENA' },
+  'IN1':  { x: 82,  y: 127, label: 'IN1' },
+  'IN2':  { x: 90,  y: 127, label: 'IN2' },
+  'IN3':  { x: 98,  y: 127, label: 'IN3' },
+  'IN4':  { x: 105, y: 127, label: 'IN4' },
+  'ENB':  { x: 113, y: 127, label: 'ENB' },
+  '5V':   { x: 60,  y: 125, label: '5V' },
 };
 
 // Card 60x50

@@ -1,11 +1,11 @@
 // Nguồn illustration DÙNG CHUNG giữa CircuitCanvas.tsx (canvas, fallback-card
 // không có element @wokwi/elements thật) và ComponentPalettePopup.tsx (popup
 // "+"/palette). Tách ra từ CircuitCanvas.tsx (2026-07-27, task "hoàn thiện
-// thumbnail palette giống Wokwi") — ROBOT_KIT_FALLBACK_CARDS +
-// getFallbackIllustration() giữ NGUYÊN 100% logic/SVG cũ (đã test PASS qua
-// L298N regression thật), chỉ đổi vị trí file. Không đổi kích thước
-// width/height trong ROBOT_KIT_FALLBACK_CARDS — đây vẫn là bounding box thật
-// dùng để tính pin-dot trong pinMaps.ts, không được đổi.
+// thumbnail palette giống Wokwi"). width/height trong ROBOT_KIT_FALLBACK_CARDS
+// LÀ bounding box thật dùng để tính pin-dot trong pinMaps.ts — đổi 1 trong 2
+// giá trị này BẮT BUỘC phải đo lại toàn bộ pin tương ứng trong pinMaps.ts
+// (xem 'l298n': đã đổi từ box 180x100 (SVG tự vẽ) sang 140x140 khi thay bằng
+// ảnh thật, kèm đo lại đủ 13 pin — "REAL COMPONENT VISUAL COMPLETION" task).
 import { createElement, type ReactNode } from 'react';
 import {
   CircuitBoard,
@@ -41,12 +41,18 @@ import {
   FlaskConical,
 } from 'lucide-react';
 import { normalizeComponentType } from './componentTypeNormalize';
+// Ảnh thật L298N (REAL COMPONENT VISUAL, thay cho SVG tự vẽ) — kích thước
+// gốc 535x536 (gần vuông). width/height card đổi từ 180x100 (tỉ lệ cũ khớp
+// SVG tự vẽ) sang 140x140 (khớp đúng tỉ lệ ảnh thật) — L298N_PINS trong
+// pinMaps.ts đã được đo lại và tính theo ĐÚNG box 140x140 này, không dùng
+// lại toạ độ cũ của box 180x100.
+import l298nImage from '@/assets/components/l298n/l298n.png';
 
 export const ROBOT_KIT_FALLBACK_CARDS: Record<
   string,
   { label: string; icon: typeof CircuitBoard; width: number; height: number; badge: string }
 > = {
-  'l298n': { label: 'L298N Motor Driver', icon: CircuitBoard, width: 180, height: 100, badge: 'Mô phỏng được' },
+  'l298n': { label: 'L298N Motor Driver', icon: CircuitBoard, width: 140, height: 140, badge: 'Mô phỏng được' },
   'dc-motor': { label: 'DC Motor', icon: RotateCw, width: 60, height: 50, badge: 'Mô phỏng được' },
   'battery-pack': { label: 'Battery Pack 7.4V', icon: BatteryFull, width: 90, height: 50, badge: 'Kiểm tra nối dây' },
   'power-switch': { label: 'Power Switch', icon: ToggleLeft, width: 70, height: 36, badge: 'Kiểm tra nối dây' },
@@ -127,43 +133,24 @@ export function getFallbackIllustration(type: string, width: number, height: num
   const svgProps = { viewBox: vb, width: '100%', height: '100%', preserveAspectRatio: 'xMidYMid meet' as const };
 
   switch (type) {
-    case 'l298n': {
-      // Vị trí terminal LẤY THẲNG từ L298N_PINS (pinMaps.ts) — mỗi khối vàng
-      // vẽ đúng tâm tại toạ độ pin thật, không suy đoán/nội suy riêng, để
-      // hitbox 7x7 vô hình (renderPinDots trong CircuitCanvas.tsx) luôn nằm
-      // đúng trên khối terminal nhìn thấy được (Phase "Real Component Visual
-      // Completion" — trước đây có 7 khối vẽ đều nhau cho hàng trên dù chỉ có
-      // 6 pin thật, gây lệch tối đa ~5.5px và 1 khối không tương ứng pin nào).
-      const topRow: Array<[string, number]> = [
-        ['O1', 15], ['O2', 40], ['VI', 90], ['GN', 115], ['O3', 140], ['O4', 165],
-      ];
-      const bottomRow: Array<[string, number]> = [
-        ['EA', 15], ['I1', 40], ['I2', 65], ['I3', 90], ['I4', 115], ['EB', 140], ['5V', 165],
-      ];
+    case 'l298n':
+      // REAL COMPONENT VISUAL (ảnh thật, không tự vẽ SVG nữa). Ảnh gốc
+      // 535x536 (gần vuông) — box card đổi thành 140x140 (component
+      // Illustrations.tsx's ROBOT_KIT_FALLBACK_CARDS['l298n']) để khớp đúng
+      // tỉ lệ ảnh, KHÔNG dùng lại box 180x100 cũ (dành cho SVG tự vẽ, sẽ làm
+      // méo ảnh nếu object-fit: fill, hoặc để trống rất nhiều nếu contain).
+      // Toạ độ 13 pin trong L298N_PINS (pinMaps.ts) đã được đo lại trực tiếp
+      // trên chính ảnh này (đo bằng cách lấy mẫu màu pixel: terminal xanh
+      // dương = khối OUT1-4/VIN/GND/5V, housing đen = khối ENA/IN1-4/ENB),
+      // quy đổi theo scale 140/535 (x) và 140/536 (y) — xem chi tiết cách đo
+      // trong lịch sử trao đổi "REAL COMPONENT VISUAL COMPLETION — L298N".
       return (
-        <svg {...svgProps}>
-          <rect x={2} y={2} width={width - 4} height={height - 4} rx={4} fill="#14532d" stroke="#166534" strokeWidth={1} />
-          {/* Dải xanh nền cho 2 hàng terminal (OUT1-4/VIN/GND phía trên, ENA/IN1-4/ENB/5V phía dưới) */}
-          <rect x={8} y={4} width={width - 16} height={12} rx={1.5} fill="#1d4ed8" />
-          <rect x={8} y={height - 16} width={width - 16} height={12} rx={1.5} fill="#1d4ed8" />
-          {topRow.map(([label, x]) => (
-            <g key={`t-${label}`}>
-              <rect x={x - 4} y={5} width={8} height={9} fill="#facc15" stroke="#a16207" strokeWidth={0.5} />
-              <text x={x} y={4} fontSize={4.5} fill="#e4e4e7" textAnchor="middle" fontFamily="monospace">{label}</text>
-            </g>
-          ))}
-          {bottomRow.map(([label, x]) => (
-            <g key={`b-${label}`}>
-              <rect x={x - 4} y={height - 14} width={8} height={9} fill="#facc15" stroke="#a16207" strokeWidth={0.5} />
-              <text x={x} y={height - 1} fontSize={4.5} fill="#e4e4e7" textAnchor="middle" fontFamily="monospace">{label}</text>
-            </g>
-          ))}
-          {/* Heatsink/chip trung tâm */}
-          <rect x={width / 2 - 22} y={height / 2 - 16} width={44} height={32} rx={2} fill="#27272a" stroke="#52525b" strokeWidth={1} />
-          <circle cx={width / 2 - 14} cy={height / 2} r={2} fill="#ef4444" />
-        </svg>
+        <img
+          src={l298nImage}
+          alt="L298N Motor Driver"
+          style={{ width: '100%', height: '100%', objectFit: 'contain', pointerEvents: 'none' }}
+        />
       );
-    }
     case 'dc-motor':
       // DC_MOTOR_PINS (pinMaps.ts): terminal1 x=6 (trái), terminal2 x=54
       // (phải), cả 2 y=25. Bản vẽ cũ chỉ có 2 dây chì bên PHẢI (quanh x=56-62)

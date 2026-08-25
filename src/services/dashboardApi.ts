@@ -2307,6 +2307,16 @@ export interface SubmissionDetailEntity extends SubmissionEntity {
   autoGradeResultJson: string | null;
   maxScore: number;
   rubricCriteria?: RubricCriterionEntity[];
+  quizDetail?: {
+    questions: {
+      id: string;
+      text: string;
+      type: string;
+      options?: { id: string; text: string }[];
+    }[];
+    timeLimitSeconds?: number | null;
+    shuffleQuestions: boolean;
+  };
 }
 
 export interface SubmissionSnapshot {
@@ -2359,6 +2369,33 @@ function normalizeSubmissionDetailEntity(value: unknown): SubmissionDetailEntity
     autoGradeResultJson: (pick(source, 'autoGradeResultJson', 'AutoGradeResultJson') as string | null | undefined) ?? null,
     maxScore: toNumberValue(pick(source, 'maxScore', 'MaxScore'), 100),
     rubricCriteria: normalizeRubricCriteriaToEntity(pick(source, 'rubricCriteria', 'RubricCriteria')),
+    quizDetail: normalizeQuizDetailForSubmission(pick(source, 'quizDetail', 'QuizDetail')),
+  };
+}
+
+function normalizeQuizDetailForSubmission(value: unknown): SubmissionDetailEntity['quizDetail'] | undefined {
+  const source = toRecord(value);
+  if (!source) return undefined;
+  const questions = toUnknownArray(pick(source, 'questions', 'Questions'));
+  return {
+    questions: questions.map(q => {
+      const qs = toRecord(q) ?? {};
+      const options = toUnknownArray(pick(qs, 'options', 'Options'));
+      return {
+        id: toStringValue(pick(qs, 'id', 'Id'), ''),
+        text: toStringValue(pick(qs, 'text', 'Text'), ''),
+        type: toStringValue(pick(qs, 'type', 'Type'), 'single_choice') as 'single_choice' | 'multiple_choice' | 'fill_blank',
+        options: options.map(o => {
+          const os = toRecord(o) ?? {};
+          return {
+            id: toStringValue(pick(os, 'id', 'Id'), ''),
+            text: toStringValue(pick(os, 'text', 'Text'), ''),
+          };
+        }),
+      };
+    }),
+    timeLimitSeconds: toNullableNumber(pick(source, 'timeLimitSeconds', 'TimeLimitSeconds')) ?? undefined,
+    shuffleQuestions: toBooleanValue(pick(source, 'shuffleQuestions', 'ShuffleQuestions')),
   };
 }
 

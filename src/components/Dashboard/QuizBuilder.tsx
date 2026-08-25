@@ -49,7 +49,7 @@ interface QuizBuilderProps {
 // sang Radix Select vì đây chỉ là 3 lựa chọn cố định, style theo đúng token nativeFieldClassName
 // dùng chung với AssignmentFormFields/CreateLabModal.
 const questionTypeSelectClassName =
-  'rounded-lg border border-input bg-background px-3 py-1.5 text-sm text-foreground outline-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/50 dark:bg-input/30';
+  'rounded-lg border border-input bg-white px-3 py-1.5 text-sm text-gray-900 outline-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/50 dark:bg-gray-900 dark:text-gray-100 dark:border-gray-700';
 
 export const QuizBuilder: React.FC<QuizBuilderProps> = ({
   initialBasics,

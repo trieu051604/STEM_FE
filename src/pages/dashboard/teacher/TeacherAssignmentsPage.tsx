@@ -32,7 +32,7 @@ export default function TeacherAssignmentsPage() {
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'pending':
-        return <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-indigo-500/10 text-indigo-500">Chờ nộp</span>;
+        return <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-primary/10 text-primary">Chờ nộp</span>;
       case 'graded':
         return <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-500/10 text-green-500">Đã chấm</span>;
       case 'overdue':
@@ -58,7 +58,7 @@ export default function TeacherAssignmentsPage() {
         description="Quản lý bài tập đã giao cho các lớp"
         action={
           <Link to="/dashboard/teacher/assignments/create">
-            <Button className="gap-2 bg-indigo-500 hover:bg-indigo-600 text-white border-0">
+            <Button className="gap-2 bg-primary hover:bg-primary/90 text-primary-foreground border-0">
               <Plus className="w-4 h-4" />
               Tạo bài tập mới
             </Button>

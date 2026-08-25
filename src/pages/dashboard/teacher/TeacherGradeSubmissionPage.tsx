@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { gradingApi, type SubmissionDetailResponse } from '@/services/dashboardApi';
+import { ReviewQuizSubmission } from '@/components/Dashboard/ReviewSubmission';
 import { format, parseISO } from 'date-fns';
 import { vi } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
@@ -155,6 +156,28 @@ export default function TeacherGradeSubmissionPage() {
                 </div>
                 <Download className="w-5 h-5 text-primary" />
               </a>
+            </div>
+          )}
+
+          {/* Quiz Review */}
+          {submission.assignmentType === 'quiz' && submission.quizDetail && (
+            <div className="bg-card rounded-xl border border-border p-6">
+              <h2 className="font-semibold mb-4">Chi tiết bài Quiz</h2>
+              <ReviewQuizSubmission
+                questions={submission.quizDetail.questions as any}
+                submission={{
+                  submissionId: submission.id,
+                  attemptNumber: submission.attemptNumber,
+                  submittedAt: submission.createdAt,
+                  status: submission.status,
+                  score: submission.score,
+                  maxScore: submission.maxScore,
+                  contentJson: submission.contentJson,
+                  feedback: submission.feedback ?? undefined,
+                  fileUrl: submission.fileUrl || undefined,
+                  autoGradeResultJson: submission.autoGradeResultJson ?? undefined,
+                }}
+              />
             </div>
           )}
         </div>

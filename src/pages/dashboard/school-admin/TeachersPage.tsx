@@ -92,8 +92,9 @@ export const TeachersPage = () => {
         address: data.address || '',
       });
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['teachers'] });
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['teachers'] });
+      await queryClient.refetchQueries({ queryKey: ['teachers'] });
       queryClient.invalidateQueries({ queryKey: ['users'] });
       setCreateModalOpen(false);
       setTeacherCreateError(null);
@@ -110,8 +111,9 @@ export const TeachersPage = () => {
   const updateTeacherMutation = useMutation({
     mutationFn: ({ id, data }: { id: number; data: Partial<TeacherProfile> }) => 
       teachersApi.update(id, data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['teachers'] });
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['teachers'] });
+      await queryClient.refetchQueries({ queryKey: ['teachers'] });
       setEditModalOpen(false);
       setSelectedTeacher(null);
       setTeacherUpdateError(null);
@@ -128,8 +130,9 @@ export const TeachersPage = () => {
   const toggleTeacherStatusMutation = useMutation({
     mutationFn: ({ id, isActive, fullName }: { id: number; isActive: boolean; fullName: string }) =>
       teachersApi.update(id, { isActive, fullName }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['teachers'] });
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['teachers'] });
+      await queryClient.refetchQueries({ queryKey: ['teachers'] });
       setSelectedTeacher(null);
       showToast('Cập nhật trạng thái tài khoản thành công!', 'success');
     },

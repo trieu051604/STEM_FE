@@ -52,6 +52,9 @@ export function ProfilePage() {
   const [profileError, setProfileError] = useState<string | null>(null);
   const [passwordError, setPasswordError] = useState<string | null>(null);
 
+  // Check if user can change password (not teacher/student who use Google login)
+  const canChangePassword = user?.role === 'master_admin' || user?.role === 'school_admin';
+
   // Fetch profile data
   const { data: profile, isLoading } = useQuery({
     queryKey: ['user-profile'],
@@ -175,17 +178,19 @@ export function ProfilePage() {
           <Shield className="w-4 h-4" />
           Thông tin cá nhân
         </button>
-        <button
-          onClick={() => setActiveTab('security')}
-          className={`flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
-            activeTab === 'security'
-              ? 'border-indigo-500 text-indigo-500'
-              : 'border-transparent text-muted-foreground hover:text-foreground'
-          }`}
-        >
-          <Key className="w-4 h-4" />
-          Bảo mật
-        </button>
+        {canChangePassword && (
+          <button
+            onClick={() => setActiveTab('security')}
+            className={`flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
+              activeTab === 'security'
+                ? 'border-indigo-500 text-indigo-500'
+                : 'border-transparent text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            <Key className="w-4 h-4" />
+            Bảo mật
+          </button>
+        )}
         <button
           onClick={() => setActiveTab('notifications')}
           className={`flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition-colors ${

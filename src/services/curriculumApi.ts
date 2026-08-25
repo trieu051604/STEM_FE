@@ -18,7 +18,7 @@ export const uploadApi = {
     const formData = new FormData();
     formData.append('file', file);
     formData.append('type', type);
-    const response = await api.post('/Upload/file', formData, {
+    const response = await api.post('/Upload', formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
     });
     return response.data?.url || response.data;
@@ -128,6 +128,7 @@ export interface ModuleInCourse {
 export interface LessonInModule {
   id: number;
   title: string;
+  description: string;
   displayOrder: number;
   estimatedMinutes: number;
   lessonType: string;
@@ -299,6 +300,7 @@ export interface Lesson {
   moduleId: number;
   courseId: number;
   title: string;
+  description: string;
   content: string;
   displayOrder: number;
   estimatedMinutes: number;
@@ -334,6 +336,7 @@ export const lessonsApi = {
       moduleId: data.moduleId,
       courseId: data.courseId,
       title: data.title,
+      description: data.description,
       content: data.content,
       input: data.input,
       output: data.output,
@@ -369,6 +372,7 @@ export const lessonsApi = {
 
   update: async (id: number, data: {
     title: string;
+    description?: string;
     content?: string;
     displayOrder?: number;
     estimatedMinutes?: number;

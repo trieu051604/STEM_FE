@@ -175,6 +175,7 @@ export const CourseDetailPage = ({ courseId, onBack }: { courseId: number; onBac
     },
     onSuccess: (_, { moduleId }) => {
       queryClient.invalidateQueries({ queryKey: ['lessons', moduleId] });
+      queryClient.invalidateQueries({ queryKey: ['modules', courseId] });
       setLessonModalOpen(false);
       showToast('Tạo bài học thành công!');
     },
@@ -191,6 +192,7 @@ export const CourseDetailPage = ({ courseId, onBack }: { courseId: number; onBac
     onSuccess: () => {
       if (selectedLesson) {
         queryClient.invalidateQueries({ queryKey: ['lessons', selectedLesson.moduleId] });
+        queryClient.invalidateQueries({ queryKey: ['modules', courseId] });
       }
       setEditLessonModalOpen(false);
       setSelectedLesson(null);
@@ -206,6 +208,7 @@ export const CourseDetailPage = ({ courseId, onBack }: { courseId: number; onBac
     mutationFn: ({ id, moduleId }: { id: number; moduleId: number }) => lessonsApi.delete(id),
     onSuccess: (_, { moduleId }) => {
       queryClient.invalidateQueries({ queryKey: ['lessons', moduleId] });
+      queryClient.invalidateQueries({ queryKey: ['modules', courseId] });
       setDeleteLessonConfirmOpen(false);
       setSelectedLesson(null);
       showToast('Xóa bài học thành công!');

@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import toast from 'react-hot-toast';
 import { 
   Coins, 
   Users, 
@@ -81,13 +82,13 @@ export const AiQuotaPage = () => {
         setSelectedUser(null);
         setAllocationAmount('');
         setAllocationNotes('');
-        alert('Phân bổ AI quota thành công!');
+        toast.success('Phân bổ AI quota thành công!');
       } else {
-        alert(result.errorMessage || 'Không thể phân bổ AI quota');
+        toast.error(result.errorMessage || 'Không thể phân bổ AI quota');
       }
     } catch (error) {
       console.error('Allocate failed:', error);
-      alert('Có lỗi xảy ra');
+      toast.error('Có lỗi xảy ra');
     } finally {
       setAllocating(false);
     }

@@ -14,6 +14,7 @@ const roleSidebarItems: Record<UserRole, SidebarItem[]> = {
     { label: 'Quản lý khóa học', path: '/dashboard/courses', icon: 'FlaskConical' },
     { label: 'Quản lý trường', path: '/dashboard/schools', icon: 'Building2' },
     { label: 'Quản lý gói token', path: '/dashboard/packages', icon: 'Package' },
+    { label: 'Thống kê doanh thu', path: '/dashboard/revenue', icon: 'DollarSign' },
     { label: 'Thông báo', path: '/dashboard/notifications', icon: 'Bell' },
     { label: 'Hồ sơ', path: '/dashboard/profile', icon: 'User' },
   ],

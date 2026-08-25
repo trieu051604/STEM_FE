@@ -97,7 +97,7 @@ export default function TeacherClassesPage() {
 
             <div className="flex gap-2 pt-2">
               <Link to={`/dashboard/teacher/classes/${cls.id}`} className="flex-1">
-                <Button className="w-full gap-2 bg-indigo-500 hover:bg-indigo-600 text-white">
+                <Button className="w-full gap-2 bg-primary hover:bg-primary/90 text-primary-foreground">
                   <Play className="w-4 h-4" />
                   Vào lớp
                 </Button>

@@ -30,6 +30,10 @@ export interface StudentsListResponse {
   total: number;
   page: number;
   pageSize: number;
+  totalActiveStudents: number;
+  totalEnrolledClasses: number;
+  totalWithScores: number;
+  totalWithoutScores: number;
 }
 
 export interface LearningProgress {
@@ -70,6 +74,10 @@ export const studentsApi = {
       total,
       page: nestedData?.pageNumber || 1,
       pageSize: nestedData?.pageSize || 10,
+      totalActiveStudents: nestedData?.totalActiveStudents || 0,
+      totalEnrolledClasses: nestedData?.totalEnrolledClasses || 0,
+      totalWithScores: nestedData?.totalWithScores || 0,
+      totalWithoutScores: nestedData?.totalWithoutScores || 0,
     };
   },
 
@@ -241,9 +249,10 @@ export interface LoginHistory {
   logoutTime?: string;
   ipAddress?: string;
   location?: string;
-  userAgent?: string;
+  deviceName?: string;
   loginStatus?: 'Success' | 'Failed';
   failureReason?: string;
+  createdAt: string;
 }
 
 export interface LoginHistoryResponse {
@@ -261,14 +270,14 @@ export const loginHistoryApi = {
     startDate?: string;
     endDate?: string;
   }): Promise<LoginHistoryResponse> => {
-    const response = await api.post('/login-history/get-histories', params || {});
-    const data = response.data.data as {
-      data: LoginHistory[];
-      total: number;
-    };
+    const response = await api.post('/loginhistory/get-histories', params || {});
+    const data = response.data as { success: boolean; total: number; data: LoginHistory[] };
 
     return {
-      items: data.data || [],
+      items: (data.data || []).map(item => ({
+        ...item,
+        loginStatus: item.loginStatus || 'Success'
+      })),
       total: data.total,
       page: params?.pageNumber || 1,
       pageSize: params?.pageSize || 20,
@@ -665,7 +674,13 @@ export const usersApi = {
     page: number;
     pageSize: number;
   }> => {
-    const response = await api.post('/users/get-list', params || {});
+    const queryParams = new URLSearchParams();
+    if (params?.pageNumber) queryParams.append('pageNumber', String(params.pageNumber));
+    if (params?.pageSize) queryParams.append('pageSize', String(params.pageSize));
+    if (params?.search) queryParams.append('search', params.search);
+    if (params?.role) queryParams.append('role', params.role);
+    if (params?.isActive !== undefined) queryParams.append('isActive', String(params.isActive));
+    const response = await api.get(`/users?${queryParams.toString()}`);
     return response.data.data;
   },
 };
@@ -680,6 +695,7 @@ export interface ScheduleCalendarItem {
   end: string;
   classCode: string;
   className: string;
+  lessonTitle?: string;
   color: string;
 }
 

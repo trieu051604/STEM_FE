@@ -6,7 +6,7 @@ import { vi } from 'date-fns/locale';
 interface QuizQuestion {
   id: string;
   text: string;
-  type: 'single_choice' | 'multiple_choice' | 'fill_blank';
+  type: string;
   options?: { id: string; text: string; isCorrect?: boolean }[];
   correctAnswer?: string;
 }
@@ -27,6 +27,14 @@ interface MySubmission {
   contentJson?: string;
   feedback?: string;
   fileUrl?: string;
+  autoGradeResultJson?: string;
+}
+
+interface GradeResult {
+  QuestionId: string;
+  IsCorrect: boolean;
+  CorrectAnswer: string | string[];
+  StudentAnswer: string | string[];
 }
 
 interface ReviewQuizSubmissionProps {
@@ -35,7 +43,19 @@ interface ReviewQuizSubmissionProps {
 }
 
 export function ReviewQuizSubmission({ questions, submission }: ReviewQuizSubmissionProps) {
-  const answers = submission.contentJson ? JSON.parse(submission.contentJson) : {};
+  // Parse grade results từ autoGradeResultJson (cấu trúc backend trả về)
+  let gradeResults: GradeResult[] = [];
+  try {
+    if (submission.autoGradeResultJson) {
+      gradeResults = JSON.parse(submission.autoGradeResultJson);
+    }
+  } catch (e) {
+    console.error('Failed to parse autoGradeResultJson:', e);
+  }
+
+  // Map questionId -> gradeResult để tra cứu nhanh
+  const gradeResultMap = new Map<string, GradeResult>();
+  gradeResults.forEach(gr => gradeResultMap.set(gr.QuestionId, gr));
 
   return (
     <div className="space-y-6">
@@ -63,9 +83,14 @@ export function ReviewQuizSubmission({ questions, submission }: ReviewQuizSubmis
       {/* Questions Review */}
       <div className="space-y-4">
         {questions.map((question, index) => {
-          const userAnswer = answers[question.id];
-          const isCorrect = userAnswer === question.correctAnswer;
+          // Lấy grade result từ autoGradeResultJson
+          const gradeResult = gradeResultMap.get(question.id);
+          const isCorrect = gradeResult?.IsCorrect ?? false;
           const isMultipleChoice = question.type === 'multiple_choice';
+
+          // Lấy câu trả lời của user từ grade result
+          const studentAnswer = gradeResult?.StudentAnswer;
+          const correctAnswer = gradeResult?.CorrectAnswer;
 
           return (
             <div 
@@ -84,18 +109,26 @@ export function ReviewQuizSubmission({ questions, submission }: ReviewQuizSubmis
                   <XCircle className="w-5 h-5 text-red-600 mt-0.5 shrink-0" />
                 )}
                 <div className="flex-1">
-                  <p className="font-medium mb-2">
-                    Câu {index + 1}: {question.text}
-                  </p>
+                  <div className="flex items-center gap-2 mb-2">
+                    <p className="font-medium">Câu {index + 1}: {question.text}</p>
+                    {isCorrect ? (
+                      <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">Đúng</span>
+                    ) : (
+                      <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400">Sai</span>
+                    )}
+                  </div>
                   
                   {/* Options */}
                   {question.options && (
                     <div className="space-y-2 ml-4">
                       {question.options.map((option) => {
+                        // Kiểm tra option có phải là đáp án của user không
                         const isUserAnswer = isMultipleChoice
-                          ? userAnswer?.includes(option.id)
-                          : userAnswer === option.id;
-                        const isCorrectOption = option.isCorrect;
+                          ? Array.isArray(studentAnswer) && studentAnswer.includes(option.id)
+                          : studentAnswer === option.id;
+                        const isCorrectOption = Array.isArray(correctAnswer) 
+                          ? correctAnswer.includes(option.id)
+                          : correctAnswer === option.id;
 
                         return (
                           <div 
@@ -108,8 +141,9 @@ export function ReviewQuizSubmission({ questions, submission }: ReviewQuizSubmis
                             )}
                           >
                             <span className="font-medium">{option.text}</span>
-                            {isCorrectOption && <span className="ml-2 text-green-600">✓ Đáp án đúng</span>}
-                            {isUserAnswer && !isCorrectOption && <span className="ml-2 text-red-600">✗ Bạn chọn</span>}
+                            {isCorrectOption && <span className="ml-2 text-green-600 font-medium">✓ Đúng</span>}
+                            {isUserAnswer && !isCorrectOption && <span className="ml-2 text-red-600 font-medium">✗ Sai</span>}
+                            {isUserAnswer && isCorrectOption && <span className="ml-2 text-green-600 font-medium">✓ Bạn chọn</span>}
                           </div>
                         );
                       })}
@@ -126,12 +160,21 @@ export function ReviewQuizSubmission({ questions, submission }: ReviewQuizSubmis
                           : "bg-red-100 dark:bg-red-900/30"
                       )}>
                         <span className="text-muted-foreground">Câu trả lời của bạn: </span>
-                        <span className="font-medium">{userAnswer || '(Trống)'}</span>
+                        <span className="font-medium">
+                          {Array.isArray(studentAnswer) ? studentAnswer.join(', ') : studentAnswer || '(Trống)'}
+                        </span>
+                        {isCorrect ? (
+                          <span className="ml-2 text-green-600 font-medium">✓ Đúng</span>
+                        ) : (
+                          <span className="ml-2 text-red-600 font-medium">✗ Sai</span>
+                        )}
                       </div>
-                      {!isCorrect && (
+                      {!isCorrect && correctAnswer && (
                         <div className="p-2 rounded text-sm bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300">
                           <span className="text-muted-foreground">Đáp án đúng: </span>
-                          <span className="font-medium">{question.correctAnswer}</span>
+                          <span className="font-medium">
+                            {Array.isArray(correctAnswer) ? correctAnswer.join(', ') : correctAnswer}
+                          </span>
                         </div>
                       )}
                     </div>

@@ -121,10 +121,8 @@ export function WeeklyScheduleGrid({ classId, schedules: initialSchedules, class
   // Reset form when modal opens
   useEffect(() => {
     if (showAddModal && selectedSlot) {
-      console.log('Modal opened, resetting form data. selectedSlot:', selectedSlot);
       const defaultStart = selectedSlot.slot?.displayStart || '';
       const defaultEnd = selectedSlot.slot?.displayEnd || '';
-      console.log('Setting default times:', { defaultStart, defaultEnd });
       setFormData({ lessonId: undefined, startTime: defaultStart, endTime: defaultEnd });
       setError(null);
     }
@@ -261,7 +259,6 @@ const scheduleGrid = useMemo(() => {
     }
   });
 
-  console.log('DEBUG scheduleGrid:', JSON.stringify(grid, null, 2));
   return grid;
 }, [schedules, currentWeekStart]);
 
@@ -274,9 +271,7 @@ const scheduleGrid = useMemo(() => {
   const goToTodayMonth = () => setCurrentMonth(new Date());
 
   const handleCellClick = (day: typeof DAYS_OF_WEEK[0], slot: typeof SLOTS[0]) => {
-    console.log('Cell clicked:', { day, slot, isAdmin, classId });
     if (!isAdmin || !classId || classId <= 0) {
-      console.log('Cannot add schedule: isAdmin or classId issue');
       return;
     }
 
@@ -286,7 +281,6 @@ const scheduleGrid = useMemo(() => {
       displayStart: slot.displayStart,
       displayEnd: slot.displayEnd,
     };
-    console.log('Setting selectedSlot:', slotInfo);
 
     setSelectedSlot(slotInfo);
     setFormData({
@@ -365,10 +359,10 @@ const scheduleGrid = useMemo(() => {
         endTime: endDateTime,
       });
 
-      console.log('Create schedule response:', response);
-
-      setSchedules([...schedules, response.schedule]);
       setShowAddModal(false);
+
+      // Refetch directly to ensure sync
+      await fetchSchedules();
 
       // Show warning if there are conflicts
       if (response.conflicts && response.conflicts.length > 0) {
@@ -383,14 +377,16 @@ const scheduleGrid = useMemo(() => {
         const classCodes = response.teacherConflicts.map(c => c.conflictingClassCode).join(', ');
         const teacherWarning = `Cảnh báo: Giáo viên trùng lịch với lớp ${classCodes}!`;
         setError(teacherWarning);
-        setShowEditModal(true);
+        // Delay opening modal to ensure schedules state is updated first
+        setTimeout(() => setShowEditModal(true), 100);
       } else {
         setTeacherConflicts([]);
         if (response.conflicts && response.conflicts.length > 0) {
           const conflictNames = response.conflicts.slice(0, 3).map(c => c.studentName).join(', ');
           const moreText = response.conflicts.length > 3 ? ` và ${response.conflicts.length - 3} học sinh khác` : '';
           setError(`Cảnh báo: ${conflictNames}${moreText} bị trùng lịch với lớp khác!`);
-          setShowEditModal(true);
+          // Delay opening modal to ensure schedules state is updated first
+          setTimeout(() => setShowEditModal(true), 100);
         } else {
           await notifyScheduleChange();
         }
@@ -423,18 +419,11 @@ const scheduleGrid = useMemo(() => {
         endTime: endDateTime,
       });
 
-      setSchedules(schedules.map(s =>
-        s.id === selectedSchedule.id
-          ? {
-              ...s,
-              lessonId: formData.lessonId,
-              startTime: startDateTime,
-              endTime: endDateTime,
-            }
-          : s
-      ));
       setShowEditModal(false);
       setSelectedSchedule(null);
+
+      // Refetch directly to ensure sync
+      await fetchSchedules();
       await notifyScheduleChange();
     } catch (err: any) {
       console.error('Failed to update schedule:', err);
@@ -451,11 +440,13 @@ const scheduleGrid = useMemo(() => {
 
     try {
       await scheduleApi.delete(selectedSchedule.id);
-      setSchedules(schedules.filter(s => s.id !== selectedSchedule.id));
       setShowEditModal(false);
       setSelectedSchedule(null);
       setConflicts([]);
       setTeacherConflicts([]);
+
+      // Refetch directly to ensure sync
+      await fetchSchedules();
       await notifyScheduleChange();
     } catch (err: any) {
       console.error('Failed to delete schedule:', err);
@@ -614,8 +605,13 @@ const scheduleGrid = useMemo(() => {
                               className={`p-1 rounded text-white cursor-pointer hover:opacity-90 transition-opacity shadow-sm bg-gradient-to-br ${slot.color} ${slot.bgDark}`}
                               onClick={(e) => handleScheduleClick(schedule, e)}
                             >
-                              <p className="font-bold text-xs truncate leading-tight">
-                                {schedule.lessonTitle || classInfo?.classCode || schedule.classCode}
+                              <p className="font-bold text-xs truncate leading-tight" title={schedule.lessonTitle || (classInfo ? `${classInfo.classCode} - ${classInfo.className}` : (schedule.classCode || schedule.className || 'Buổi học'))}>
+                                {schedule.lessonTitle 
+                                  ? schedule.lessonTitle 
+                                  : (classInfo 
+                                      ? `${classInfo.classCode}${schedule.lessonTitle ? ` - ${schedule.lessonTitle}` : ''}` 
+                                      : (schedule.classCode || schedule.className || 'Buổi học'))
+                                }
                               </p>
                               <div className="flex items-center gap-0.5 opacity-90 text-[10px] leading-tight">
                                 <Clock className="w-2.5 h-2.5 shrink-0" />

@@ -110,7 +110,7 @@ export default function TeacherClassDetailPage() {
           <WeeklyScheduleGrid
             classId={Number(id)}
             classInfo={{ id: classDetail.id, classCode: classDetail.name, className: classDetail.courseName }}
-            isAdmin={true}
+            isAdmin={false}
             isStudentView={false}
           />
         </div>

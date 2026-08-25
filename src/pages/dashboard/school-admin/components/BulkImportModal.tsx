@@ -189,6 +189,33 @@ export const BulkImportModal = ({ isOpen, onClose, onSuccess }: BulkImportModalP
     onClose();
   };
 
+  // Download sample Excel template
+  const handleDownloadTemplate = () => {
+    const templateData = [
+      {
+        email: 'hs1@email.com',
+        fullName: 'Nguyễn Văn A',
+        phone: '0901234567',
+        gender: 'Male',
+        dateOfBirth: '2010-01-15',
+        address: '123 Đường ABC, Quận 1, TP.HCM'
+      },
+      {
+        email: 'hs2@email.com',
+        fullName: 'Trần Thị B',
+        phone: '0902345678',
+        gender: 'Female',
+        dateOfBirth: '2010-02-20',
+        address: '456 Đường XYZ, Quận 2, TP.HCM'
+      }
+    ];
+
+    const ws = XLSX.utils.json_to_sheet(templateData);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'HocSinh');
+    XLSX.writeFile(wb, 'Mau_Nhap_HocSinh.xlsx');
+  };
+
   const successCount = results.filter(r => r.success).length;
   const failCount = results.filter(r => !r.success).length;
 
@@ -205,20 +232,26 @@ export const BulkImportModal = ({ isOpen, onClose, onSuccess }: BulkImportModalP
               <p className="text-xs text-muted-foreground mb-4">
                 File cần có các cột: email, fullName, phone, gender, dateOfBirth, address
               </p>
-              <input
-                type="file"
-                accept=".xlsx,.xls"
-                onChange={handleFileChange}
-                className="hidden"
-                id="excel-upload"
-              />
-              <label
-                htmlFor="excel-upload"
-                className="inline-flex items-center gap-2 px-4 py-2 border border-input bg-background hover:bg-accent hover:text-accent-foreground rounded-md cursor-pointer text-sm"
-              >
-                <FileSpreadsheet className="w-4 h-4" />
-                Chọn file Excel
-              </label>
+              <div className="flex items-center justify-center gap-3">
+                <input
+                  type="file"
+                  accept=".xlsx,.xls"
+                  onChange={handleFileChange}
+                  className="hidden"
+                  id="excel-upload"
+                />
+                <label
+                  htmlFor="excel-upload"
+                  className="inline-flex items-center gap-2 px-4 py-2 border border-input bg-background hover:bg-accent hover:text-accent-foreground rounded-md cursor-pointer text-sm"
+                >
+                  <FileSpreadsheet className="w-4 h-4" />
+                  Chọn file Excel
+                </label>
+                <Button variant="outline" size="sm" onClick={handleDownloadTemplate}>
+                  <FileSpreadsheet className="w-4 h-4 mr-1" />
+                  Tải file mẫu
+                </Button>
+              </div>
             </div>
 
             {error && (

@@ -10,7 +10,8 @@ import {
   AlertCircle,
   Loader2,
   RefreshCw,
-  Activity
+  Activity,
+  DollarSign
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Icon } from '@/components/ui/Icon';
@@ -179,52 +180,13 @@ export function MasterAdminDashboard() {
               <ArrowRight className="w-4 h-4" />
             </Button>
           </Link>
-          <Link to="/dashboard/users">
-            <Button variant="outline" className="gap-2 border-brand-800 bg-brand-950 text-brand-300 over:text-white">
-              <Users className="w-4 h-4 text-brand-400" />
-              Quản lý người dùng
+          <Link to="/dashboard/revenue">
+            <Button variant="outline" className="gap-2 border-brand-800 bg-brand-950 text-brand-300 hover:text-white">
+              <DollarSign className="w-4 h-4 text-green-400" />
+              Thống kê doanh thu
               <ArrowRight className="w-4 h-4" />
             </Button>
           </Link>
-        </div>
-      </div>
-
-      {/* Recent Activity */}
-      <div className="bg-brand-900/30 backdrop-blur-md border border-brand-800 rounded-2xl p-6 shadow-xl space-y-4">
-        <div className="flex items-center justify-between">
-          <h2 className="text-lg font-bold text-white font-headline">Hoạt động gần đây</h2>
-        </div>
-        <div className="space-y-3">
-          {activities.length === 0 ? (
-            <div className="py-8 text-center text-brand-500 border border-dashed border-brand-850 rounded-xl">
-              <Activity className="w-8 h-8 mx-auto mb-2 opacity-25 text-brand-400" />
-              <p className="text-sm">Chưa có hoạt động nào được ghi nhận.</p>
-            </div>
-          ) : (
-            activities.map((activity) => (
-              <div
-                key={activity.id}
-                className="flex items-start gap-4 p-4 rounded-xl hover:bg-brand-500/[0.01] border border-transparent hover:border-brand-800/40 transition-all"
-              >
-                <div className="w-10 h-10 rounded-lg bg-brand-500/10 flex items-center justify-center text-brand-400 border border-brand-500/20 shrink-0">
-                  <Icon
-                    name={activityIcons[activity.type] || 'Activity'}
-                    className="w-5 h-5 text-brand-400"
-                  />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="font-semibold text-sm text-white">{activity.title}</p>
-                  <p className="text-xs text-brand-400 mt-0.5">{activity.description}</p>
-                  <p className="text-[10px] text-brand-500 mt-1">
-                    {formatDistanceToNow(new Date(activity.timestamp), {
-                      addSuffix: true,
-                      locale: vi,
-                    })}
-                  </p>
-                </div>
-              </div>
-            ))
-          )}
         </div>
       </div>
 

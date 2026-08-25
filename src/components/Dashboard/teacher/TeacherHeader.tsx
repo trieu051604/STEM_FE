@@ -31,7 +31,7 @@ export const TeacherHeader = ({ isDesktop }: { isDesktop: boolean }) => {
   };
 
   return (
-    <header className="h-16 sticky top-0 z-30 bg-card/95 backdrop-blur border-b border-border flex items-center justify-between px-4 lg:px-6">
+    <header className="h-14 sticky top-0 z-30 bg-card/95 backdrop-blur border-b border-border flex items-center justify-between px-4 lg:px-6">
       <div className="flex items-center gap-3">
         <button
           onClick={() => setSidebarOpen(true)}
@@ -82,7 +82,7 @@ export const TeacherHeader = ({ isDesktop }: { isDesktop: boolean }) => {
             onClick={() => setUserMenuOpen(!userMenuOpen)}
             className="flex items-center gap-2 p-2 rounded-lg transition-colors hover:bg-accent"
           >
-            <div className="w-8 h-8 rounded-full overflow-hidden shrink-0 bg-indigo-500/10 text-indigo-400">
+            <div className="w-8 h-8 rounded-full overflow-hidden shrink-0 bg-[#eefcf6] text-[#0f4c5c]">
               {user?.avatar ? (
                 <img
                   src={user.avatar}

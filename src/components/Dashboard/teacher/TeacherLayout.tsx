@@ -36,9 +36,10 @@ export const TeacherLayout = () => {
   }, [sidebarOpen, isDesktop]);
 
   const sidebarWidth = sidebarCollapsed ? '0px' : '280px';
+  const effectiveMargin = isDesktop ? sidebarWidth : '0px';
 
   return (
-    <div className="teacher-theme min-h-screen bg-background text-foreground flex flex-col">
+    <div className="min-h-screen bg-background text-foreground">
       <AnimatePresence>
         {sidebarOpen && (
           <motion.div
@@ -54,19 +55,26 @@ export const TeacherLayout = () => {
       <TeacherSidebar isDesktop={isDesktop} />
 
       <div
-        className="flex flex-col flex-1 transition-all duration-200"
-        style={{ marginLeft: isDesktop && !sidebarCollapsed ? sidebarWidth : '0px' }}
+        className="flex flex-col min-h-screen transition-all duration-200"
+        style={{ marginLeft: effectiveMargin }}
       >
         <TeacherHeader isDesktop={isDesktop} />
 
-        <main className="flex-1 overflow-x-hidden">
+        <main className="flex-1 overflow-auto p-4 lg:p-6 bg-background">
           <Outlet />
         </main>
-        
-        <footer className="py-6 px-6 border-t border-border mt-auto">
-          <div className="flex flex-col md:flex-row items-center justify-between gap-4 text-sm text-muted-foreground">
-            <p>© 2026 StemFlow. Nền tảng STEM thực hành.</p>
-            <div className="flex items-center gap-4">
+
+        <footer className="bg-card border-t border-border px-4 lg:px-6 py-4">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <div className="w-6 h-6 rounded bg-primary flex items-center justify-center">
+                <span className="text-primary-foreground font-bold text-xs">ST</span>
+              </div>
+              <span className="text-sm text-foreground">
+                © 2026 StemFlow. Nền tảng STEM thực hành.
+              </span>
+            </div>
+            <div className="flex items-center gap-4 text-sm text-muted-foreground">
               <a href="#" className="hover:text-foreground transition-colors">Trợ giúp</a>
               <a href="#" className="hover:text-foreground transition-colors">Điều khoản</a>
               <a href="#" className="hover:text-foreground transition-colors">Bảo mật</a>

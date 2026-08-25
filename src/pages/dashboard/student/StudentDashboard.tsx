@@ -44,7 +44,7 @@ export function StudentDashboard() {
   // Check if any assignment is overdue
   const assignmentsWithOverdue = useMemo(() => {
     return assignments.map(a => {
-      if (a.status === 'pending') {
+      if (a.status === 'pending' && a.dueDate) {
         const dueDate = parseISO(a.dueDate);
         if (isBefore(dueDate, new Date())) {
           return { ...a, status: 'overdue' as const };
@@ -59,19 +59,19 @@ export function StudentDashboard() {
     // Pending = not submitted yet
     const pendingCount = assignmentsWithOverdue.filter(a => !a.hasSubmitted).length;
     
-    // Submitted but not graded
+    // Submitted but not graded (submitted but no score yet)
     const submittedCount = assignmentsWithOverdue.filter(a => 
-      a.hasSubmitted && a.highestScore === undefined && a.score === undefined
+      a.hasSubmitted && a.highestScore == null && a.score == null
     ).length;
     
-    // Graded = has score
+    // Graded = submitted AND has score
     const gradedCount = assignmentsWithOverdue.filter(a => 
-      (a.highestScore !== undefined || a.score !== undefined)
+      a.hasSubmitted && (a.highestScore != null || a.score != null)
     ).length;
 
     // Calculate average score
     const gradedWithScore = assignmentsWithOverdue.filter(a => 
-      a.highestScore !== undefined || a.score !== undefined
+      a.hasSubmitted && (a.highestScore != null || a.score != null)
     );
     const totalScore = gradedWithScore.reduce((sum, a) => sum + ((a.highestScore ?? a.score) || 0), 0);
     const totalMaxScore = gradedWithScore.reduce((sum, a) => sum + a.maxScore, 0);
@@ -204,7 +204,7 @@ export function StudentDashboard() {
           isLoading={assignmentsLoading}
         />
         <StatCard
-          icon={<span className="w-5 h-5 inline-flex items-center justify-center text-sm">📤</span>}
+          icon={<FileText className="w-5 h-5" />}
           iconBg="bg-orange-100 dark:bg-orange-900/30"
           iconColor="text-orange-600 dark:text-orange-400"
           value={stats.submittedCount}
@@ -497,10 +497,10 @@ function ClassCard({ cls }: { cls: StudentClass }) {
 
 // Assignment Row Component
 function AssignmentRow({ assignment }: { assignment: StudentAssignment }) {
-  const dueDate = parseISO(assignment.dueDate);
+  const dueDate = assignment.dueDate ? parseISO(assignment.dueDate) : null;
   const now = new Date();
-  const isOverdue = isBefore(dueDate, now);
-  const daysUntilDue = Math.ceil((dueDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+  const isOverdue = dueDate ? isBefore(dueDate, now) : false;
+  const daysUntilDue = dueDate ? Math.ceil((dueDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)) : 0;
 
   const displayScore = assignment.highestScore ?? assignment.score;
 
@@ -522,9 +522,13 @@ function AssignmentRow({ assignment }: { assignment: StudentAssignment }) {
           )}
         </div>
         <p className="text-sm text-muted-foreground">{assignment.className}</p>
-        <p className={cn("text-xs mt-1", getUrgencyColor())}>
-          {isOverdue ? 'Đã quá hạn' : `Còn ${daysUntilDue} ngày`} • {formatDistanceToNow(dueDate, { locale: vi })}
-        </p>
+        {dueDate ? (
+          <p className={cn("text-xs mt-1", getUrgencyColor())}>
+            {isOverdue ? 'Đã quá hạn' : `Còn ${daysUntilDue} ngày`} • {formatDistanceToNow(dueDate, { locale: vi })}
+          </p>
+        ) : (
+          <p className="text-xs mt-1 text-muted-foreground">Không có hạn nộp</p>
+        )}
       </div>
       <div className="flex items-center gap-2 ml-4">
         {displayScore !== undefined && (

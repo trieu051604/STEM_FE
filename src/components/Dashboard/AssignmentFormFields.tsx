@@ -35,7 +35,11 @@ interface AssignmentFormFieldsProps {
 // Native <select> chưa có primitive Radix tương đương đơn giản để đổi hoàn toàn mà không
 // đổi hành vi; style thủ công theo đúng token của Input để đồng bộ hình ảnh.
 const nativeFieldClassName =
-  'flex h-10 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground outline-none transition-colors focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-input/30 dark:border-input';
+  'flex h-10 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground outline-none transition-colors focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-60';
+
+// Ensure select options are always readable regardless of dark mode
+const selectFieldClassName =
+  'flex h-10 w-full rounded-lg border border-input bg-white px-3 py-2 text-sm text-gray-900 outline-none transition-colors focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-gray-900 dark:text-gray-100 dark:border-gray-700';
 
 export function toAssignmentDueDate(value: string) {
   return value ? new Date(value).toISOString() : null;

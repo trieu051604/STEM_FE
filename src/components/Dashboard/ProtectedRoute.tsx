@@ -37,7 +37,7 @@ import {
   SyllabusViewerPage,
   ReportsPage,
 } from '@/pages/dashboard/school-admin';
-import { SchoolsPage, UsersPage, PackagesManagementPage, GradeLevelsPage, SyllabusPage, CoursesPage } from '@/pages/dashboard/master-admin';
+import { SchoolsPage, UsersPage, PackagesManagementPage, GradeLevelsPage, SyllabusPage, CoursesPage, RevenuePage } from '@/pages/dashboard/master-admin';
 import React from 'react';
 
 interface RouteConfig {
@@ -122,6 +122,11 @@ export const dashboardRoutes = [
       { 
         path: 'requests', 
         element: <ProtectedElement element={<SchoolsPage defaultTab="requests" />} allowedRoles={['master_admin']} />,
+      },
+      // Revenue (Master Admin only)
+      { 
+        path: 'revenue', 
+        element: <ProtectedElement element={<RevenuePage />} allowedRoles={['master_admin']} />,
       },
       // Users (Master Admin only)
       { 

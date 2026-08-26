@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Search,
@@ -146,20 +146,23 @@ export function SchoolsPage({ defaultTab = 'list' }: SchoolsPageProps) {
     }, 4000);
   };
 
+  // Store all schools from backend (backend doesn't support pagination)
+  const [allSchools, setAllSchools] = useState<School[]>([]);
+
   const loadData = async () => {
     setLoading(true);
     setError(null);
     try {
       const [schoolsData, pendingData] = await Promise.all([
-        schoolsApi.getAll({ pageNumber: currentPage, pageSize: pageSize, search: searchQuery }),
+        schoolsApi.getAll({ search: searchQuery }),
         schoolRequestsApi.getPending(),
       ]);
-      // Handle both array and object response formats
+      // Backend returns all schools as array, store them for client-side pagination
       const schoolsArray = Array.isArray(schoolsData) 
         ? schoolsData 
         : schoolsData?.items || [];
-      setSchools(schoolsArray);
-      setTotalSchools(schoolsData?.total || schoolsArray.length || 0);
+      setAllSchools(schoolsArray);
+      setTotalSchools(schoolsArray.length);
       setPendingRequests(pendingData || []);
     } catch (err: any) {
       console.error('Error fetching school data:', err);
@@ -170,18 +173,27 @@ export function SchoolsPage({ defaultTab = 'list' }: SchoolsPageProps) {
     }
   };
 
-  // Reload data when pagination or search changes
-  useEffect(() => {
-    loadData();
-  }, [currentPage, pageSize]);
+  // Client-side pagination on allSchools
+  const paginatedSchools = useMemo(() => {
+    const start = (currentPage - 1) * pageSize;
+    const end = start + pageSize;
+    return allSchools.slice(start, end);
+  }, [allSchools, currentPage, pageSize]);
 
-  // Debounced search
+  // Update schools when paginated data changes
   useEffect(() => {
-    const timer = setTimeout(() => {
-      setCurrentPage(1);
-      loadData();
-    }, 300);
-    return () => clearTimeout(timer);
+    setSchools(paginatedSchools);
+  }, [paginatedSchools]);
+
+  // Reload data when pageSize changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [pageSize]);
+
+  // Reload data when search changes
+  useEffect(() => {
+    setCurrentPage(1);
+    loadData();
   }, [searchQuery]);
 
   // --- Handlers ---

@@ -275,10 +275,10 @@ export const LoginHistoryPage = () => {
                         <p className="text-sm text-destructive">{history.failureReason}</p>
                       )}
                       <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground">
-                      {history.userAgent && (
+                      {history.deviceName && (
                         <span className="flex items-center gap-1">
                           <Monitor className="w-3.5 h-3.5" />
-                          {history.userAgent}
+                          {history.deviceName}
                         </span>
                       )}
                         {history.location && (

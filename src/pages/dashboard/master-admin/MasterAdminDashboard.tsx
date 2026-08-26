@@ -12,7 +12,10 @@ import {
   RefreshCw,
   Activity,
   Shield,
-  UserCog,
+  DollarSign,
+  GraduationCap,
+  UserCheck,
+  School,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Icon } from '@/components/ui/Icon';
@@ -72,28 +75,28 @@ export function MasterAdminDashboard() {
       path: '/dashboard/schools',
       icon: 'Building2',
       description: 'Phê duyệt, cập nhật và khóa/mở khóa trường',
+      bgColor: isDark ? 'bg-blue-500/10 text-blue-400 border-blue-500/20' : 'bg-blue-50 text-blue-600 border-blue-100',
     },
     {
       label: 'Duyệt yêu cầu mới',
       path: '/dashboard/requests',
       icon: 'ClipboardCheck',
       description: 'Xử lý các đơn đăng ký trường đang chờ',
+      bgColor: isDark ? 'bg-amber-500/10 text-amber-400 border-amber-500/20' : 'bg-amber-50 text-amber-600 border-amber-100',
     },
     {
-      label: 'Quản lý người dùng',
-      path: '/dashboard/users',
-      icon: 'Users',
-      description: 'Xem và quản lý tài khoản trên hệ thống',
+      label: 'Thống kê doanh thu',
+      path: '/dashboard/revenue',
+      icon: 'DollarSign',
+      description: 'Xem báo cáo doanh thu theo tháng, trường học',
+      bgColor: isDark ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-emerald-50 text-emerald-600 border-emerald-100',
     },
   ];
 
   const cardSurface = isDark ? 'border-gray-800' : 'bg-white border-gray-200';
   const sectionSurface = isDark ? 'border-gray-800' : 'bg-white border-gray-200';
-  const mutedText = isDark ? 'text-gray-400' : 'text-gray-600';
+  const mutedText = isDark ? 'text-gray-400' : 'text-gray-500';
   const headingText = isDark ? 'text-white' : 'text-gray-900';
-  const inputClasses = isDark
-    ? 'bg-gray-950 border-gray-800 text-gray-100 placeholder-gray-500'
-    : 'bg-white border-gray-300 text-gray-900 placeholder-gray-400';
 
   return (
     <div className={`min-h-screen p-6 rounded-3xl border shadow-2xl space-y-6 relative pb-20 font-sans `}>
@@ -109,7 +112,9 @@ export function MasterAdminDashboard() {
         </div>
         <button
           onClick={loadDashboardData}
-          className={`flex items-center gap-2 px-4 py-2 text-sm font-semibold rounded-xl border transition-all`}
+          className={`flex items-center gap-2 px-4 py-2 text-sm font-semibold rounded-xl border transition-all ${
+            isDark ? 'border-gray-700 hover:bg-gray-800 text-gray-300' : 'border-gray-300 hover:bg-gray-50 text-gray-700'
+          }`}
         >
           <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
           Làm mới
@@ -117,11 +122,11 @@ export function MasterAdminDashboard() {
       </div>
 
       {error && (
-        <div className={`rounded-2xl p-4 flex items-center justify-betwee`}>
-          <p className="text-sm font-medium">{error}</p>
+        <div className={`rounded-2xl p-4 flex items-center justify-between ${isDark ? 'bg-red-900/20 border border-red-800' : 'bg-red-50 border border-red-200'}`}>
+          <p className="text-sm font-medium text-red-600">{error}</p>
           <button
             onClick={loadDashboardData}
-            className="px-4 py-1.5 text-xs font-bold rounded-lg bg-rose-600 hover:bg-rose-700 text-white transition-all"
+            className="px-4 py-1.5 text-xs font-bold rounded-lg bg-red-600 hover:bg-red-700 text-white transition-all"
           >
             Thử lại
           </button>
@@ -134,7 +139,7 @@ export function MasterAdminDashboard() {
           whileHover={{ y: -2 }}
           className={`p-5 backdrop-blur-md rounded-2xl flex items-center gap-4 shadow-lg border ${cardSurface}`}
         >
-          <div className={`w-12 h-12 rounded-xl flex items-center justify-center border`}>
+          <div className={`w-12 h-12 rounded-xl flex items-center justify-center border ${isDark ? 'bg-blue-500/10 text-blue-400 border-blue-500/20' : 'bg-blue-50 text-blue-600 border-blue-100'}`}>
             <Building2 className="w-6 h-6" />
           </div>
           <div>
@@ -145,32 +150,34 @@ export function MasterAdminDashboard() {
           </div>
         </motion.div>
 
-        <motion.div
-          whileHover={{ y: -2 }}
-          className={`p-5 backdrop-blur-md rounded-2xl flex items-center gap-4 shadow-lg border ${cardSurface}`}
-        >
-          <div className={`w-12 h-12 rounded-xl flex items-center justify-center border ${isDark ? 'bg-gray-500/10 text-gray-400 border-gray-500/25' : 'bg-gray-50 text-gray-600 border-gray-200'}`}>
-            <ClipboardCheck className="w-6 h-6" />
-          </div>
-          <div>
-            <p className={`text-xs font-semibold uppercase tracking-wider ${mutedText}`}>Yêu cầu chờ duyệt</p>
-            <h3 className={`text-3xl font-extrabold mt-0.5 ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
-              {loading ? <Loader2 className={`w-5 h-5 animate-spin ${isDark ? 'text-gray-400' : 'text-gray-600'}`} /> : stats?.pendingSchoolRequests ?? 0}
-            </h3>
-          </div>
-        </motion.div>
+        {(stats?.pendingSchoolRequests ?? 0) > 0 && (
+          <motion.div
+            whileHover={{ y: -2 }}
+            className={`p-5 backdrop-blur-md rounded-2xl flex items-center gap-4 shadow-lg border ${cardSurface}`}
+          >
+            <div className={`w-12 h-12 rounded-xl flex items-center justify-center border ${isDark ? 'bg-amber-500/10 text-amber-400 border-amber-500/20' : 'bg-amber-50 text-amber-600 border-amber-100'}`}>
+              <ClipboardCheck className="w-6 h-6" />
+            </div>
+            <div>
+              <p className={`text-xs font-semibold uppercase tracking-wider ${mutedText}`}>Yêu cầu chờ duyệt</p>
+              <h3 className={`text-3xl font-extrabold mt-0.5 ${headingText}`}>
+                {loading ? <Loader2 className={`w-5 h-5 animate-spin`} /> : stats?.pendingSchoolRequests ?? 0}
+              </h3>
+            </div>
+          </motion.div>
+        )}
 
         <motion.div
           whileHover={{ y: -2 }}
           className={`p-5 backdrop-blur-md rounded-2xl flex items-center gap-4 shadow-lg border ${cardSurface}`}
         >
-          <div className={`w-12 h-12 rounded-xl flex items-center justify-center border ${isDark ? 'bg-gray-500/15 text-gray-400 border-gray-500/30' : 'bg-gray-50 text-gray-600 border-gray-200'}`}>
+          <div className={`w-12 h-12 rounded-xl flex items-center justify-center border ${isDark ? 'bg-green-500/10 text-green-400 border-green-500/20' : 'bg-green-50 text-green-600 border-green-100'}`}>
             <Users className="w-6 h-6" />
           </div>
           <div>
             <p className={`text-xs font-semibold uppercase tracking-wider ${mutedText}`}>Tổng người dùng</p>
-            <h3 className={`text-3xl font-extrabold mt-0.5 ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
-              {loading ? <Loader2 className={`w-5 h-5 animate-spin ${isDark ? 'text-gray-400' : 'text-gray-600'}`} /> : stats?.totalUsers ?? 0}
+            <h3 className={`text-3xl font-extrabold mt-0.5 ${headingText}`}>
+              {loading ? <Loader2 className={`w-5 h-5 animate-spin`} /> : stats?.totalUsers ?? 0}
             </h3>
           </div>
         </motion.div>
@@ -179,13 +186,13 @@ export function MasterAdminDashboard() {
           whileHover={{ y: -2 }}
           className={`p-5 backdrop-blur-md rounded-2xl flex items-center gap-4 shadow-lg border ${cardSurface}`}
         >
-          <div className={`w-12 h-12 rounded-xl flex items-center justify-center border ${isDark ? 'bg-gray-500/10 text-gray-400 border-gray-500/20' : 'bg-gray-50 text-gray-600 border-gray-200'}`}>
+          <div className={`w-12 h-12 rounded-xl flex items-center justify-center border ${isDark ? 'bg-purple-500/10 text-purple-400 border-purple-500/20' : 'bg-purple-50 text-purple-600 border-purple-100'}`}>
             <BookOpen className="w-6 h-6" />
           </div>
           <div>
             <p className={`text-xs font-semibold uppercase tracking-wider ${mutedText}`}>Khóa học hệ thống</p>
             <h3 className={`text-3xl font-extrabold mt-0.5 ${headingText}`}>
-              {loading ? <Loader2 className={`w-5 h-5 animate-spin ${isDark ? 'text-gray-400' : 'text-gray-600'}`} /> : stats?.totalCourses ?? 0}
+              {loading ? <Loader2 className={`w-5 h-5 animate-spin`} /> : stats?.totalCourses ?? 0}
             </h3>
           </div>
         </motion.div>
@@ -200,9 +207,9 @@ export function MasterAdminDashboard() {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
           {quickActions.map((action) => (
             <Link key={action.path} to={action.path}>
-              <div className={`h-full p-4 rounded-xl border transition-all group cursor-pointer`}>
+              <div className={`h-full p-4 rounded-xl border transition-all group cursor-pointer ${cardSurface}`}>
                 <div className="flex items-start gap-3">
-                  <div className={`w-10 h-10 rounded-lg flex items-center justify-center border transition-colors ${isDark ? 'bg-gray-500/10 text-gray-400 border-gray-500/20 group-hover:border-gray-500/40' : 'bg-gray-50 text-gray-600 border-gray-200 group-hover:border-gray-300'}`}>
+                  <div className={`w-10 h-10 rounded-lg flex items-center justify-center border transition-colors ${action.bgColor}`}>
                     <Icon name={action.icon} className="w-5 h-5" />
                   </div>
                   <div className="flex-1 min-w-0">
@@ -217,74 +224,22 @@ export function MasterAdminDashboard() {
         </div>
       </div>
 
-      {/* Recent Activity */}
-      <div className={`backdrop-blur-md rounded-2xl p-6 shadow-xl space-y-4 border ${sectionSurface}`}>
-        <div className="flex items-center justify-between">
-          <h2 className={`text-lg font-bold font-headline ${headingText}`}>Hoạt động gần đây</h2>
-          <div className={`flex items-center gap-2 text-xs ${mutedText}`}>
-            <Shield className={`w-4 h-4 ${isDark ? 'text-gray-500' : 'text-gray-600'}`} />
-            Nhật ký hệ thống
-          </div>
-        </div>
-        <div className="space-y-3">
-          {activities.length === 0 ? (
-            <div className={`py-10 text-center border border-dashed rounded-xl ${isDark ? 'text-gray-500 border-gray-850' : 'text-gray-500 border-gray-300'}`}>
-              <Activity className={`w-8 h-8 mx-auto mb-2 opacity-25 ${isDark ? 'text-gray-400' : 'text-gray-600'}`} />
-              <p className="text-sm">Chưa có hoạt động nào được ghi nhận.</p>
-            </div>
-          ) : (
-            activities.map((activity) => (
-              <div
-                key={activity.id}
-                className={`flex items-start gap-4 p-4 rounded-xl border border-transparent hover:border transition-all ${isDark ? 'hover:bg-gray-500/[0.01] hover:border-gray-800/40' : 'hover:bg-gray-50 hover:border-gray-200'}`}
-              >
-                <div className={`w-10 h-10 rounded-lg flex items-center justify-center border shrink-0 ${isDark ? 'bg-gray-500/10 text-gray-400 border-gray-500/20' : 'bg-gray-50 text-gray-600 border-gray-200'}`}>
-                  <Icon
-                    name={activityIcons[activity.type] || 'Activity'}
-                    className="w-5 h-5"
-                  />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className={`font-semibold text-sm ${headingText}`}>{activity.title}</p>
-                  <p className={`text-xs mt-0.5 ${mutedText}`}>{activity.description}</p>
-                  <p className={`text-[10px] mt-1 ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
-                    {activity.user?.name && `${activity.user.name} • `}
-                    {formatDistanceToNow(new Date(activity.timestamp), {
-                      addSuffix: true,
-                      locale: vi,
-                    })}
-                  </p>
-                  {activity.user?.avatar && (
-                    <div className="mt-2 flex items-center gap-2">
-                      <div className={`w-6 h-6 rounded-full border overflow-hidden}`}>
-                        <img src={activity.user.avatar} alt={activity.user.name} className="w-full h-full object-cover" />
-                      </div>
-                      <span className={`text-[10px] ${mutedText}`}>{activity.user.name}</span>
-                    </div>
-                  )}
-                </div>
-              </div>
-            ))
-          )}
-        </div>
-      </div>
-
       {/* Alert for pending items */}
       {stats && stats.pendingSchoolRequests && stats.pendingSchoolRequests > 0 && (
-        <div className={`rounded-2xl p-4 flex flex-col sm:flex-row items-start sm:items-center gap-4 `}>
-          <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 border`}>
-            <AlertCircle className={`w-5 h-5 ${isDark ? 'text-gray-400' : 'text-gray-600'}`} />
+        <div className={`rounded-2xl p-4 flex flex-col sm:flex-row items-start sm:items-center gap-4 border ${isDark ? 'bg-amber-500/10 border-amber-500/20' : 'bg-amber-50 border-amber-200'}`}>
+          <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${isDark ? 'bg-amber-500/20 text-amber-400' : 'bg-amber-100 text-amber-600'}`}>
+            <AlertCircle className={`w-5 h-5`} />
           </div>
           <div className="flex-1">
-            <p className={`font-bold ${isDark ? 'text-gray-400' : 'text-gray-700'}`}>
+            <p className={`font-bold ${isDark ? 'text-amber-400' : 'text-amber-700'}`}>
               Có {stats.pendingSchoolRequests} yêu cầu đăng ký đang chờ phê duyệt
             </p>
-            <p className={`text-xs mt-0.5 ${mutedText}`}>
+            <p className={`text-xs mt-0.5 ${isDark ? 'text-amber-400/70' : 'text-amber-600'}`}>
               Vui lòng kiểm tra và thực hiện phê duyệt các đơn đăng ký trường mới để họ có thể hoạt động trên hệ thống.
             </p>
           </div>
           <Link to="/dashboard/requests">
-            <Button size="sm" className={`font-bold`}>
+            <Button size="sm" className={`font-bold bg-amber-500 hover:bg-amber-600 text-white border-0`}>
               Xem ngay
             </Button>
           </Link>

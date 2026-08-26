@@ -2,6 +2,8 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { AlertCircle, BookOpen, ChevronDown, Plus, PlusCircle, RefreshCw } from 'lucide-react';
 import { useAuthStore } from '@/stores/authStore';
 import { assignmentsApi, classesApi, labsApi, usersApi } from '@/services/dashboardApi';
+import { lessonsApi } from '@/services/curriculumApi';
+import { schedulesApi } from '@/services/dashboardApi';
 import type {
   AssignmentEntity,
   ClassEntity,
@@ -19,6 +21,7 @@ import {
   type CreateLabTemplateData,
   type LabAssignmentOption,
   type LabClassOption,
+  type LabLessonOption,
 } from '@/components/Dashboard/VirtualLab/CreateLabModal';
 import { TemplatePickerModal } from '@/components/Dashboard/VirtualLab/TemplatePickerModal';
 import type { VirtualLabSampleExercise } from '@/data/virtualLabSampleExercises';
@@ -191,6 +194,8 @@ export const VirtualLabPage = () => {
   const [formError, setFormError] = useState<string | null>(null);
   const [managedClasses, setManagedClasses] = useState<ManagedClassOption[]>([]);
   const [assignmentOptions, setAssignmentOptions] = useState<LabAssignmentOption[]>([]);
+  const [lessonOptions, setLessonOptions] = useState<LabLessonOption[]>([]);
+  const [scheduleOptions, setScheduleOptions] = useState<LabLessonOption[]>([]);
   const [componentOptions, setComponentOptions] = useState<ComponentGlueRegistryEntity[]>([]);
   const [isMetaLoading, setIsMetaLoading] = useState(false);
   const [isComponentsLoading, setIsComponentsLoading] = useState(false);
@@ -277,7 +282,7 @@ export const VirtualLabPage = () => {
 
       const classResponse =
         user?.role === 'teacher' && teacherId
-          ? await classesApi.getMyClasses(teacherId)
+          ? await classesApi.getMyClasses()
           : await classesApi.getAll({ pageNumber: 1, pageSize: 100 });
       const classes = classResponse.items.map(toClassOption);
       setManagedClasses(classes);
@@ -301,6 +306,26 @@ export const VirtualLabPage = () => {
         }));
 
       setAssignmentOptions(options);
+
+      // Fetch schedules for each class
+      const allSchedules: LabLessonOption[] = [];
+      for (const classItem of classes) {
+        try {
+          const schedules = await schedulesApi.getByClass(classItem.id);
+          for (const schedule of schedules) {
+            if (!allSchedules.some(s => s.id === schedule.id)) {
+              const date = new Date(schedule.startTime).toLocaleDateString('vi-VN');
+              allSchedules.push({
+                id: schedule.id,
+                label: `${schedule.lessonTitle || `Buổi #${schedule.id}`} - ${classItem.name || classItem.classCode || `Lớp #${classItem.id}`} (${date})`,
+              });
+            }
+          }
+        } catch {
+          // Skip if schedules can't be fetched for this class
+        }
+      }
+      setScheduleOptions(allSchedules);
     } catch (metadataError) {
       setMetaError(
         getErrorMessage(
@@ -310,6 +335,7 @@ export const VirtualLabPage = () => {
       );
       setManagedClasses([]);
       setAssignmentOptions([]);
+      setScheduleOptions([]);
     } finally {
       setIsMetaLoading(false);
     }
@@ -584,6 +610,7 @@ export const VirtualLabPage = () => {
         onValidateWokwi={validateWokwiProject}
         classOptions={classOptions}
         assignmentOptions={assignmentOptions}
+        scheduleOptions={scheduleOptions}
         componentOptions={componentOptions}
         isComponentsLoading={isComponentsLoading}
         componentsError={componentsError}

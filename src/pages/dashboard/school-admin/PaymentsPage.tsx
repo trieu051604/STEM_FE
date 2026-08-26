@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import toast from 'react-hot-toast';
 import { Button } from '@/components/ui/button';
 import { 
   CreditCard, 
@@ -23,6 +24,7 @@ import { useSearchParams } from 'react-router-dom';
 const ITEMS_PER_PAGE = 10;
 
 export const PaymentsPage = () => {
+  const queryClient = useQueryClient();
   const [searchParams, setSearchParams] = useSearchParams();
   const [selectedPackage, setSelectedPackage] = useState<PaymentPackage | null>(null);
   const [purchasing, setPurchasing] = useState(false);
@@ -69,10 +71,11 @@ export const PaymentsPage = () => {
         window.location.href = result.checkoutUrl;
       } else {
         console.error('Failed to create payment:', result.errorMessage);
-        alert(result.errorMessage || 'Không thể tạo thanh toán');
+        toast.error(result.errorMessage || 'Không thể tạo thanh toán');
       }
     } catch (error) {
       console.error('Purchase failed:', error);
+      toast.error('Có lỗi xảy ra');
     } finally {
       setPurchasing(false);
     }
@@ -145,7 +148,7 @@ export const PaymentsPage = () => {
             Mua token và phân bổ cho giáo viên, học sinh trong trường
           </p>
         </div>
-        <Button variant="outline" onClick={() => refetchBalance()} disabled={loadingBalance}>
+        <Button variant="outline" onClick={() => queryClient.invalidateQueries({ queryKey: ['token-balance'] })} disabled={loadingBalance}>
           <RefreshCw className={`w-4 h-4 mr-2 ${loadingBalance ? 'animate-spin' : ''}`} />
           Làm mới
         </Button>
@@ -162,9 +165,12 @@ export const PaymentsPage = () => {
               <p className="text-white/80 text-sm">Số dư token của trường</p>
               <p className="text-4xl font-bold">{loadingBalance ? '...' : (balance?.tokensRemaining ?? 0).toLocaleString()}</p>
               <p className="text-white/70 text-sm mt-1">
-                {balance?.expiresAt && (
-                  <>Hết hạn: {format(new Date(balance.expiresAt), 'dd/MM/yyyy', { locale: vi })}</>
-                )}
+                {balance?.expiresAt && (() => {
+                  const date = new Date(balance.expiresAt!);
+                  return !isNaN(date.getTime()) ? (
+                    <>Hết hạn: {format(date, 'dd/MM/yyyy', { locale: vi })}</>
+                  ) : null;
+                })()}
               </p>
             </div>
           </div>
@@ -183,8 +189,7 @@ export const PaymentsPage = () => {
             </div>
           </div>
         </div>
-      </div>
-
+      </div>          
       {/* Tabs */}
       <div className="flex gap-2 border-b border-border">
         <button
@@ -380,7 +385,6 @@ export const PaymentsPage = () => {
     </div>
   );
 };
-
 // History Component
 interface HistorySectionProps {
   payments: Payment[];

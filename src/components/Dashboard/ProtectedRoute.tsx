@@ -15,6 +15,7 @@ import { NotificationsPage } from '@/pages/dashboard/NotificationsPage';
 import SubmissionDetailPage from '@/pages/dashboard/SubmissionDetailPage';
 import { StudentDashboard } from '@/pages/dashboard/student/StudentDashboard';
 import TeacherClassesPage from '@/pages/dashboard/teacher/TeacherClassesPage';
+import TeacherClassDetailPage from '@/pages/dashboard/teacher/TeacherClassDetailPage';
 import TeacherAssignmentsPage from '@/pages/dashboard/teacher/TeacherAssignmentsPage';
 import TeacherSubmissionsPage from '@/pages/dashboard/teacher/TeacherSubmissionsPage';
 import TeacherGradeSubmissionPage from '@/pages/dashboard/teacher/TeacherGradeSubmissionPage';
@@ -29,14 +30,19 @@ import { TeacherSchedulePage } from '@/pages/dashboard/teacher/TeacherSchedulePa
 import { TeacherSessionAttendance } from '@/pages/dashboard/teacher/TeacherSessionAttendance';
 import {
   StudentsPage,
-  CoursesPage,
   ClassesPage,
   TeachersPage,
   LoginHistoryPage,
   PaymentsPage,
   AiQuotaPage,
+  SyllabusViewerPage,
+  ReportsPage,
 } from '@/pages/dashboard/school-admin';
-import { SchoolsPage, UsersPage, PackagesManagementPage, SyllabusesPage, SyllabusDetailPage, SystemLogsPage } from '@/pages/dashboard/master-admin';
+import { SyllabusPage } from '@/pages/dashboard/master-admin/SyllabusPage';
+import SyllabusesPage from '@/pages/dashboard/master-admin/SyllabusesPage';
+import SyllabusDetailPage from '@/pages/dashboard/master-admin/SyllabusDetailPage';
+import SystemLogsPage from '@/pages/dashboard/master-admin/SystemLogsPage';
+import { SchoolsPage, UsersPage, PackagesManagementPage, GradeLevelsPage, CoursesPage, RevenuePage } from '@/pages/dashboard/master-admin';
 import React from 'react';
 
 interface RouteConfig {
@@ -111,6 +117,16 @@ export const dashboardRoutes = [
         path: 'schools', 
         element: <ProtectedElement element={<SchoolsPage />} allowedRoles={['master_admin']} />,
       },
+      // Grade Levels (Master Admin only)
+      { 
+        path: 'grade-levels', 
+        element: <ProtectedElement element={<GradeLevelsPage />} allowedRoles={['master_admin']} />,
+      },
+      // Chương trình Science (Master Admin only)
+      { 
+        path: 'syllabus', 
+        element: <ProtectedElement element={<SyllabusPage />} allowedRoles={['master_admin']} />,
+      },
       // Packages Management (Master Admin only)
       {
         path: 'packages',
@@ -137,35 +153,50 @@ export const dashboardRoutes = [
         path: 'requests', 
         element: <ProtectedElement element={<SchoolsPage defaultTab="requests" />} allowedRoles={['master_admin']} />,
       },
+      // Revenue (Master Admin only)
+      { 
+        path: 'revenue', 
+        element: <ProtectedElement element={<RevenuePage />} allowedRoles={['master_admin']} />,
+      },
       // Users (Master Admin only)
       { 
         path: 'users', 
         element: <ProtectedElement element={<UsersPage />} allowedRoles={['master_admin']} />,
       },
-      // Students (Master Admin only - school admin can only view stats)
+      // Students (School Admin and Master Admin)
       { 
         path: 'students', 
         element: <ProtectedElement element={<StudentsPage />} allowedRoles={['master_admin', 'school_admin']} />,
       },
-      // Courses (Master Admin only - school admin can only view stats)
+      // Courses (Master Admin only - create/update/delete)
       { 
         path: 'courses', 
-        element: <ProtectedElement element={<CoursesPage />} allowedRoles={['master_admin', 'school_admin']} />,
+        element: <ProtectedElement element={<CoursesPage />} allowedRoles={['master_admin']} />,
       },
-      // Classes (Master Admin only - school admin can only view stats)
+      // Classes (School Admin and Master Admin)
       { 
         path: 'classes', 
         element: <ProtectedElement element={<ClassesPage />} allowedRoles={['master_admin', 'school_admin']} />,
       },
-      // Teachers (Master Admin only - school admin can only view stats)
+      // Teachers (School Admin and Master Admin)
       { 
         path: 'teachers', 
         element: <ProtectedElement element={<TeachersPage />} allowedRoles={['master_admin', 'school_admin']} />,
       },
+      // Syllabus Viewer (School Admin only - read only)
+      { 
+        path: 'school-syllabus', 
+        element: <ProtectedElement element={<SyllabusViewerPage />} allowedRoles={['school_admin']} />,
+      },
+      // Reports (School Admin only)
+      { 
+        path: 'reports', 
+        element: <ProtectedElement element={<ReportsPage />} allowedRoles={['school_admin']} />,
+      },
       // My Classes (Teacher/Student)
       { path: 'my-classes', element: <MyClassesPage /> },
       { path: 'teacher/classes', element: <TeacherClassesPage /> },
-      { path: 'teacher/classes/:id', element: <TeacherClassesPage /> },
+      { path: 'teacher/classes/:id', element: <TeacherClassDetailPage /> },
       { path: 'teacher/assignments', element: <TeacherAssignmentsPage /> },
       { path: 'teacher/assignments/:id', element: <TeacherAssignmentsPage /> },
       { path: 'teacher/submissions', element: <TeacherSubmissionsPage /> },

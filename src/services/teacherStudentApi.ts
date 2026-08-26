@@ -1,4 +1,5 @@
 import { api } from './api';
+import type { ModuleWithLessons } from './dashboardApi';
 
 // Helper function to determine class status based on dates
 function getClassStatus(item: any): 'active' | 'completed' | 'upcoming' {
@@ -37,6 +38,24 @@ export interface TeacherClass {
   room: string;
 }
 
+export interface TeacherClassDetail {
+  id: number;
+  name: string;
+  courseId: number;
+  courseName: string;
+  status: string;
+  startDate?: string;
+  endDate?: string;
+  students: {
+    id: number;
+    fullName: string;
+    email: string;
+    enrolledAt: string;
+  }[];
+  // Curriculum from separate API call
+  modules?: ModuleWithLessons[];
+}
+
 export interface TeacherStats {
   totalClasses: number;
   totalStudents: number;
@@ -63,7 +82,39 @@ const teacherApi = {
     pageSize: number;
   }> => {
     const response = await api.get('/classes/my-classes', { params });
-    return response.data.data || { items: [], total: 0, page: 1, pageSize: 10 };
+    const data = response.data.data;
+    // Map backend response (classCode, courseName) to frontend interface (name, courseName)
+    const items = (data?.items || []).map((item: any) => ({
+      id: item.id,
+      name: item.classCode || '',
+      courseName: item.courseName || '',
+      studentCount: item.studentCount || 0,
+      schedule: '',
+      room: '',
+    }));
+    return {
+      items,
+      total: data?.totalCount || 0,
+      page: data?.pageNumber || 1,
+      pageSize: data?.pageSize || 10,
+    };
+  },
+
+  // Get teacher's class detail
+  getClassDetail: async (classId: number): Promise<TeacherClassDetail> => {
+    const response = await api.get(`/classes/${classId}/detail`);
+    const data = response.data.data;
+    // Map backend response (ClassName, ClassCode, CourseName) to frontend interface (name, courseName)
+    return {
+      id: data.id,
+      name: data.className || data.classCode || '',
+      courseId: data.courseId,
+      courseName: data.courseName || '',
+      status: data.status,
+      startDate: data.startDate,
+      endDate: data.endDate,
+      students: data.students || [],
+    };
   },
 
   // Get teacher's assignments
@@ -392,6 +443,7 @@ const studentApi = {
       className: item.classCode || item.courseTitle || 'Chưa gán lớp',
       classId: item.classId,
       dueDate: item.dueDate,
+      assignmentType: item.assignmentType,
       status: item.status?.toLowerCase() || 'pending',
       score: item.score,
       maxScore: item.maxScore,
@@ -653,6 +705,17 @@ const studentApi = {
     submittedAt: string;
     canResubmit: boolean;
     remainingAttempts?: number;
+    autoGradeResultJson?: string;
+    quizDetail?: {
+      questions: {
+        id: string;
+        text: string;
+        type: string;
+        options?: { id: string; text: string }[];
+      }[];
+      timeLimitSeconds?: number | null;
+      shuffleQuestions: boolean;
+    };
   } | null> => {
     try {
       const response = await api.get(`/assignments/${assignmentId}/my-submission`);

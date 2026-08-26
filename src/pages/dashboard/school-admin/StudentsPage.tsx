@@ -344,7 +344,7 @@ export const StudentsPage = () => {
         <div>
           <h1 className="text-2xl font-bold">Quản lý học sinh</h1>
           <p className="text-muted-foreground">
-            Quản lý tài khoản và thông tin học sinh trong trường
+            Quản lý tài khoản và thông tin học sinh học Science trong trường
           </p>
         </div>
         <div className="flex gap-2">
@@ -422,7 +422,7 @@ export const StudentsPage = () => {
               </div>
               <div>
                 <p className="text-2xl font-bold">
-                  {studentsData.items?.reduce((acc, s) => acc + (s.totalEnrolledClasses || 0), 0)}
+                  {studentsData.totalEnrolledClasses}
                 </p>
                 <p className="text-sm text-muted-foreground">Tổng lớp ĐK</p>
               </div>
@@ -435,10 +435,7 @@ export const StudentsPage = () => {
               </div>
               <div>
                 <p className="text-2xl font-bold">
-                  {(() => {
-                    const count = studentsData.items?.filter(s => s.totalEnrolledClasses && s.totalEnrolledClasses > 0 && (!s.averageScore || s.averageScore === 0)).length || 0;
-                    return count;
-                  })()}
+                  {studentsData.totalWithoutScores}
                 </p>
                 <p className="text-sm text-muted-foreground">Chưa có điểm</p>
               </div>
@@ -451,7 +448,7 @@ export const StudentsPage = () => {
               </div>
               <div>
                 <p className="text-2xl font-bold">
-                  {studentsData.items?.filter((s) => s.isActive).length || 0}
+                  {studentsData.totalActiveStudents}
                 </p>
                 <p className="text-sm text-muted-foreground">Đang học</p>
               </div>
@@ -464,10 +461,7 @@ export const StudentsPage = () => {
               </div>
               <div>
                 <p className="text-2xl font-bold">
-                  {(() => {
-                    const count = studentsData.items?.filter(s => (s.averageScore || 0) > 0).length || 0;
-                    return count;
-                  })()}
+                  {studentsData.totalWithScores}
                 </p>
                 <p className="text-sm text-muted-foreground">Có điểm TB</p>
               </div>

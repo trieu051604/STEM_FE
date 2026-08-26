@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { scheduleApi, type ScheduleCalendarItem, type ScheduleResponse } from '@/services/schoolAdminApi';
 import { Plus, Trash2, Edit, Calendar, Clock, AlertCircle } from 'lucide-react';
-import { format } from 'date-fns';
+import { format, addDays } from 'date-fns';
 
 // Slot definitions with colors for monthly calendar
 const SLOT_COLORS = [
@@ -93,15 +93,19 @@ export function ScheduleCalendar({ classId, schedules: initialSchedules, classIn
 
     try {
       setLoading(true);
-      const data = await scheduleApi.getByClassId(classId);
+      const today = new Date();
+      const fromDate = format(today, 'yyyy-MM-dd');
+      const toDate = format(addDays(today, 30), 'yyyy-MM-dd');
+      const data = await scheduleApi.getByClassId(classId, fromDate, toDate);
       const mappedEvents: ScheduleCalendarItem[] = data.map((s) => ({
         id: s.id,
-        title: s.classCode || classInfo?.classCode || '',
+        title: s.lessonTitle || s.className || s.classCode || 'Buổi học',
         // Strip 'Z' suffix because time is already local (not UTC)
         start: s.startTime.replace('Z', ''),
         end: s.endTime.replace('Z', ''),
         classCode: s.classCode,
         className: s.className,
+        lessonTitle: s.lessonTitle,
         color: getColorForSlot(s.startTime),
       }));
       setEvents(mappedEvents);
@@ -135,7 +139,7 @@ export function ScheduleCalendar({ classId, schedules: initialSchedules, classIn
   };
 
   const handleDateClick = (info: any) => {
-    if (!isAdmin) return;
+    if (!isAdmin || !classId || classId <= 0) return;
     const date = info.dateStr.split('T')[0];
     setFormData({
       startDate: date,
@@ -176,8 +180,8 @@ export function ScheduleCalendar({ classId, schedules: initialSchedules, classIn
   };
 
   const handleCreateSchedule = async () => {
-    if (!classId || !formData.startDate || !formData.startTime || !formData.endTime) {
-      setError('Vui lòng điền đầy đủ thông tin');
+    if (!classId || classId <= 0 || !formData.startDate || !formData.startTime || !formData.endTime) {
+      setError('Vui lòng chọn lớp học và điền đầy đủ thông tin');
       return;
     }
 
@@ -284,7 +288,7 @@ export function ScheduleCalendar({ classId, schedules: initialSchedules, classIn
             <span className="text-sm text-muted-foreground">- {classInfo.classCode}</span>
           )}
         </div>
-        {isAdmin && (
+        {isAdmin && classId && classId > 0 && (
           <Button size="sm" onClick={() => setShowAddModal(true)}>
             <Plus className="w-4 h-4 mr-1" />
             Thêm lịch

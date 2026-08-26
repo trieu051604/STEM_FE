@@ -14,6 +14,7 @@ import {
 } from './components/DataTable';
 import { ClassForm, ClassFormData } from './components/Forms';
 import { classesApi, coursesApi, teachersApi, ClassEntity, scheduleApi, type ScheduleResponse } from '@/services/schoolAdminApi';
+import { gradeLevelsApi } from '@/services/curriculumApi';
 import { ScheduleCalendar } from '@/components/ScheduleCalendar';
 import { WeeklyScheduleGrid } from '@/components/WeeklyScheduleGrid';
 import { format } from 'date-fns';
@@ -95,6 +96,7 @@ export const ClassesPage = () => {
   const [schedulesLoading, setSchedulesLoading] = useState(false);
   const [availableTeachersForEdit, setAvailableTeachersForEdit] = useState<{ id: number; fullName: string }[]>([]);
   const [courseFilter, setCourseFilter] = useState<string>('');
+  const [gradeLevelFilter, setGradeLevelFilter] = useState<string>('');
 
   // Fetch classes
   const { data: classesData, isLoading, refetch, error: fetchError } = useQuery({
@@ -121,6 +123,16 @@ export const ClassesPage = () => {
     queryKey: ['courses-list'],
     queryFn: () => coursesApi.getAll({ pageSize: 100 }),
   });
+
+  // Fetch grade levels for filter and form
+  const { data: gradeLevelsData } = useQuery({
+    queryKey: ['grade-levels'],
+    queryFn: async () => {
+      const res = await gradeLevelsApi.getAll();
+      return res || [];
+    },
+  });
+  const gradeLevels = (gradeLevelsData || []).map((gl: any) => ({ id: gl.id, name: gl.name }));
 
   // Fetch teachers for form
   const { data: teachersData } = useQuery({
@@ -256,6 +268,17 @@ export const ClassesPage = () => {
         <div className="flex items-center gap-2">
           <BookOpen className="w-4 h-4 text-muted-foreground" />
           <span>{cls.courseName || '—'}</span>
+        </div>
+      ),
+    },
+    {
+      key: 'gradeLevelName',
+      header: 'Khối',
+      render: (cls) => (
+        <div className="flex items-center gap-2">
+          <span className="px-2 py-1 text-xs font-medium rounded-full bg-primary/10 text-primary">
+            {cls.gradeLevelName || '—'}
+          </span>
         </div>
       ),
     },
@@ -483,9 +506,9 @@ export const ClassesPage = () => {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold">Quản lý lớp học</h1>
+          <h1 className="text-2xl font-bold">Quản lý lớp Science</h1>
           <p className="text-muted-foreground">
-            Tạo và quản lý các lớp học cho khóa học STEM
+            Tạo và quản lý các lớp học Science cho trường của bạn
           </p>
         </div>
         <Button onClick={() => setCreateModalOpen(true)}>
@@ -502,6 +525,18 @@ export const ClassesPage = () => {
           placeholder="Tìm kiếm lớp học..."
           className="sm:max-w-sm"
         />
+        <select
+          value={gradeLevelFilter}
+          onChange={(e) => setGradeLevelFilter(e.target.value)}
+          className="h-10 px-3 rounded-lg border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+        >
+          <option value="">Tất cả khối</option>
+          {gradeLevels.map((gl) => (
+            <option key={gl.id} value={gl.id}>
+              {gl.name}
+            </option>
+          ))}
+        </select>
         <select
           value={courseFilter}
           onChange={(e) => setCourseFilter(e.target.value)}
@@ -605,6 +640,7 @@ export const ClassesPage = () => {
             setCreateError(null);
           }}
           loading={createClassMutation.isPending}
+          gradeLevels={gradeLevels}
           courses={courses}
           teachers={teachers}
           error={createError}
@@ -633,11 +669,13 @@ export const ClassesPage = () => {
             loading={updateClassMutation.isPending}
             defaultValues={{
               classCode: selectedClass.classCode,
+              gradeLevelId: selectedClass.gradeLevelId,
               courseId: selectedClass.courseId,
               teacherId: selectedClass.teacherId,
               startDate: selectedClass.startDate,
               endDate: selectedClass.endDate,
             }}
+            gradeLevels={gradeLevels}
             courses={courses}
             teachers={availableTeachersForEdit.length > 0 ? availableTeachersForEdit : teachers}
             error={updateError}
@@ -927,16 +965,18 @@ function ClassDetailContent({ classId, classCode }: ClassDetailContentProps) {
                   <X className="w-4 h-4 text-muted-foreground" />
                   <p className="text-sm font-semibold">Chưa thêm ({availableStudents.length})</p>
                 </div>
-                {selectedStudentIds.size > 0 && (
-                  <Button
-                    size="sm"
-                    onClick={handleAssign}
-                    disabled={isAssigning}
-                  >
-                    <Check className="w-4 h-4" />
-                    Thêm {selectedStudentIds.size} học sinh
-                  </Button>
-                )}
+                <div className="flex items-center gap-2">
+                  {selectedStudentIds.size > 0 && (
+                    <Button
+                      size="sm"
+                      onClick={handleAssign}
+                      disabled={isAssigning}
+                    >
+                      <Check className="w-4 h-4" />
+                      Thêm {selectedStudentIds.size} HS
+                    </Button>
+                  )}
+                </div>
               </div>
               <div className="max-h-80 overflow-y-auto rounded-lg border border-border divide-y divide-border">
                 {isLoading ? (
@@ -982,34 +1022,6 @@ function ClassDetailContent({ classId, classCode }: ClassDetailContentProps) {
       ) : (
         /* Schedule Section */
         <div className="space-y-4">
-          {/* View Toggle */}
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2 bg-muted/50 rounded-lg p-1">
-              <button
-                onClick={() => setScheduleView('weekly')}
-                className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
-                  scheduleView === 'weekly'
-                    ? 'bg-background text-primary shadow-sm'
-                    : 'text-muted-foreground hover:text-foreground'
-                }`}
-              >
-                <LayoutGrid className="w-4 h-4" />
-                Bảng tuần
-              </button>
-              <button
-                onClick={() => setScheduleView('calendar')}
-                className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
-                  scheduleView === 'calendar'
-                    ? 'bg-background text-primary shadow-sm'
-                    : 'text-muted-foreground hover:text-foreground'
-                }`}
-              >
-                <CalendarDays className="w-4 h-4" />
-                Lịch tháng
-              </button>
-            </div>
-          </div>
-
           {scheduleView === 'weekly' ? (
             <WeeklyScheduleGrid
               classId={classId}

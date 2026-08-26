@@ -4,7 +4,7 @@ import { Icon } from '@/components/ui/Icon';
 import { getSidebarItems } from '../SidebarItems';
 import { useAuthStore } from '@/stores/authStore';
 import { useSidebarStore } from '@/stores/sidebarStore';
-import { PanelLeftClose, PanelLeftOpen, Plus, User, X } from 'lucide-react';
+import { PanelLeftClose, PanelLeftOpen, User, X } from 'lucide-react';
 
 export const TeacherSidebar = ({ isDesktop }: { isDesktop: boolean }) => {
   const location = useLocation();
@@ -32,7 +32,10 @@ export const TeacherSidebar = ({ isDesktop }: { isDesktop: boolean }) => {
     >
       <div className="h-16 flex items-center justify-between px-4 border-b border-border shrink-0">
         <Link to="/dashboard" className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-lg flex items-center justify-center font-bold text-sm bg-indigo-500 text-white">
+          <div className={cn(
+            "w-8 h-8 rounded-lg flex items-center justify-center font-bold text-sm",
+            "bg-primary text-primary-foreground"
+          )}>
             <span>ST</span>
           </div>
           <span className="font-semibold text-lg text-foreground">STEM</span>
@@ -57,10 +60,6 @@ export const TeacherSidebar = ({ isDesktop }: { isDesktop: boolean }) => {
       </div>
 
       <nav className="flex-1 py-6 overflow-y-auto">
-        <div className="px-6 mb-6">
-          <p className="text-sm font-semibold text-foreground">Quản lý giảng dạy</p>
-        </div>
-        
         <ul className="space-y-2 px-3">
           {sidebarItems.map((item) => {
             const isActive = location.pathname === item.path;
@@ -72,12 +71,12 @@ export const TeacherSidebar = ({ isDesktop }: { isDesktop: boolean }) => {
                   className={cn(
                     'flex items-center gap-3 px-4 py-3 text-sm font-medium transition-colors relative rounded-lg',
                     isActive
-                      ? 'bg-indigo-500/10 text-indigo-400'
+                      ? 'bg-[#eefcf6] text-[#0f4c5c]'
                       : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
                   )}
                 >
                   {isActive && (
-                    <div className="absolute left-0 top-0 bottom-0 w-1 bg-indigo-500 rounded-r-md"></div>
+                    <div className="absolute left-0 top-0 bottom-0 w-1 bg-[#0f4c5c] rounded-r-md"></div>
                   )}
                   <Icon name={item.icon} className="w-5 h-5 shrink-0" />
                   <span className="truncate">{item.label}</span>
@@ -88,16 +87,13 @@ export const TeacherSidebar = ({ isDesktop }: { isDesktop: boolean }) => {
         </ul>
       </nav>
 
-      <div className="p-6">
-        <button className="w-full bg-indigo-500 hover:bg-indigo-600 text-white rounded-full py-3 px-4 flex items-center justify-center gap-2 text-sm font-medium transition-colors shadow-md border-0">
-          <Plus className="w-5 h-5" />
-          Start Experiment
-        </button>
-      </div>
 
       <div className="p-4 border-t border-border shrink-0">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-full bg-indigo-500/10 flex items-center justify-center shrink-0 text-indigo-400">
+          <div className={cn(
+            "w-10 h-10 rounded-full flex items-center justify-center shrink-0",
+            "bg-[#0f4c5c]/10 text-[#0f4c5c]"
+          )}>
             {user?.avatar ? (
               <img
                 src={user.avatar}

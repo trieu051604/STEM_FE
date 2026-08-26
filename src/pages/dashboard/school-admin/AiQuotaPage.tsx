@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import toast from 'react-hot-toast';
 import { 
   Coins, 
   Users, 
@@ -23,6 +24,7 @@ import { format } from 'date-fns';
 import { vi } from 'date-fns/locale';
 
 export const AiQuotaPage = () => {
+  const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState<'overview' | 'users' | 'bulk' | 'history'>('overview');
   const [selectedUser, setSelectedUser] = useState<{ id: number; name: string; email: string; role: string } | null>(null);
   const [allocationAmount, setAllocationAmount] = useState('');
@@ -80,13 +82,13 @@ export const AiQuotaPage = () => {
         setSelectedUser(null);
         setAllocationAmount('');
         setAllocationNotes('');
-        alert('Phân bổ AI quota thành công!');
+        toast.success('Phân bổ AI quota thành công!');
       } else {
-        alert(result.errorMessage || 'Không thể phân bổ AI quota');
+        toast.error(result.errorMessage || 'Không thể phân bổ AI quota');
       }
     } catch (error) {
       console.error('Allocate failed:', error);
-      alert('Có lỗi xảy ra');
+      toast.error('Có lỗi xảy ra');
     } finally {
       setAllocating(false);
     }
@@ -122,7 +124,7 @@ export const AiQuotaPage = () => {
         </div>
         <Button 
           variant="outline" 
-          onClick={() => { refetchBalance(); refetchAllocations(); }} 
+          onClick={() => { queryClient.invalidateQueries({ queryKey: ['ai-quota-balance'] }); queryClient.invalidateQueries({ queryKey: ['ai-quota-allocations'] }); }} 
           disabled={loadingBalance}
         >
           <RefreshCw className={`w-4 h-4 mr-2 ${loadingBalance ? 'animate-spin' : ''}`} />
@@ -225,7 +227,7 @@ export const AiQuotaPage = () => {
       )}
 
       {activeTab === 'bulk' && (
-        <BulkAllocateSection balance={balance} onSuccess={() => { refetchBalance(); refetchAllocations(); }} />
+        <BulkAllocateSection balance={balance} onSuccess={() => { queryClient.invalidateQueries({ queryKey: ['ai-quota-balance'] }); queryClient.invalidateQueries({ queryKey: ['ai-quota-allocations'] }); }} />
       )}
 
       {activeTab === 'history' && (
@@ -280,11 +282,19 @@ function TabButton({ active, onClick, icon, children }: {
 function OverviewTab({ balance, allocationsData, loadingAllocations, totalUsed, usagePercentage, formatDate }: any) {
   const totalAllocated = allocationsData?.items?.reduce((sum: number, a: any) => sum + a.allocatedTokens, 0) || 0;
   
-  const roleStats = ['Teacher', 'Student'].map(role => ({
-    role,
-    total: allocationsData?.items?.filter((a: any) => a.userRole === role).reduce((sum: number, a: any) => sum + a.allocatedTokens, 0) || 0,
-    count: allocationsData?.items?.filter((a: any) => a.userRole === role).length || 0
-  }));
+  // Use data from balance API directly
+  const roleStats = [
+    {
+      role: 'Teacher',
+      total: balance?.teacherTokens || 0,
+      count: balance?.teacherCount || 0
+    },
+    {
+      role: 'Student',
+      total: balance?.studentTokens || 0,
+      count: balance?.studentCount || 0
+    }
+  ];
 
   return (
     <div className="space-y-6">

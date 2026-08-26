@@ -49,22 +49,25 @@ export const studentFormSchema = z.object({
 
 export type StudentFormData = z.infer<typeof studentFormSchema>;
 
-// Form Schema for Course
+// Form Schema for Course (Science Subject)
 export const courseFormSchema = z.object({
   title: z.string()
-    .min(1, 'Tên khóa học không được để trống')
-    .min(2, 'Tên khóa học phải có ít nhất 2 ký tự')
-    .max(200, 'Tên khóa học không được quá 200 ký tự'),
+    .min(1, 'Tên môn học không được để trống')
+    .min(2, 'Tên môn học phải có ít nhất 2 ký tự')
+    .max(200, 'Tên môn học không được quá 200 ký tự'),
   description: z.string().optional(),
+  syllabusId: z.number().optional(),
+  estimatedHours: z.number().min(1, 'Thời lượng phải lớn hơn 0').optional(),
+  isRequired: z.boolean().optional(),
+  isActive: z.boolean().optional(),
 }).refine((data) => {
-  // Check for invalid characters
   const invalidChars = /[<>{}\\]/;
   if (invalidChars.test(data.title)) {
     return false;
   }
   return true;
 }, {
-  message: 'Tên khóa học không được chứa ký tự đặc biệt',
+  message: 'Tên môn học không được chứa ký tự đặc biệt',
   path: ['title'],
 });
 
@@ -73,6 +76,7 @@ export type CourseFormData = z.infer<typeof courseFormSchema>;
 // Form Schema for Class
 export const classFormSchema = z.object({
   classCode: z.string().min(1, 'Mã lớp không được để trống'),
+  gradeLevelId: z.number().min(1, 'Vui lòng chọn khối lớp'),
   courseId: z.number().min(1, 'Vui lòng chọn khóa học'),
   teacherId: z.number().optional(),
   startDate: z.string().min(1, 'Ngày bắt đầu không được để trống'),
@@ -443,17 +447,21 @@ interface CourseFormProps {
   loading?: boolean;
   defaultValues?: Partial<CourseFormData>;
   error?: string | null;
+  syllabi?: { id: number; title: string }[];
 }
 
-export function CourseForm({ onSubmit, onCancel, loading, defaultValues, error }: CourseFormProps) {
+export function CourseForm({ onSubmit, onCancel, loading, defaultValues, error, syllabi }: CourseFormProps) {
   const {
     register,
     handleSubmit,
+    watch,
     formState: { errors },
   } = useForm<CourseFormData>({
     resolver: zodResolver(courseFormSchema),
     defaultValues,
   });
+
+  const selectedSyllabusId = watch('syllabusId');
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
@@ -472,6 +480,61 @@ export function CourseForm({ onSubmit, onCancel, loading, defaultValues, error }
         />
       </FormField>
 
+      {syllabi && syllabi.length > 0 && (
+        <FormField label="Syllabus gốc" error={errors.syllabusId?.message}>
+          <select
+            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+            {...register('syllabusId', { valueAsNumber: true })}
+          >
+            <option value="">-- Chọn Syllabus --</option>
+            {syllabi.map((s) => (
+              <option key={s.id} value={s.id}>
+                {s.title}
+              </option>
+            ))}
+          </select>
+          {selectedSyllabusId && (
+            <p className="text-xs text-muted-foreground mt-1">
+              Khóa học sẽ được tạo từ syllabus đã chọn
+            </p>
+          )}
+        </FormField>
+      )}
+
+      <FormField label="Thời lượng ước tính (giờ)" error={errors.estimatedHours?.message}>
+        <Input
+          type="number"
+          min={1}
+          placeholder="40"
+          {...register('estimatedHours', { valueAsNumber: true })}
+        />
+      </FormField>
+
+      <div className="flex items-center gap-3">
+        <input
+          type="checkbox"
+          id="isRequired"
+          {...register('isRequired')}
+          className="w-4 h-4 rounded border-gray-300"
+        />
+        <label htmlFor="isRequired" className="text-sm">
+          Bắt buộc
+        </label>
+      </div>
+
+      <div className="flex items-center gap-3">
+        <input
+          type="checkbox"
+          id="isActive"
+          defaultChecked={true}
+          {...register('isActive')}
+          className="w-4 h-4 rounded border-gray-300"
+        />
+        <label htmlFor="isActive" className="text-sm">
+          Hoạt động
+        </label>
+      </div>
+
       {error && (
         <div className="p-3 rounded-lg bg-destructive/10 border border-destructive/20 text-sm text-destructive">
           {error}
@@ -489,12 +552,13 @@ interface ClassFormProps {
   onCancel: () => void;
   loading?: boolean;
   defaultValues?: Partial<ClassFormData>;
+  gradeLevels: { id: number; name: string }[];
   courses: { id: number; title: string }[];
   teachers: { id: number; fullName: string }[];
   error?: string | null;
 }
 
-export function ClassForm({ onSubmit, onCancel, loading, defaultValues, courses, teachers, error }: ClassFormProps) {
+export function ClassForm({ onSubmit, onCancel, loading, defaultValues, gradeLevels, courses, teachers, error }: ClassFormProps) {
   const {
     register,
     handleSubmit,
@@ -509,17 +573,26 @@ export function ClassForm({ onSubmit, onCancel, loading, defaultValues, courses,
       <div className="grid grid-cols-2 gap-4">
         <FormField label="Mã lớp" required error={errors.classCode?.message} className="col-span-2">
           <Input
-            placeholder="VD: IOT101"
+            placeholder="VD: E_10A1"
             error={!!errors.classCode}
             {...register('classCode')}
           />
         </FormField>
 
-        <FormField label="Khóa học" required error={errors.courseId?.message}>
+        <FormField label="Khối lớp" required error={errors.gradeLevelId?.message}>
+          <Select
+            error={!!errors.gradeLevelId}
+            options={gradeLevels.map((g) => ({ value: g.id, label: g.name }))}
+            placeholder="Chọn khối"
+            {...register('gradeLevelId', { valueAsNumber: true })}
+          />
+        </FormField>
+
+        <FormField label="Môn Science" required error={errors.courseId?.message}>
           <Select
             error={!!errors.courseId}
             options={courses.map((c) => ({ value: c.id, label: c.title }))}
-            placeholder="Chọn khóa học"
+            placeholder="Chọn môn học"
             {...register('courseId', { valueAsNumber: true })}
           />
         </FormField>

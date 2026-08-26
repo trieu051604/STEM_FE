@@ -61,7 +61,7 @@ export const AttendancePage = () => {
       setIsLoadingClasses(true);
       setClassesError(null);
       try {
-        const result = await classesApi.getMyClasses(user!.id);
+        const result = await classesApi.getMyClasses();
         if (cancelled) return;
         setClasses(result.items);
         if (result.items.length > 0) {

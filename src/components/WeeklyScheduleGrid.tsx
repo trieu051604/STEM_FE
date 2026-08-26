@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { Calendar, Clock, ChevronLeft, ChevronRight, Plus, Edit, Trash2 } from 'lucide-react';
+import { Calendar, Clock, ChevronLeft, ChevronRight, Plus, Edit, Trash2, BookOpen, FileText, TestTube, Eye } from 'lucide-react';
 import { format, startOfWeek, addDays, addWeeks, subWeeks, isToday, startOfMonth, endOfMonth } from 'date-fns';
 import { vi } from 'date-fns/locale';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
@@ -7,6 +7,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { scheduleApi, type ScheduleResponse, type ScheduleConflictInfo, type TeacherConflictInfo } from '@/services/schoolAdminApi';
 import { studentApi, type StudentScheduleResponse } from '@/services/teacherStudentApi';
+import { lessonsApi, modulesApi, type Lesson } from '@/services/curriculumApi';
+import { classesApi } from '@/services/schoolAdminApi';
 
 interface ClassInfo {
   id: number;
@@ -56,6 +58,7 @@ export function WeeklyScheduleGrid({ classId, schedules: initialSchedules, class
   const [view, setView] = useState<'week' | 'month'>('week');
   const [schedules, setSchedules] = useState<ScheduleResponse[]>(initialSchedules || []);
   const [loading, setLoading] = useState(false);
+  const [availableLessons, setAvailableLessons] = useState<{ id: number; title: string; moduleName: string }[]>([]);
 
   // Modal states
   const [showAddModal, setShowAddModal] = useState(false);
@@ -63,6 +66,7 @@ export function WeeklyScheduleGrid({ classId, schedules: initialSchedules, class
   const [selectedSchedule, setSelectedSchedule] = useState<ScheduleResponse | null>(null);
   const [selectedSlot, setSelectedSlot] = useState<{ day: number; slot: typeof SLOTS[0] } | null>(null);
   const [formData, setFormData] = useState({
+    lessonId: undefined as number | undefined,
     startTime: '',
     endTime: '',
   });
@@ -71,14 +75,58 @@ export function WeeklyScheduleGrid({ classId, schedules: initialSchedules, class
   const [conflicts, setConflicts] = useState<ScheduleConflictInfo[]>([]);
   const [teacherConflicts, setTeacherConflicts] = useState<TeacherConflictInfo[]>([]);
 
+  // Lesson detail modal for student view
+  const [showLessonModal, setShowLessonModal] = useState(false);
+  const [selectedLesson, setSelectedLesson] = useState<Lesson | null>(null);
+  const [loadingLesson, setLoadingLesson] = useState(false);
+
+  // Fetch available lessons for this class (course)
+  const fetchLessons = async () => {
+    if (!classId) return;
+    try {
+      // Get class details to find the course
+      const classRes = await classesApi.getById(classId);
+      if (classRes?.courseId) {
+        // Get modules for this course
+        const modules = await modulesApi.getByCourse(classRes.courseId);
+        // Get lessons for each module
+        const allLessons: { id: number; title: string; moduleName: string }[] = [];
+        for (const mod of modules) {
+          const lessons = await lessonsApi.getByModule(mod.id);
+          for (const lesson of lessons) {
+            allLessons.push({
+              id: lesson.id,
+              title: lesson.title,
+              moduleName: mod.title,
+            });
+          }
+        }
+        setAvailableLessons(allLessons);
+      }
+    } catch (err) {
+      console.error('Failed to fetch lessons:', err);
+    }
+  };
+
   // Fetch schedules when week/month or classId changes
   useEffect(() => {
     if (isStudentView) {
       fetchStudentSchedules();
     } else if (classId) {
       fetchSchedules();
+      fetchLessons();
     }
   }, [classId, currentWeekStart, currentMonth, isStudentView]);
+
+  // Reset form when modal opens
+  useEffect(() => {
+    if (showAddModal && selectedSlot) {
+      const defaultStart = selectedSlot.slot?.displayStart || '';
+      const defaultEnd = selectedSlot.slot?.displayEnd || '';
+      setFormData({ lessonId: undefined, startTime: defaultStart, endTime: defaultEnd });
+      setError(null);
+    }
+  }, [showAddModal]);
 
   // Set initial schedules only when not loading (not undefined)
   useEffect(() => {
@@ -211,7 +259,6 @@ const scheduleGrid = useMemo(() => {
     }
   });
 
-  console.log('DEBUG scheduleGrid:', JSON.stringify(grid, null, 2));
   return grid;
 }, [schedules, currentWeekStart]);
 
@@ -224,10 +271,20 @@ const scheduleGrid = useMemo(() => {
   const goToTodayMonth = () => setCurrentMonth(new Date());
 
   const handleCellClick = (day: typeof DAYS_OF_WEEK[0], slot: typeof SLOTS[0]) => {
-    if (!isAdmin) return;
+    if (!isAdmin || !classId || classId <= 0) {
+      return;
+    }
 
-    setSelectedSlot({ day: day.key, slot });
+    const slotInfo = {
+      day: day.key,
+      slot: slot,
+      displayStart: slot.displayStart,
+      displayEnd: slot.displayEnd,
+    };
+
+    setSelectedSlot(slotInfo);
     setFormData({
+      lessonId: undefined,
       startTime: slot.displayStart,
       endTime: slot.displayEnd,
     });
@@ -251,12 +308,31 @@ const scheduleGrid = useMemo(() => {
 
     // Use slot display times for form
     setFormData({
+      lessonId: schedule.lessonId,
       startTime: matchingSlot?.displayStart || startTimeStr.split('T')[1]?.substring(0, 5) || '',
       endTime: matchingSlot?.displayEnd || endTimeStr.split('T')[1]?.substring(0, 5) || '',
     });
 
     if (isAdmin) {
       setShowEditModal(true);
+    } else if (schedule.lessonId) {
+      // For student view, show lesson details modal
+      fetchLessonDetail(schedule.lessonId);
+    }
+  };
+
+  // Fetch lesson detail for student view
+  const fetchLessonDetail = async (lessonId: number) => {
+    setLoadingLesson(true);
+    setShowLessonModal(true);
+    try {
+      const lesson = await lessonsApi.getById(lessonId);
+      setSelectedLesson(lesson);
+    } catch (err) {
+      console.error('Failed to fetch lesson:', err);
+      setSelectedLesson(null);
+    } finally {
+      setLoadingLesson(false);
     }
   };
 
@@ -278,12 +354,15 @@ const scheduleGrid = useMemo(() => {
 
       const response = await scheduleApi.create({
         classId,
+        lessonId: formData.lessonId,
         startTime: startDateTime,
         endTime: endDateTime,
       });
 
-      setSchedules([...schedules, response.schedule]);
       setShowAddModal(false);
+
+      // Refetch directly to ensure sync
+      await fetchSchedules();
 
       // Show warning if there are conflicts
       if (response.conflicts && response.conflicts.length > 0) {
@@ -298,14 +377,16 @@ const scheduleGrid = useMemo(() => {
         const classCodes = response.teacherConflicts.map(c => c.conflictingClassCode).join(', ');
         const teacherWarning = `Cảnh báo: Giáo viên trùng lịch với lớp ${classCodes}!`;
         setError(teacherWarning);
-        setShowEditModal(true);
+        // Delay opening modal to ensure schedules state is updated first
+        setTimeout(() => setShowEditModal(true), 100);
       } else {
         setTeacherConflicts([]);
         if (response.conflicts && response.conflicts.length > 0) {
           const conflictNames = response.conflicts.slice(0, 3).map(c => c.studentName).join(', ');
           const moreText = response.conflicts.length > 3 ? ` và ${response.conflicts.length - 3} học sinh khác` : '';
           setError(`Cảnh báo: ${conflictNames}${moreText} bị trùng lịch với lớp khác!`);
-          setShowEditModal(true);
+          // Delay opening modal to ensure schedules state is updated first
+          setTimeout(() => setShowEditModal(true), 100);
         } else {
           await notifyScheduleChange();
         }
@@ -333,21 +414,16 @@ const scheduleGrid = useMemo(() => {
       const endDateTime = `${format(scheduleDate, 'yyyy-MM-dd')}T${formData.endTime}:00`;
 
       await scheduleApi.update(selectedSchedule.id, {
+        lessonId: formData.lessonId,
         startTime: startDateTime,
         endTime: endDateTime,
       });
 
-      setSchedules(schedules.map(s =>
-        s.id === selectedSchedule.id
-          ? {
-              ...s,
-              startTime: startDateTime,
-              endTime: endDateTime,
-            }
-          : s
-      ));
       setShowEditModal(false);
       setSelectedSchedule(null);
+
+      // Refetch directly to ensure sync
+      await fetchSchedules();
       await notifyScheduleChange();
     } catch (err: any) {
       console.error('Failed to update schedule:', err);
@@ -364,11 +440,13 @@ const scheduleGrid = useMemo(() => {
 
     try {
       await scheduleApi.delete(selectedSchedule.id);
-      setSchedules(schedules.filter(s => s.id !== selectedSchedule.id));
       setShowEditModal(false);
       setSelectedSchedule(null);
       setConflicts([]);
       setTeacherConflicts([]);
+
+      // Refetch directly to ensure sync
+      await fetchSchedules();
       await notifyScheduleChange();
     } catch (err: any) {
       console.error('Failed to delete schedule:', err);
@@ -439,10 +517,10 @@ const scheduleGrid = useMemo(() => {
             </button>
           </div>
 
-          {isAdmin && (
+          {isAdmin && classId && classId > 0 && (
             <Button size="sm" onClick={() => {
               setSelectedSlot({ day: 1, slot: SLOTS[0] });
-              setFormData({ startTime: SLOTS[0].start, endTime: SLOTS[0].end });
+              setFormData({ lessonId: undefined, startTime: SLOTS[0].start, endTime: SLOTS[0].end });
               setShowAddModal(true);
             }}>
               <Plus className="w-4 h-4 mr-1" />
@@ -459,94 +537,99 @@ const scheduleGrid = useMemo(() => {
       ) : view === 'week' ? (
       /* Schedule Grid */
       <div className="border border-border rounded-xl overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full border-collapse min-w-[900px]">
-            {/* Header Row */}
-            <thead>
-              <tr className="bg-gradient-to-r from-blue-600 to-blue-700 text-white">
-                <th className="sticky left-0 z-20 w-28 p-4 text-center font-bold border-r-2 border-blue-500 bg-blue-600">
-                  <div className="flex flex-col items-center gap-1">
-                    <Clock className="w-5 h-5" />
-                    <span className="text-sm">THỜI GIAN</span>
+        <table className="w-full border-collapse table-fixed">
+          {/* Header Row */}
+          <thead>
+            <tr className="bg-gradient-to-r from-blue-600 to-blue-700 text-white">
+              <th className="sticky left-0 z-20 w-20 p-2 text-center font-bold border-r-2 border-blue-500 bg-blue-600">
+                <div className="flex flex-col items-center leading-tight">
+                  <Clock className="w-4 h-4" />
+                  <span className="text-[10px]">Tiết</span>
+                </div>
+              </th>
+              {weekDays.map((day) => (
+                <th
+                  key={day.key}
+                  className={`p-2 text-center font-bold ${
+                    isToday(day.date)
+                      ? 'bg-yellow-500/30 border-b-4 border-yellow-400'
+                      : ''
+                  }`}
+                >
+                  <div className="flex flex-col items-center leading-tight">
+                    <span className="text-xs font-bold">{day.full}</span>
+                    <span className="text-base font-extrabold">{format(day.date, 'dd')}</span>
                   </div>
                 </th>
-                {weekDays.map((day) => (
-                  <th
-                    key={day.key}
-                    className={`p-3 text-center font-bold min-w-[130px] ${
-                      isToday(day.date)
-                        ? 'bg-yellow-500/30 border-b-4 border-yellow-400'
-                        : ''
-                    }`}
-                  >
-                    <div className="flex flex-col items-center leading-tight">
-                      <span className="text-sm font-bold">{day.full}</span>
-                      <span className="text-2xl font-extrabold">{format(day.date, 'dd')}</span>
-                    </div>
-                  </th>
-                ))}
-              </tr>
-            </thead>
-
-            {/* Body */}
-            <tbody>
-              {DISPLAY_SLOTS.map((slot) => (
-                <tr key={slot.number} className="border-t-2 border-border">
-                  {/* Slot Column */}
-                  <td className="sticky left-0 z-20 p-3 text-center font-bold bg-gradient-to-r from-blue-50 to-blue-100 dark:from-blue-950 dark:to-blue-900 border-r-2 border-border min-w-[140px]">
-                    <div className="flex flex-col items-center gap-0.5 leading-tight">
-                      <span className="text-base font-bold text-blue-700 dark:text-blue-300">Tiết {slot.number}</span>
-                      <span className="text-xs font-medium text-blue-600 dark:text-blue-400 whitespace-nowrap">
-                        {slot.displayStart} - {slot.displayEnd}
-                      </span>
-                    </div>
-                  </td>
-
-                  {/* Day Columns */}
-                  {weekDays.map((day) => {
-                    const cellSchedules = scheduleGrid[day.key]?.[slot.number] || [];
-                    const isTodayCell = isToday(day.date);
-
-                    return (
-                      <td
-                        key={`${day.key}-${slot.number}`}
-                        className={`p-2 min-h-[100px] align-top border-r border-border ${
-                          isTodayCell ? 'bg-gradient-to-br from-yellow-50 to-orange-50 dark:from-yellow-950/30 dark:to-orange-950/30' : ''
-                        }`}
-                        onClick={() => handleCellClick(day, slot)}
-                        style={{ cursor: isAdmin ? 'pointer' : 'default' }}
-                      >
-                        {cellSchedules.length === 0 ? (
-                          <div className="h-full min-h-[60px] flex items-center justify-center text-muted-foreground/20 text-xs">
-                            {isAdmin && isTodayCell ? '+' : ''}
-                          </div>
-                        ) : (
-                          <div className="space-y-1.5">
-                            {cellSchedules.map((schedule) => (
-                              <div
-                                key={schedule.id}
-                                className={`p-2 rounded-lg text-white text-xs cursor-pointer hover:opacity-90 transition-opacity shadow-sm bg-gradient-to-br ${slot.color} ${slot.bgDark}`}
-                                onClick={(e) => handleScheduleClick(schedule, e)}
-                              >
-                                <p className="font-bold text-sm truncate">{classInfo?.classCode || schedule.classCode}</p>
-                                <div className="flex items-center gap-1 opacity-90">
-                                  <Clock className="w-3 h-3 shrink-0" />
-                                  <span>
-                                    {schedule.startTime.split('T')[1].substring(0, 5)} - {schedule.endTime.split('T')[1].substring(0, 5)}
-                                  </span>
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                      </td>
-                    );
-                  })}
-                </tr>
               ))}
-            </tbody>
-          </table>
-        </div>
+            </tr>
+          </thead>
+
+          {/* Body */}
+          <tbody>
+            {DISPLAY_SLOTS.map((slot) => (
+              <tr key={slot.number} className="border-t border-border">
+                {/* Slot Column */}
+                <td className="sticky left-0 z-20 p-2 text-center font-bold bg-gradient-to-r from-blue-50 to-blue-100 dark:from-blue-950 dark:to-blue-900 border-r-2 border-border">
+                  <div className="flex flex-col items-center leading-tight">
+                    <span className="text-sm font-bold text-blue-700 dark:text-blue-300">T{slot.number}</span>
+                    <span className="text-[10px] text-blue-600 dark:text-blue-400 whitespace-nowrap">
+                      {slot.displayStart}
+                    </span>
+                  </div>
+                </td>
+
+                {/* Day Columns */}
+                {weekDays.map((day) => {
+                  const cellSchedules = scheduleGrid[day.key]?.[slot.number] || [];
+                  const isTodayCell = isToday(day.date);
+
+                  return (
+                    <td
+                      key={`${day.key}-${slot.number}`}
+                      className={`p-1.5 min-h-[60px] align-top border-r border-border ${
+                        isTodayCell ? 'bg-gradient-to-br from-yellow-50 to-orange-50 dark:from-yellow-950/30 dark:to-orange-950/30' : ''
+                      }`}
+                      onClick={() => handleCellClick(day, slot)}
+                      style={{ cursor: isAdmin ? 'pointer' : 'default' }}
+                    >
+                      {cellSchedules.length === 0 ? (
+                        <div className="h-full min-h-[48px] flex items-center justify-center text-muted-foreground/20 text-xs">
+                          {isAdmin ? '+' : ''}
+                        </div>
+                      ) : (
+                        <div className="space-y-1">
+                          {cellSchedules.map((schedule) => (
+                            <div
+                              key={schedule.id}
+                              className={`p-1 rounded text-white cursor-pointer hover:opacity-90 transition-opacity shadow-sm bg-gradient-to-br ${slot.color} ${slot.bgDark}`}
+                              onClick={(e) => handleScheduleClick(schedule, e)}
+                            >
+                              <p className="font-bold text-xs truncate leading-tight" title={schedule.lessonTitle || (classInfo ? `${classInfo.classCode} - ${classInfo.className}` : (schedule.classCode || schedule.className || 'Buổi học'))}>
+                                {schedule.lessonTitle 
+                                  ? schedule.lessonTitle 
+                                  : (classInfo 
+                                      ? `${classInfo.classCode}${schedule.lessonTitle ? ` - ${schedule.lessonTitle}` : ''}` 
+                                      : (schedule.classCode || schedule.className || 'Buổi học'))
+                                }
+                              </p>
+                              <div className="flex items-center gap-0.5 opacity-90 text-[10px] leading-tight">
+                                <Clock className="w-2.5 h-2.5 shrink-0" />
+                                <span>
+                                  {schedule.startTime.split('T')[1].substring(0, 5)}
+                                </span>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </td>
+                  );
+                })}
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
       ) : (
         <MonthView schedules={schedules} currentMonth={currentMonth} classInfo={classInfo} />
@@ -563,6 +646,101 @@ const scheduleGrid = useMemo(() => {
           <span>Hôm nay</span>
         </div>
       </div>
+
+      {/* Lesson Detail Modal for Student View */}
+      <Dialog open={showLessonModal} onOpenChange={setShowLessonModal}>
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <BookOpen className="w-5 h-5 text-primary" />
+              {selectedLesson?.title || 'Chi tiết bài học'}
+            </DialogTitle>
+          </DialogHeader>
+
+          {loadingLesson ? (
+            <div className="flex items-center justify-center py-8">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+            </div>
+          ) : selectedLesson ? (
+            <div className="space-y-4 py-4">
+              {/* Meta info */}
+              <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
+                {selectedLesson.estimatedMinutes && (
+                  <div className="flex items-center gap-1">
+                    <Clock className="w-4 h-4" />
+                    <span>{selectedLesson.estimatedMinutes} phút</span>
+                  </div>
+                )}
+                {selectedLesson.lessonType && (
+                  <div className="flex items-center gap-1">
+                    <FileText className="w-4 h-4" />
+                    <span className="capitalize">{selectedLesson.lessonType}</span>
+                  </div>
+                )}
+                {selectedLesson.hasVirtualLab && (
+                  <div className="flex items-center gap-1 text-green-600">
+                    <TestTube className="w-4 h-4" />
+                    <span>Có Virtual Lab</span>
+                  </div>
+                )}
+              </div>
+
+              {/* Content */}
+              {selectedLesson.content && (
+                <div className="prose prose-sm dark:prose-invert max-w-none">
+                  <h4 className="text-sm font-semibold">Nội dung bài học</h4>
+                  <div
+                    className="mt-2 p-4 bg-muted/50 rounded-lg text-sm"
+                    dangerouslySetInnerHTML={{ __html: selectedLesson.content }}
+                  />
+                </div>
+              )}
+
+              {/* Input/Output */}
+              {(selectedLesson.input || selectedLesson.output) && (
+                <div className="grid grid-cols-2 gap-4">
+                  {selectedLesson.input && (
+                    <div className="p-4 bg-blue-50 dark:bg-blue-950/30 rounded-lg">
+                      <h4 className="text-sm font-semibold text-blue-700 dark:text-blue-400 mb-2">
+                        Input (Đầu vào)
+                      </h4>
+                      <p className="text-sm whitespace-pre-wrap">{selectedLesson.input}</p>
+                    </div>
+                  )}
+                  {selectedLesson.output && (
+                    <div className="p-4 bg-green-50 dark:bg-green-950/30 rounded-lg">
+                      <h4 className="text-sm font-semibold text-green-700 dark:text-green-400 mb-2">
+                        Output (Kết quả)
+                      </h4>
+                      <p className="text-sm whitespace-pre-wrap">{selectedLesson.output}</p>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Action buttons */}
+              <DialogFooter>
+                {selectedLesson.hasVirtualLab && selectedLesson.labId && (
+                  <Button variant="default" onClick={() => {
+                    // Navigate to virtual lab
+                    window.open(`/labs/${selectedLesson.labId}`, '_blank');
+                  }}>
+                    <TestTube className="w-4 h-4 mr-2" />
+                    Mở Virtual Lab
+                  </Button>
+                )}
+                <Button variant="outline" onClick={() => setShowLessonModal(false)}>
+                  Đóng
+                </Button>
+              </DialogFooter>
+            </div>
+          ) : (
+            <div className="py-8 text-center text-muted-foreground">
+              Không tìm thấy thông tin bài học
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
 
       {/* Add Schedule Modal */}
       <Dialog open={showAddModal} onOpenChange={setShowAddModal}>
@@ -590,6 +768,26 @@ const scheduleGrid = useMemo(() => {
                 {error}
               </div>
             )}
+
+            {/* Lesson Selection */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Bài học (tùy chọn)</label>
+              <select
+                value={formData.lessonId || ''}
+                onChange={(e) => setFormData(prev => ({ ...prev, lessonId: e.target.value ? Number(e.target.value) : undefined }))}
+                className="w-full h-10 px-3 rounded-lg border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+              >
+                <option value="">-- Chọn bài học --</option>
+                {availableLessons.map((lesson) => (
+                  <option key={lesson.id} value={lesson.id}>
+                    {lesson.title} {lesson.moduleName ? `(${lesson.moduleName})` : ''}
+                  </option>
+                ))}
+              </select>
+              <p className="text-xs text-muted-foreground">
+                Để trống nếu buổi học chưa có bài học cụ thể
+              </p>
+            </div>
 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
@@ -683,6 +881,26 @@ const scheduleGrid = useMemo(() => {
                 </div>
               </div>
             )}
+
+            {/* Lesson Selection */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Bài học (tùy chọn)</label>
+              <select
+                value={formData.lessonId || ''}
+                onChange={(e) => setFormData(prev => ({ ...prev, lessonId: e.target.value ? Number(e.target.value) : undefined }))}
+                className="w-full h-10 px-3 rounded-lg border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+              >
+                <option value="">-- Chọn bài học --</option>
+                {availableLessons.map((lesson) => (
+                  <option key={lesson.id} value={lesson.id}>
+                    {lesson.title} {lesson.moduleName ? `(${lesson.moduleName})` : ''}
+                  </option>
+                ))}
+              </select>
+              <p className="text-xs text-muted-foreground">
+                Để trống nếu buổi học chưa có bài học cụ thể
+              </p>
+            </div>
 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
@@ -813,9 +1031,9 @@ function MonthView({ schedules, currentMonth, classInfo }: { schedules: Schedule
                       return (
                         <div
                           key={schedule.id}
-                          className={`text-xs p-1 rounded truncate text-white bg-gradient-to-br ${slot?.color || 'from-gray-500 to-gray-600'}`}
+                          className={`text-[10px] p-1 rounded truncate text-white bg-gradient-to-br ${slot?.color || 'from-gray-500 to-gray-600'}`}
                         >
-                          {schedule.startTime.split('T')[1]?.substring(0, 5)} {classInfo?.classCode || schedule.classCode}
+                          {schedule.startTime.split('T')[1]?.substring(0, 5)} {schedule.lessonTitle || classInfo?.classCode || schedule.classCode}
                         </div>
                       );
                     })}

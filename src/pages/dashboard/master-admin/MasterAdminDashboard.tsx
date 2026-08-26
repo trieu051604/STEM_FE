@@ -225,14 +225,14 @@ export function MasterAdminDashboard() {
       </div>
 
       {/* Alert for pending items */}
-      {stats && stats.pendingSchoolRequests && stats.pendingSchoolRequests > 0 && (
+      {Number(stats?.pendingSchoolRequests) > 0 && (
         <div className={`rounded-2xl p-4 flex flex-col sm:flex-row items-start sm:items-center gap-4 border ${isDark ? 'bg-amber-500/10 border-amber-500/20' : 'bg-amber-50 border-amber-200'}`}>
           <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${isDark ? 'bg-amber-500/20 text-amber-400' : 'bg-amber-100 text-amber-600'}`}>
             <AlertCircle className={`w-5 h-5`} />
           </div>
           <div className="flex-1">
             <p className={`font-bold ${isDark ? 'text-amber-400' : 'text-amber-700'}`}>
-              Có {stats.pendingSchoolRequests} yêu cầu đăng ký đang chờ phê duyệt
+              Có {stats?.pendingSchoolRequests} yêu cầu đăng ký đang chờ phê duyệt
             </p>
             <p className={`text-xs mt-0.5 ${isDark ? 'text-amber-400/70' : 'text-amber-600'}`}>
               Vui lòng kiểm tra và thực hiện phê duyệt các đơn đăng ký trường mới để họ có thể hoạt động trên hệ thống.

@@ -1100,11 +1100,27 @@ export interface SensorScenarioConfig {
   sensors: Record<string, SensorTimeline>;
 }
 
+// Explicit mechanical attachment (STANDARDIZE MOTOR / ROTATING COMPONENT
+// ANIMATION follow-up, 2026-08-24) — Robot Wheel/Propeller have no electrical
+// connection to anything (visual-only, not in the netlist), so there was no
+// data-driven way to know which DC Motor/Drone Motor a wheel/propeller
+// belongs to; the FE fell back to a nearest-canvas-distance heuristic. This
+// lets a diagram author declare the real relationship explicitly. Purely
+// additive to the diagram JSON blob (no DB/BE schema change — see
+// VirtualLabDiagramService.Analyze, which passes unknown top-level JSON
+// fields through untouched). Optional: diagrams without it keep using the
+// nearest-distance fallback.
+export interface MechanicalLink {
+  motorId: string;
+  targetId: string;
+}
+
 export interface LabCircuitConfig {
   board?: LabBoardType | string;
   parts?: LabCircuitComponent[];
   connections?: unknown[];
   sensorScenario?: SensorScenarioConfig;
+  mechanicalLinks?: MechanicalLink[];
   [key: string]: unknown;
 }
 
@@ -2142,6 +2158,11 @@ export const diagramsApi = {
         // trước (không key thừa) — BE TryParseScenario() coi thiếu key này là
         // "không có scenario", không phải lỗi.
         ...(data.circuitConfig.sensorScenario ? { sensorScenario: data.circuitConfig.sensorScenario } : {}),
+        // Mechanical attachment (Robot Wheel/Propeller -> Motor) — cùng
+        // pattern "chỉ ghi khi có dữ liệu" như sensorScenario ở trên. Thiếu
+        // key này KHÔNG phải lỗi — CircuitCanvas tự fallback về heuristic
+        // nearest-distance (xem motorVisual.ts).
+        ...(data.circuitConfig.mechanicalLinks?.length ? { mechanicalLinks: data.circuitConfig.mechanicalLinks } : {}),
       }),
       sourceCode: data.sourceCode,
       labId: data.labId,
@@ -2615,9 +2636,20 @@ export const submissionsApi = {
     const response = await api.post('/submissions/virtual-lab', {
       assignmentId: payload.assignmentId,
       sessionId: payload.sessionId,
+      // Phase 9 fix (Final Project Readiness audit) — this used to only pick
+      // parts/connections, silently dropping sensorScenario/mechanicalLinks
+      // even though they were part of the actual diagram the student ran.
+      // The BE round-trips the whole diagramJson verbatim (VirtualLabDiagramService
+      // .Analyze -> GetRawText()) and sensorScenario/mechanicalLinks live
+      // inside diagramJson by design (see SensorScenarioDtos.cs comment — no
+      // dedicated column, no BE/DB change needed here), so the submitted
+      // snapshot now genuinely reflects what the student simulated, matching
+      // the same conditional-spread pattern already used in diagramsApi.save.
       diagramJson: JSON.stringify({
         parts: payload.circuitConfig.parts ?? [],
         connections: payload.circuitConfig.connections ?? [],
+        ...(payload.circuitConfig.sensorScenario ? { sensorScenario: payload.circuitConfig.sensorScenario } : {}),
+        ...(payload.circuitConfig.mechanicalLinks?.length ? { mechanicalLinks: payload.circuitConfig.mechanicalLinks } : {}),
       }),
       sourceCode: payload.sourceCode,
       simulationEvents: payload.simulationEvents,

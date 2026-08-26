@@ -3,13 +3,21 @@ import React, { createElement, useCallback, useEffect, useLayoutEffect, useMemo,
 import { SimulationEngine } from './SimulationEngine';
 import { attachLed } from './glue/led';
 import { attachButton } from './glue/button';
-import type { LabCircuitComponent } from '@/services/dashboardApi';
+import type { LabCircuitComponent, MechanicalLink } from '@/services/dashboardApi';
 import { Toolbar, COMPONENT_COLOR_OPTIONS } from './Toolbar';
 import { getPinCoords, getPinKind } from './pinMaps';
 import { HelpCircle, Plus } from 'lucide-react';
 import { normalizeComponentType } from './componentTypeNormalize';
 import { ROBOT_KIT_FALLBACK_CARDS, getFallbackIllustration } from './componentIllustrations';
 import { getInteractionCapability } from './runtimeInteractionCapability';
+import {
+  type MotorVisualState,
+  STOPPED_VISUAL,
+  driveStateToVisual,
+  onOffToVisual,
+  findNearest,
+  findL298nChannel,
+} from './motorVisual';
 
 export type Waypoint = { x: number; y: number };
 export type Connection = [string, string, string, Waypoint[]?];
@@ -35,6 +43,17 @@ export interface PartVisualState {
   // Relay Module — suy ra thật từ digitalWrite trên chân IN qua
   // RelayModel.cs (Educational runner). undefined = chưa nhận event nào.
   relay?: boolean;
+  // Fan/Drone Motor — nhị phân ON/OFF suy ra thật từ digitalWrite qua
+  // FanModel.cs/DroneMotorModel.cs (QemuEsp32Runner.ComponentIndex). undefined
+  // = chưa nhận event nào (xem TASK "STANDARDIZE MOTOR / ROTATING COMPONENT
+  // ANIMATION"). KHÔNG có PWM/tốc độ — QEMU chỉ instrument digitalWrite.
+  fan?: boolean;
+  droneMotor?: boolean;
+  // Servo — góc thật 0-180 độ qua ServoModel.cs (`state:'angle'`). CHỈ có ở
+  // Educational runner hôm nay (QEMU không đọc được PWM servo write() dùng
+  // để tạo — xem ServoModel.cs/QemuEsp32Runner.cs, không phải thiếu sót ở
+  // tầng FE). undefined = chưa nhận event nào -> hiển thị góc mặc định 90°.
+  angle?: number;
 }
 
 // wokwi-led/wokwi-buzzer (Lit) khai báo `value`/`hasSignal` là boolean nội
@@ -69,6 +88,12 @@ interface CircuitCanvasProps {
   boardType?: string;
   components?: LabCircuitComponent[];
   connections?: Connection[];
+  // Liên kết cơ khí TƯỜNG MINH (Robot Wheel/Propeller -> Motor) — tuỳ chọn.
+  // Khi có, ƯU TIÊN dùng thay vì heuristic nearest-canvas-distance (xem
+  // motorVisual.ts) vì đây là quan hệ diagram tác giả THẬT SỰ khai báo, không
+  // phải suy đoán theo khoảng cách. Bỏ trống = giữ nguyên hành vi cũ 100%
+  // (mọi diagram hiện có không khai báo field này).
+  mechanicalLinks?: MechanicalLink[];
   // Trạng thái LED/Buzzer từ event mock-runner (thay cho glue avr8js —
   // engine ở trên chỉ còn dùng khi boardType === 'arduino_uno', ESP32 luôn
   // truyền engine={null} và dùng partStates thay thế).
@@ -177,7 +202,12 @@ const MOTOR_STATE_COLOR: Record<MotorDriveState, string> = {
   brake: 'text-red-400',
 };
 
-function renderFallbackCard(type: string, rawType: string, partState: PartVisualState | undefined) {
+function renderFallbackCard(
+  type: string,
+  rawType: string,
+  partState: PartVisualState | undefined,
+  motorVisual?: MotorVisualState,
+) {
   const config = ROBOT_KIT_FALLBACK_CARDS[type];
   if (!config) {
     // Type hoàn toàn chưa biết (kể cả chưa nằm trong bộ robot kit) — giữ
@@ -201,10 +231,16 @@ function renderFallbackCard(type: string, rawType: string, partState: PartVisual
   // Relay Module — trạng thái ON/OFF suy ra thật từ digitalWrite trên chân IN
   // (RelayModel.cs, Educational runner). Không animation phức tạp, chỉ nhãn.
   const showRelayState = type === 'relay-module';
+  // Fan/Drone Motor — ON/OFF suy ra thật từ digitalWrite (FanModel.cs/
+  // DroneMotorModel.cs). Cùng pattern nhãn với Relay ở trên; animation quay
+  // thật đọc qua motorVisual (xem getFallbackIllustration bên dưới), nhãn chữ
+  // chỉ là phụ trợ debug/đọc nhanh, không thay thế animation.
+  const showFanState = type === 'fan';
+  const showDroneMotorState = type === 'drone-motor';
   // WiFi/Cloud Phase 1 — chấm nhỏ báo đang nhận dữ liệu cloud-event (chi tiết
   // đầy đủ topic/value/log xem CloudDashboardPanel.tsx, KHÔNG nhồi vào đây).
   const showCloudDot = (type === 'wifi-cloud-node' || type === 'dashboard-cloud') && partState?.cloudLive;
-  const illustration = getFallbackIllustration(type, config.width, config.height);
+  const illustration = getFallbackIllustration(type, config.width, config.height, motorVisual);
 
   // Có minh hoạ SVG riêng — hình chiếm gần hết card, tên/badge/motor-state
   // hiện dạng nhãn phủ mờ phía dưới (không đè lên chi tiết hình vẽ). Card
@@ -248,6 +284,16 @@ function renderFallbackCard(type: string, rawType: string, partState: PartVisual
           {showRelayState && (
             <span className={`block text-[8px] font-mono leading-tight text-center ${partState?.relay ? 'text-emerald-400' : 'text-slate-400'}`}>
               {partState?.relay === undefined ? '—' : partState.relay ? 'ON' : 'OFF'}
+            </span>
+          )}
+          {showFanState && (
+            <span className={`block text-[8px] font-mono leading-tight text-center ${partState?.fan ? 'text-emerald-400' : 'text-slate-400'}`}>
+              {partState?.fan === undefined ? '—' : partState.fan ? 'ON' : 'OFF'}
+            </span>
+          )}
+          {showDroneMotorState && (
+            <span className={`block text-[8px] font-mono leading-tight text-center ${partState?.droneMotor ? 'text-emerald-400' : 'text-slate-400'}`}>
+              {partState?.droneMotor === undefined ? '—' : partState.droneMotor ? 'ON' : 'OFF'}
             </span>
           )}
         </div>
@@ -380,6 +426,7 @@ export const CircuitCanvas = ({
   boardType = 'arduino_uno',
   components = [],
   connections = [],
+  mechanicalLinks = [],
   partStates,
   onComponentMove,
   onWireConnect,
@@ -471,6 +518,68 @@ export const CircuitCanvas = ({
     componentRefs.current.set(id, element as HTMLElement | null);
   };
 
+  // Trạng thái quay CHUẨN HOÁ cho mọi linh kiện cơ khí (STANDARDIZE MOTOR /
+  // ROTATING COMPONENT ANIMATION) — tính 1 LẦN/render từ dữ liệu THẬT đã có
+  // sẵn (partStates + connections), KHÔNG tạo state giả nào ở FE:
+  //   - DC Motor: kênh L298N nó đấu vào qua OUT1-4 (tra trong connections[]),
+  //     rồi đọc motorA/motorB thật của đúng L298N đó.
+  //   - Fan/Drone Motor: ON/OFF thật qua FanModel.cs/DroneMotorModel.cs.
+  //   - Robot Wheel/Propeller: KHÔNG có kết nối điện nào (visual-only, không
+  //     vào netlist) — ƯU TIÊN mechanicalLinks[] tường minh (diagram tác giả
+  //     tự khai báo targetId->motorId thật, xem MechanicalLink), CHỈ fallback
+  //     về nearest-canvas-distance khi diagram không khai báo link nào cho
+  //     đúng component đó (không phá diagram cũ chưa có field này).
+  const motorVisualStates = useMemo(() => {
+    const result: Record<string, MotorVisualState> = {};
+
+    const dcMotors = components.filter((c) => normalizeComponentType(c.type) === 'dc-motor');
+    const droneMotors = components.filter((c) => normalizeComponentType(c.type) === 'drone-motor');
+    const wheels = components.filter((c) => normalizeComponentType(c.type) === 'robot-wheel');
+    const propellers = components.filter((c) => normalizeComponentType(c.type) === 'propeller');
+    const fans = components.filter((c) => normalizeComponentType(c.type) === 'fan');
+
+    for (const motor of dcMotors) {
+      const channel = findL298nChannel(motor.id, connections);
+      const l298nState = channel ? partStates?.[channel.l298nId] : undefined;
+      const driveState = channel?.channel === 'motorB' ? l298nState?.motorB : l298nState?.motorA;
+      result[motor.id] = driveStateToVisual(driveState);
+    }
+
+    for (const drone of droneMotors) {
+      result[drone.id] = onOffToVisual(partStates?.[drone.id]?.droneMotor);
+    }
+
+    for (const fan of fans) {
+      result[fan.id] = onOffToVisual(partStates?.[fan.id]?.fan);
+    }
+
+    // resolveLinkedMotorId: mechanicalLinks[] trước, nearest-distance sau.
+    const resolveLinkedMotorId = (
+      target: { id: string; x: number; y: number },
+      candidates: { id: string; x: number; y: number }[],
+    ): string | null => {
+      const explicitLink = mechanicalLinks.find((link) => link.targetId === target.id);
+      if (explicitLink && result[explicitLink.motorId]) {
+        return explicitLink.motorId;
+      }
+      return findNearest(target, candidates)?.id ?? null;
+    };
+
+    const dcMotorPoints = dcMotors.map((m) => ({ id: m.id, x: m.x, y: m.y }));
+    for (const wheel of wheels) {
+      const motorId = resolveLinkedMotorId({ id: wheel.id, x: wheel.x, y: wheel.y }, dcMotorPoints);
+      result[wheel.id] = (motorId && result[motorId]) || STOPPED_VISUAL;
+    }
+
+    const droneMotorPoints = droneMotors.map((m) => ({ id: m.id, x: m.x, y: m.y }));
+    for (const propeller of propellers) {
+      const motorId = resolveLinkedMotorId({ id: propeller.id, x: propeller.x, y: propeller.y }, droneMotorPoints);
+      result[propeller.id] = (motorId && result[motorId]) || STOPPED_VISUAL;
+    }
+
+    return result;
+  }, [components, connections, mechanicalLinks, partStates]);
+
   useEffect(() => {
     components.forEach((component) => {
       const type = normalizeComponentType(component.type);
@@ -507,6 +616,27 @@ export const CircuitCanvas = ({
       el.ledGreen = state?.rgbG ? 1 : 0;
       // @ts-ignore
       el.ledBlue = state?.rgbB ? 1 : 0;
+    });
+  }, [components, partStates]);
+
+  // wokwi-servo: `angle` là number property (ServoElement.angle) — CÙNG lý
+  // do RGB LED ở trên (React chỉ gán thẳng DOM property cho boolean qua JSX,
+  // number luôn đi qua setAttribute -> Lit đọc lại thành string, ghi đè giá
+  // trị nội bộ). Gán trực tiếp qua ref. Mặc định 90° (giữa hành trình) khi
+  // chưa có event nào — KHÔNG bịa chuyển động, chỉ là vị trí nghỉ hợp lý.
+  // STEP 6: KHÔNG dùng animation quay vô hạn — chỉ set góc tĩnh, phần "mượt"
+  // do CSS transition bên trong bản thân wokwi-servo's shadow DOM tự xử lý
+  // nếu có; nếu không, vẫn đúng yêu cầu "0/90/180 hiển thị khác nhau rõ
+  // ràng", chỉ là chuyển động dạng snap thay vì tween.
+  useEffect(() => {
+    components.forEach((component) => {
+      const type = normalizeComponentType(component.type);
+      if (type !== 'servo') return;
+      const el = componentRefs.current.get(component.id);
+      if (!el) return;
+      const angle = partStates?.[component.id]?.angle;
+      // @ts-ignore
+      el.angle = typeof angle === 'number' ? angle : 90;
     });
   }, [components, partStates]);
 
@@ -1314,7 +1444,7 @@ export const CircuitCanvas = ({
             // thật đều rơi vào đây — renderFallbackCard() tự phân biệt card có
             // icon+tên (đã đăng ký trong ROBOT_KIT_FALLBACK_CARDS) và type hoàn
             // toàn lạ (gray box cũ, không đổi hành vi).
-            renderElement = renderFallbackCard(type, component.type, partState);
+            renderElement = renderFallbackCard(type, component.type, partState, motorVisualStates[component.id]);
           }
 
           // Capability-driven, not a type-name switch — component.type (the

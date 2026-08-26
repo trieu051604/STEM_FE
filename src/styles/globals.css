@@ -352,6 +352,19 @@
   border-color: hsl(var(--border));
 }
 
+/* ============ VIRTUAL LAB — MOTOR/ROTATING PART ANIMATION ============ */
+/* Shared keyframes for any rotating mechanical overlay (DC Motor shaft, Fan
+   blade, Drone Motor propeller, Robot Wheel spokes) — see motorVisual.ts.
+   CSS `transform: rotate()` only (GPU-composited, no per-frame React state) —
+   direction is picked by animation-name, on/off by animation-play-state, so
+   toggling state never restarts/repaints the whole element. */
+@keyframes stem-spin-cw {
+  to { transform: rotate(360deg); }
+}
+@keyframes stem-spin-ccw {
+  to { transform: rotate(-360deg); }
+}
+
 /* ============ TEACHER THEME ============ */
 /* Previously hardcoded dark HSL values unconditionally here, which made the
    Light/Dark toggle a no-op on Teacher pages (this class always won over

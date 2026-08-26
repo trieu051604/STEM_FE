@@ -41,6 +41,7 @@ import {
   FlaskConical,
 } from 'lucide-react';
 import { normalizeComponentType } from './componentTypeNormalize';
+import { spinStyle, type MotorVisualState } from './motorVisual';
 // Ảnh thật L298N (REAL COMPONENT VISUAL, thay cho SVG tự vẽ) — kích thước
 // gốc 535x536 (gần vuông). width/height card đổi từ 180x100 (tỉ lệ cũ khớp
 // SVG tự vẽ) sang 140x140 (khớp đúng tỉ lệ ảnh thật) — L298N_PINS trong
@@ -128,7 +129,19 @@ export const ROBOT_KIT_FALLBACK_CARDS: Record<
 // getComponentIllustration() bên dưới), width/height truyền vào vẫn lấy từ
 // ROBOT_KIT_FALLBACK_CARDS (giữ đúng tỉ lệ thật) nhưng render trong khung cố
 // định 44x44 qua preserveAspectRatio — không phá hình.
-export function getFallbackIllustration(type: string, width: number, height: number): ReactNode | null {
+// motorVisual (tuỳ chọn, mặc định "đứng yên" khi bỏ trống — mọi caller cũ
+// không truyền tham số này không đổi hành vi) — CHỈ 5 case dc-motor/
+// robot-wheel/fan/propeller/drone-motor đọc tới, phần còn lại bỏ qua hoàn
+// toàn. Xem TASK "STANDARDIZE MOTOR / ROTATING COMPONENT ANIMATION" và
+// motorVisual.ts — animation luôn là CSS transform: rotate() theo state thật
+// từ simulation runtime, không có setInterval/requestAnimationFrame nào ở
+// đây, không xoay/di chuyển toàn bộ component khỏi vị trí canvas.
+export function getFallbackIllustration(
+  type: string,
+  width: number,
+  height: number,
+  motorVisual?: MotorVisualState,
+): ReactNode | null {
   const vb = `0 0 ${width} ${height}`;
   const svgProps = { viewBox: vb, width: '100%', height: '100%', preserveAspectRatio: 'xMidYMid meet' as const };
 
@@ -161,8 +174,14 @@ export function getFallbackIllustration(type: string, width: number, height: num
       return (
         <svg {...svgProps}>
           <circle cx={width / 2} cy={height / 2} r={height * 0.42} fill="#a1a1aa" stroke="#71717a" strokeWidth={1.5} />
-          <circle cx={width / 2} cy={height / 2} r={height * 0.16} fill="#52525b" />
-          <circle cx={width / 2} cy={height / 2} r={height * 0.05} fill="#d4d4d8" />
+          {/* Trục quay — CHỈ phần này quay (STEP 2: thân motor đứng yên).
+              Vạch nhỏ lệch tâm để mắt nhận ra chuyển động quay (1 khối tròn
+              đối xứng xoay sẽ trông như đứng yên). */}
+          <g style={spinStyle(motorVisual, width / 2, height / 2)}>
+            <circle cx={width / 2} cy={height / 2} r={height * 0.16} fill="#52525b" />
+            <circle cx={width / 2} cy={height / 2} r={height * 0.05} fill="#d4d4d8" />
+            <line x1={width / 2} y1={height / 2} x2={width / 2} y2={height / 2 - height * 0.16} stroke="#e4e4e7" strokeWidth={1.5} />
+          </g>
           {/* Dây chì trái -> terminal1 (đỏ, +), dây chì phải -> terminal2 (đen, -) */}
           <line x1={width / 2 - height * 0.42} y1={height / 2} x2={6} y2={25} stroke="#ef4444" strokeWidth={2} />
           <line x1={width / 2 + height * 0.42} y1={height / 2} x2={54} y2={25} stroke="#18181b" strokeWidth={2} />
@@ -214,15 +233,20 @@ export function getFallbackIllustration(type: string, width: number, height: num
     case 'robot-wheel':
       return (
         <svg {...svgProps}>
+          {/* Vỏ lốp đứng yên (không mô phỏng xe chạy trên canvas — STEP 3) */}
           <circle cx={width / 2} cy={height / 2} r={width / 2 - 2} fill="#18181b" stroke="#3f3f46" strokeWidth={1.5} />
-          <circle cx={width / 2} cy={height / 2} r={width * 0.28} fill="#52525b" />
-          <circle cx={width / 2} cy={height / 2} r={width * 0.08} fill="#a1a1aa" />
-          {Array.from({ length: 5 }).map((_, i) => {
-            const angle = (i * 2 * Math.PI) / 5;
-            const x2 = width / 2 + width * 0.25 * Math.cos(angle);
-            const y2 = height / 2 + width * 0.25 * Math.sin(angle);
-            return <line key={i} x1={width / 2} y1={height / 2} x2={x2} y2={y2} stroke="#a1a1aa" strokeWidth={2} />;
-          })}
+          {/* Nan hoa + hub — quay theo motor liên kết gần nhất (STEP 3, xem
+              motorVisual.findNearest) */}
+          <g style={spinStyle(motorVisual, width / 2, height / 2)}>
+            <circle cx={width / 2} cy={height / 2} r={width * 0.28} fill="#52525b" />
+            <circle cx={width / 2} cy={height / 2} r={width * 0.08} fill="#a1a1aa" />
+            {Array.from({ length: 5 }).map((_, i) => {
+              const angle = (i * 2 * Math.PI) / 5;
+              const x2 = width / 2 + width * 0.25 * Math.cos(angle);
+              const y2 = height / 2 + width * 0.25 * Math.sin(angle);
+              return <line key={i} x1={width / 2} y1={height / 2} x2={x2} y2={y2} stroke="#a1a1aa" strokeWidth={2} />;
+            })}
+          </g>
         </svg>
       );
     case 'caster-wheel':
@@ -268,15 +292,20 @@ export function getFallbackIllustration(type: string, width: number, height: num
     case 'fan':
       return (
         <svg {...svgProps}>
+          {/* Housing đứng yên (STEP 5) */}
           <rect x={2} y={2} width={width - 4} height={height - 4} rx={4} fill="#3f3f46" stroke="#52525b" strokeWidth={1} />
           <circle cx={width / 2} cy={height / 2} r={Math.min(width, height) * 0.4} fill="#18181b" />
-          {[0, 1, 2, 3].map((i) => {
-            const angle = (i * Math.PI) / 2;
-            const r = Math.min(width, height) * 0.34;
-            const x = width / 2 + r * Math.cos(angle);
-            const y = height / 2 + r * Math.sin(angle);
-            return <ellipse key={i} cx={x} cy={y} rx={7} ry={3.5} fill="#71717a" transform={`rotate(${(angle * 180) / Math.PI} ${x} ${y})`} />;
-          })}
+          {/* Cánh quạt — layer quay riêng, điều khiển bởi FanModel.cs (ON/OFF
+              qua digitalWrite) */}
+          <g style={spinStyle(motorVisual, width / 2, height / 2)}>
+            {[0, 1, 2, 3].map((i) => {
+              const angle = (i * Math.PI) / 2;
+              const r = Math.min(width, height) * 0.34;
+              const x = width / 2 + r * Math.cos(angle);
+              const y = height / 2 + r * Math.sin(angle);
+              return <ellipse key={i} cx={x} cy={y} rx={7} ry={3.5} fill="#71717a" transform={`rotate(${(angle * 180) / Math.PI} ${x} ${y})`} />;
+            })}
+          </g>
           <circle cx={width / 2} cy={height / 2} r={4} fill="#a1a1aa" />
         </svg>
       );
@@ -414,10 +443,15 @@ export function getFallbackIllustration(type: string, width: number, height: num
         </svg>
       );
     case 'propeller':
+      // Cả 2 cánh CÙNG là layer quay (propeller đặt riêng trên canvas — không
+      // gắn liền Drone Motor — quay theo motor liên kết gần nhất, xem
+      // motorVisual.findNearest, giống Robot Wheel<->DC Motor).
       return (
         <svg {...svgProps}>
-          <ellipse cx={width / 2} cy={height / 2} rx={width * 0.46} ry={height * 0.14} fill="#52525b" />
-          <ellipse cx={width / 2} cy={height / 2} rx={width * 0.14} ry={height * 0.46} fill="#52525b" />
+          <g style={spinStyle(motorVisual, width / 2, height / 2)}>
+            <ellipse cx={width / 2} cy={height / 2} rx={width * 0.46} ry={height * 0.14} fill="#52525b" />
+            <ellipse cx={width / 2} cy={height / 2} rx={width * 0.14} ry={height * 0.46} fill="#52525b" />
+          </g>
           <circle cx={width / 2} cy={height / 2} r={4} fill="#facc15" />
         </svg>
       );
@@ -480,23 +514,35 @@ export function getFallbackIllustration(type: string, width: number, height: num
           <line x1={width * 0.16} y1={height * 0.48} x2={width * 0.84} y2={height * 0.48} stroke="#e0f2fe" strokeWidth={1} opacity={0.8} />
         </svg>
       );
-    case 'drone-motor':
+    case 'drone-motor': {
+      // STEP 4/STEP 8: motor body ĐỨNG YÊN + propeller là layer riêng đè lên
+      // trên, chỉ layer đó quay theo DroneMotorModel.cs (ON/OFF qua
+      // digitalWrite) — không mô phỏng drone bay, không di chuyển khung/thân.
+      const hubX = width / 2;
+      const hubY = height * 0.42;
+      const propR = Math.min(width, height) * 0.34;
       return (
         <svg {...svgProps}>
-          <circle cx={width / 2} cy={height * 0.42} r={Math.min(width, height) * 0.32} fill="#18181b" stroke="#3f3f46" strokeWidth={1.4} />
-          <circle cx={width / 2} cy={height * 0.42} r={Math.min(width, height) * 0.14} fill="#52525b" />
+          <circle cx={hubX} cy={hubY} r={Math.min(width, height) * 0.32} fill="#18181b" stroke="#3f3f46" strokeWidth={1.4} />
           {Array.from({ length: 3 }).map((_, i) => {
             const angle = (i * 2 * Math.PI) / 3 - Math.PI / 2;
-            const x = width / 2 + Math.min(width, height) * 0.22 * Math.cos(angle);
-            const y = height * 0.42 + Math.min(width, height) * 0.22 * Math.sin(angle);
+            const x = hubX + Math.min(width, height) * 0.22 * Math.cos(angle);
+            const y = hubY + Math.min(width, height) * 0.22 * Math.sin(angle);
             return <circle key={i} cx={x} cy={y} r={1.6} fill="#71717a" />;
           })}
           <rect x={width * 0.42} y={height * 0.72} width={width * 0.16} height={height * 0.24} fill="#3f3f46" />
           {['#ef4444', '#18181b', '#facc15'].map((c, i) => (
             <line key={i} x1={width * 0.5 + (i - 1) * 3} y1={height * 0.9} x2={width * 0.5 + (i - 1) * 6} y2={height} stroke={c} strokeWidth={1.6} />
           ))}
+          {/* Propeller overlay — layer quay riêng, phủ TRÊN thân motor tĩnh */}
+          <g style={spinStyle(motorVisual, hubX, hubY)}>
+            <ellipse cx={hubX} cy={hubY} rx={propR} ry={propR * 0.3} fill="#a1a1aa" opacity={0.85} />
+            <ellipse cx={hubX} cy={hubY} rx={propR * 0.3} ry={propR} fill="#a1a1aa" opacity={0.85} />
+          </g>
+          <circle cx={hubX} cy={hubY} r={Math.min(width, height) * 0.14} fill="#52525b" />
         </svg>
       );
+    }
     case 'stair-obstacle':
       return (
         <svg {...svgProps}>

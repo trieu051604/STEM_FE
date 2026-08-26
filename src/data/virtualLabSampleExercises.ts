@@ -1141,24 +1141,823 @@ const dhtStation: VirtualLabSampleExercise = {
         dht1: {
           type: 'wokwi-dht11',
           timeline: [
-            { timeMs: 0, temperature: 25, humidity: 55 },
-            { timeMs: 5000, temperature: 30, humidity: 50 },
-            { timeMs: 9000, temperature: 38, humidity: 40 },
-            { timeMs: 14000, temperature: 26, humidity: 58 },
+            { timeMs: 0, temperature: 25, humidity: 60 },
+            { timeMs: 3000, temperature: 30, humidity: 65 },
+            { timeMs: 6000, temperature: 38, humidity: 70 },
+            { timeMs: 9000, temperature: 26, humidity: 60 },
           ],
         },
       },
     },
   },
-  expectedBehavior: 'Serial Monitor in nhiệt độ/độ ẩm mỗi giây, khớp đúng kịch bản; LED bật đúng khoảng 9s-14s (nhiệt độ 38°C > ngưỡng 35°C), tắt các thời điểm còn lại.',
+  expectedBehavior: 'Serial Monitor in nhiệt độ/độ ẩm mỗi giây, khớp đúng kịch bản 4 mốc (0s: 25°C/60%, 3s: 30°C/65%, 6s: 38°C/70%, 9s: 26°C/60%); LED bật đúng khoảng 6s-9s (nhiệt độ 38°C > ngưỡng 35°C), tắt các thời điểm còn lại.',
   testSteps: [
     'Bấm Run/Compile.',
-    'Theo dõi Serial Monitor: giá trị nhiệt độ/độ ẩm đổi đúng theo 4 mốc kịch bản.',
-    'Xác nhận LED CHỈ bật trong khoảng nhiệt độ > 35°C, tắt các thời điểm khác.',
+    'Theo dõi Serial Monitor: giá trị nhiệt độ/độ ẩm đổi đúng theo 4 mốc kịch bản (0s/3s/6s/9s).',
+    'Xác nhận LED CHỈ bật trong khoảng nhiệt độ > 35°C (mốc 6s, 38°C), tắt các thời điểm khác.',
   ],
-  serialExpectedOutput: 'Nhiet do: 25.00 C, Do am: 55.00 %\n...\nNhiet do: 38.00 C, Do am: 40.00 %\nCANH BAO: NHIET DO CAO!\n...',
+  serialExpectedOutput: 'Nhiet do: 25.00 C, Do am: 60.00 %\n...\nNhiet do: 38.00 C, Do am: 70.00 %\nCANH BAO: NHIET DO CAO!\n...',
   teacherNotes: 'Nhấn mạnh với học sinh: StemFlowDHT là helper RIÊNG của StemFlow (không phải thư viện DHT.h thật ngoài đời) — nếu học sinh tự ý #include <DHT.h> thật, sketch sẽ KHÔNG nhận được dữ liệu mô phỏng.',
   limitations: 'Không dùng được thư viện DHT.h/Adafruit Unified Sensor thật; giá trị hoàn toàn theo kịch bản timeline, không có nhiễu/sai số ngẫu nhiên như cảm biến thật.',
+};
+
+// ============================================================================
+// Bài 15 — Nút nhấn điều khiển LED (CLOSE REMAINING FINAL-LAB GAPS, LAB-A02)
+//
+// Input thật qua ISimulationInputChannel (nhấn giữ/thả nút trên canvas) ->
+// ButtonModel.cs (Educational runtime) -> digitalRead() trong sketch -> LED.
+// KHÔNG có state nào bị fake ở FE — LED chỉ đổi trạng thái vì firmware đọc
+// digitalRead(BUTTON_PIN) thật mỗi vòng loop(). Cơ chế nhấn giữ/thả này đã có
+// bằng chứng test thật production-pipeline tại
+// RealtimeSimulationInputTests.ButtonPress_ReactsLive_WithoutRestart_ThenReleaseTurnsLedOffAgain
+// (real EducationalSimulationRunner, real SimulationInputChannel, không mock).
+// ============================================================================
+const pushButtonStarterCode = `// StemFlow Virtual Lab — Bai 15: Nut nhan dieu khien LED
+// ESP32 DevKit v1 — Button: 1.l -> GPIO27, 2.r -> GND | LED: A -> GPIO13, C -> GND
+
+const int BUTTON_PIN = 27;
+const int LED_PIN = 13;
+
+void setup() {
+  Serial.begin(115200);
+  pinMode(BUTTON_PIN, INPUT);
+  pinMode(LED_PIN, OUTPUT);
+}
+
+void loop() {
+  if (digitalRead(BUTTON_PIN) == HIGH) {
+    digitalWrite(LED_PIN, HIGH);
+    Serial.println("Nut: DA NHAN - LED: ON");
+  } else {
+    digitalWrite(LED_PIN, LOW);
+    Serial.println("Nut: DA THA - LED: OFF");
+  }
+  delay(100);
+}
+`;
+
+const pushButtonLed: VirtualLabSampleExercise = {
+  title: 'Nút nhấn điều khiển LED',
+  slug: 'nut-nhan-dieu-khien-led',
+  category: 'physics',
+  level: 'beginner',
+  estimatedTimeMinutes: 15,
+  objective: 'Đọc tín hiệu digital INPUT thật từ nút nhấn tương tác trên canvas (nhấn giữ/thả) qua digitalRead(), điều khiển trực tiếp LED — không có logic giả lập ở giao diện.',
+  description: 'Nhấn giữ nút trên canvas: LED sáng. Thả nút: LED tắt ngay. Toàn bộ quyết định nằm trong firmware (digitalRead), không phải ở FE.',
+  components: ['wokwi-pushbutton', 'wokwi-led'],
+  supportedLevel: 'wokwi-pushbutton: Class A — full runtime + tương tác thật (nhấn giữ/thả qua ISimulationInputChannel, ButtonModel.cs đọc INPUT thật, không mặc định HIGH/LOW giả). wokwi-led: Mô phỏng được đầy đủ.',
+  wiringGuide: [
+    'Đặt 1 ESP32 DevKit v1, 1 Nút nhấn (Push Button) và 1 LED lên canvas.',
+    'Nối Nút nhấn chân 1.l -> ESP32 GPIO27.',
+    'Nối Nút nhấn chân 2.r -> ESP32 GND.',
+    'Nối LED chân A (anode) -> ESP32 GPIO13, chân C (cathode) -> ESP32 GND.',
+  ],
+  starterCode: pushButtonStarterCode,
+  circuitConfig: {
+    board: 'esp32_devkit_v1',
+    parts: [
+      { id: 'button1', type: 'wokwi-pushbutton', x: 220, y: 120, pinMapping: { '1.l': 27 } },
+      { id: 'led1', type: 'wokwi-led', x: 340, y: 120, pinMapping: { A: 13 } },
+    ],
+    connections: [
+      [`${BOARD}:GPIO27`, 'button1:1.l'],
+      ['button1:2.r', GND],
+      [`${BOARD}:GPIO13`, 'led1:A'],
+      ['led1:C', GND],
+    ],
+  },
+  expectedBehavior: 'Nhấn giữ nút trên canvas: LED sáng ngay lập tức, Serial Monitor in "Nut: DA NHAN - LED: ON". Thả nút: LED tắt ngay, Serial Monitor in "Nut: DA THA - LED: OFF". Không cần Restart để đổi trạng thái.',
+  testSteps: [
+    'Bấm Run/Compile — chờ firmware nạp xong.',
+    'Nhấn giữ chuột trên biểu tượng nút nhấn trên canvas: xác nhận LED sáng ngay (không delay dài, không cần bấm Run lại).',
+    'Thả chuột: xác nhận LED tắt ngay.',
+    'Lặp lại nhấn/thả vài lần liên tục trong CÙNG 1 lần Run để xác nhận không bị "kẹt" trạng thái.',
+    'Đối chiếu Serial Monitor khớp đúng từng lần nhấn/thả.',
+  ],
+  serialExpectedOutput: 'Nut: DA THA - LED: OFF\nNut: DA THA - LED: OFF\nNut: DA NHAN - LED: ON\nNut: DA NHAN - LED: ON\nNut: DA THA - LED: OFF\n...',
+  teacherNotes: 'Bài minh hoạ input tương tác thật đầu tiên (khác các bài trước chỉ có output). Nhấn mạnh: đây không phải animation cố định — học sinh có thể tự đổi logic (ví dụ đảo ngược HIGH/LOW, thêm đếm số lần nhấn) và thấy phản hồi ngay.',
+  limitations: 'Không có chống dội phím (debounce) trong code mẫu — nếu học sinh thêm logic đếm số lần nhấn, có thể thấy hiện tượng đếm nhiều lần cho 1 lần nhấn thật; đây là bài học tốt để giới thiệu khái niệm debounce ở bài nâng cao.',
+};
+
+// ============================================================================
+// Bài 16 — Chiết áp điều khiển LED theo ngưỡng (LAB-B01)
+//
+// Input analog thật (0-4095) qua ISimulationInputChannel (kéo thanh trượt) ->
+// PotentiometerModel.cs -> analogRead() trong sketch -> so ngưỡng -> LED.
+// Ngưỡng nằm HOÀN TOÀN trong firmware — FE không hề biết ngưỡng 2000 là gì,
+// chỉ gửi giá trị analog thô. Bằng chứng production-pipeline thật:
+// RealtimeSimulationInputTests.PotentiometerSlider_ReactsLive_CrossingThresholdBothWays_WithoutRestart.
+// ============================================================================
+const potentiometerStarterCode = `// StemFlow Virtual Lab — Bai 16: Chiet ap dieu khien LED theo nguong
+// ESP32 DevKit v1 — Chiet ap: SIG -> GPIO32 (ADC1), GND -> GND, VCC -> 3V3 | LED: A -> GPIO13, C -> GND
+
+const int POT_PIN = 32;
+const int LED_PIN = 13;
+const int THRESHOLD = 2000;
+
+void setup() {
+  Serial.begin(115200);
+  pinMode(LED_PIN, OUTPUT);
+}
+
+void loop() {
+  int value = analogRead(POT_PIN);
+  Serial.print("ADC: ");
+  Serial.print(value);
+  if (value >= THRESHOLD) {
+    digitalWrite(LED_PIN, HIGH);
+    Serial.println(" - LED: ON");
+  } else {
+    digitalWrite(LED_PIN, LOW);
+    Serial.println(" - LED: OFF");
+  }
+  delay(200);
+}
+`;
+
+const potentiometerLed: VirtualLabSampleExercise = {
+  title: 'Chiết áp điều khiển LED theo ngưỡng',
+  slug: 'chiet-ap-dieu-khien-led-theo-nguong',
+  category: 'physics',
+  level: 'beginner',
+  estimatedTimeMinutes: 15,
+  objective: 'Đọc giá trị analog thật (0-4095, ADC 12-bit ESP32) từ chiết áp tương tác qua analogRead(), tự lập trình so sánh ngưỡng để bật/tắt LED — không hardcode LED theo vị trí thanh trượt ở FE.',
+  description: 'Kéo thanh trượt chiết áp trên canvas: khi giá trị ADC >= 2000, LED bật; dưới 2000, LED tắt. Toàn bộ ngưỡng và quyết định nằm trong code firmware.',
+  components: ['wokwi-potentiometer', 'wokwi-led'],
+  supportedLevel: 'wokwi-potentiometer: Class A — full runtime + tương tác thật (kéo thanh trượt qua ISimulationInputChannel, PotentiometerModel.cs trả về đúng giá trị 0-4095 qua analogRead thật, không có logic bật/tắt LED nào ở FE). wokwi-led: Mô phỏng được đầy đủ.',
+  wiringGuide: [
+    'Đặt 1 ESP32 DevKit v1, 1 Chiết áp (Potentiometer) và 1 LED lên canvas.',
+    'Nối Chiết áp SIG -> ESP32 GPIO32 (chân ADC1).',
+    'Nối Chiết áp GND -> ESP32 GND, VCC -> ESP32 3V3.',
+    'Nối LED chân A (anode) -> ESP32 GPIO13, chân C (cathode) -> ESP32 GND.',
+  ],
+  starterCode: potentiometerStarterCode,
+  circuitConfig: {
+    board: 'esp32_devkit_v1',
+    parts: [
+      { id: 'pot1', type: 'wokwi-potentiometer', x: 220, y: 120, pinMapping: { SIG: 32 } },
+      { id: 'led1', type: 'wokwi-led', x: 340, y: 120, pinMapping: { A: 13 } },
+    ],
+    connections: [
+      [`${BOARD}:GPIO32`, 'pot1:SIG'],
+      ['pot1:GND', GND],
+      [`${BOARD}:3V3`, 'pot1:VCC'],
+      [`${BOARD}:GPIO13`, 'led1:A'],
+      ['led1:C', GND],
+    ],
+  },
+  expectedBehavior: 'Chưa chỉnh thanh trượt: giá trị ADC mặc định là 0 -> LED tắt. Kéo thanh trượt lên cao (>= 2000): LED bật ngay. Kéo xuống thấp (< 2000): LED tắt lại, không cần Restart.',
+  testSteps: [
+    'Bấm Run/Compile.',
+    'Trước khi chỉnh gì: xác nhận LED tắt, Serial Monitor in ADC gần 0.',
+    'Kéo thanh trượt chiết áp lên cao: xác nhận LED bật đúng lúc giá trị ADC vượt 2000 (đối chiếu số hiển thị trên Serial Monitor).',
+    'Kéo thanh trượt xuống thấp: xác nhận LED tắt lại đúng lúc giá trị ADC xuống dưới 2000, trong CÙNG 1 lần Run.',
+  ],
+  serialExpectedOutput: 'ADC: 0 - LED: OFF\nADC: 1450 - LED: OFF\nADC: 2380 - LED: ON\nADC: 900 - LED: OFF\n...',
+  teacherNotes: 'Nhấn mạnh yêu cầu bắt buộc: KHÔNG được tự ý bật/tắt LED bằng cách nào khác ngoài so sánh analogRead() với ngưỡng trong code — nếu học sinh chỉnh sửa mà quyết định bật/tắt nằm ngoài firmware thì bài không còn đúng mục tiêu học ADC.',
+  limitations: 'Giá trị ADC là tuyến tính lý tưởng theo vị trí thanh trượt — không mô phỏng nhiễu điện áp hay sai số ADC thật của phần cứng.',
+};
+
+// ============================================================================
+// Bài 17 — Cảm biến ánh sáng điều khiển đèn ngủ (LAB-B02)
+//
+// Input analog thật (0-4095) qua ISimulationInputChannel (kéo thanh trượt mô
+// phỏng độ sáng) -> LightSensorModel.cs -> analogRead() trong sketch -> so
+// ngưỡng -> LED. Cực tính NGƯỢC với Bài 16 (dưới ngưỡng = tối = bật đèn) để
+// học sinh thấy rõ đây là logic do CHÍNH firmware quyết định, không phải một
+// mẫu code copy-paste đổi tên. Bằng chứng production-pipeline thật:
+// RealtimeSimulationInputTests.LightSensorValue_ReactsLive_CrossingThresholdBothWays_WithoutRestart.
+// Chân DO (digital out) của module thật tồn tại nhưng KHÔNG có runtime mô
+// phỏng (chỉ AO/analogRead được LightSensorModel hỗ trợ) — vì vậy DO cố tình
+// không được nối trong sơ đồ mẫu này, đúng theo comment trong
+// VirtualLabDiagramService.cs.
+// ============================================================================
+const lightSensorStarterCode = `// StemFlow Virtual Lab — Bai 17: Cam bien anh sang dieu khien den ngu
+// ESP32 DevKit v1 — Cam bien anh sang: AO -> GPIO33 (ADC1), GND -> GND, VCC -> 3V3 | LED: A -> GPIO13, C -> GND
+
+const int LIGHT_PIN = 33;
+const int LED_PIN = 13;
+const int THRESHOLD = 1500;
+
+void setup() {
+  Serial.begin(115200);
+  pinMode(LED_PIN, OUTPUT);
+}
+
+void loop() {
+  int brightness = analogRead(LIGHT_PIN);
+  Serial.print("Do sang: ");
+  Serial.print(brightness);
+  if (brightness < THRESHOLD) {
+    digitalWrite(LED_PIN, HIGH);
+    Serial.println(" - Toi - LED: ON");
+  } else {
+    digitalWrite(LED_PIN, LOW);
+    Serial.println(" - Sang - LED: OFF");
+  }
+  delay(200);
+}
+`;
+
+const lightSensorLed: VirtualLabSampleExercise = {
+  title: 'Cảm biến ánh sáng điều khiển đèn ngủ',
+  slug: 'cam-bien-anh-sang-dieu-khien-den-ngu',
+  category: 'physics',
+  level: 'beginner',
+  estimatedTimeMinutes: 15,
+  objective: 'Đọc giá trị analog thật (0-4095) từ cảm biến ánh sáng (quang trở) tương tác qua analogRead(), lập trình logic "đèn ngủ": trời tối thì tự bật đèn.',
+  description: 'Kéo thanh trượt mô phỏng độ sáng trên canvas: khi giá trị dưới ngưỡng (trời tối), LED tự bật; khi trên ngưỡng (trời sáng), LED tắt.',
+  components: ['wokwi-photoresistor-sensor', 'wokwi-led'],
+  supportedLevel: 'wokwi-photoresistor-sensor: Class A — full runtime + tương tác thật qua chân AO (LightSensorModel.cs, cùng cơ chế analogRead 0-4095 như Chiết áp). Chân DO tồn tại trên linh kiện thật nhưng KHÔNG có runtime mô phỏng — không nối trong bài này. wokwi-led: Mô phỏng được đầy đủ.',
+  wiringGuide: [
+    'Đặt 1 ESP32 DevKit v1, 1 Cảm biến ánh sáng (Photoresistor/Light Sensor) và 1 LED lên canvas.',
+    'Nối Cảm biến ánh sáng chân AO -> ESP32 GPIO33 (chân ADC1).',
+    'Nối Cảm biến ánh sáng GND -> ESP32 GND, VCC -> ESP32 3V3.',
+    'KHÔNG cần nối chân DO — chân này chưa có runtime mô phỏng.',
+    'Nối LED chân A (anode) -> ESP32 GPIO13, chân C (cathode) -> ESP32 GND.',
+  ],
+  starterCode: lightSensorStarterCode,
+  circuitConfig: {
+    board: 'esp32_devkit_v1',
+    parts: [
+      { id: 'light1', type: 'wokwi-photoresistor-sensor', x: 220, y: 120, pinMapping: { AO: 33 } },
+      { id: 'led1', type: 'wokwi-led', x: 340, y: 120, pinMapping: { A: 13 } },
+    ],
+    connections: [
+      [`${BOARD}:GPIO33`, 'light1:AO'],
+      ['light1:GND', GND],
+      [`${BOARD}:3V3`, 'light1:VCC'],
+      [`${BOARD}:GPIO13`, 'led1:A'],
+      ['led1:C', GND],
+    ],
+  },
+  expectedBehavior: 'Chưa chỉnh gì: giá trị mặc định là 0 (dưới ngưỡng 1500) -> coi như "tối" -> LED bật. Kéo thanh trượt lên cao (>= 1500, "sáng"): LED tắt. Kéo xuống thấp lại: LED bật lại, không cần Restart.',
+  testSteps: [
+    'Bấm Run/Compile.',
+    'Trước khi chỉnh gì: xác nhận LED bật (mặc định coi là tối), Serial Monitor in "Toi - LED: ON".',
+    'Kéo thanh trượt độ sáng lên cao: xác nhận LED tắt đúng lúc giá trị vượt 1500.',
+    'Kéo xuống thấp lại: xác nhận LED bật lại, trong CÙNG 1 lần Run.',
+  ],
+  serialExpectedOutput: 'Do sang: 0 - Toi - LED: ON\nDo sang: 2600 - Sang - LED: OFF\nDo sang: 400 - Toi - LED: ON\n...',
+  teacherNotes: 'So sánh trực tiếp với Bài 16 (Chiết áp): cùng cơ chế analogRead 0-4095, nhưng cực tính điều kiện NGƯỢC lại — nên cho học sinh làm 2 bài liên tiếp để thấy rõ ngưỡng và điều kiện bật/tắt là do CODE quyết định, không phải do loại linh kiện.',
+  limitations: 'Giá trị ánh sáng là do người dùng kéo thanh trượt mô phỏng (không có mô hình quang học/cường độ ánh sáng thật); chân DO (ngưỡng cứng trên module thật) không được mô phỏng.',
+};
+
+// ============================================================================
+// PHASE NEXT — LAB CATALOG FROM PROJECT DOC (danh sách (1).docx, 2026-08-26)
+//
+// 5 bài MỚI xây theo đúng tài liệu BOM gốc, chỉ dùng linh kiện/runtime ĐÃ CÓ
+// (L298N/DC Motor/HC-SR04/Line-Tracking/Flame/DHT/Fan/Relay đều đã proven
+// thật qua Docker/QEMU trong các milestone trước — không phát minh runtime
+// mới). Cơ cấu servo (gripper/balance/kicker/nozzle) dùng digitalWrite đơn
+// giản hoá — GIỐNG HỆT tiền lệ đã có và đã giải trình rõ cho Drone Motor
+// (DroneMotorModel.cs's SIMPLIFIED_ELECTRICAL_MODEL): QEMU không instrument
+// analogWrite/ledcWrite/Servo.write() (PWM_QEMU_GAP đã xác nhận nhiều lần
+// trong dự án), và thư viện Servo.h CHƯA từng được dùng/verify trong sandbox
+// compile này — dùng digitalWrite thay vì Servo.h để (a) tránh rủi ro
+// compile thật chưa kiểm chứng, (b) vẫn cho ra 1 pin-state event THẬT quan
+// sát được qua QEMU (không phải giả lập). wokwi-servo vẫn đặt trên canvas
+// đúng vị trí điện (visual + wiring-ready thật) — chỉ CODE điều khiển là
+// digitalWrite đơn giản hoá, ghi rõ trong limitations từng bài.
+// Linh kiện cơ khí visual-only (Gripper/Ball/Water Tank/Sorting Box/Robot
+// Wheel...) đều TÁI SỬ DỤNG entry đã có sẵn trong component-compatibility.json
+// — không tạo type mới.
+// ============================================================================
+
+// ---- Bài "Robot nhặt rác lớp học" (doc #2) ----
+const trashRobotStarterCode = `// StemFlow Virtual Lab — Robot nhat rac lop hoc
+// ESP32 DevKit v1 — L298N nhu Bai 4; HC-SR04: TRIG=32,ECHO=33; Gripper (servo, dieu khien don gian hoa qua digitalWrite): GPIO21
+
+const int IN1 = 13, IN2 = 14, IN3 = 16, IN4 = 17, ENA = 18, ENB = 19;
+const int TRIG_PIN = 32, ECHO_PIN = 33;
+const int GRIPPER_PIN = 21;
+const float GRAB_DISTANCE_CM = 15.0;
+
+void forward() { digitalWrite(IN1, HIGH); digitalWrite(IN2, LOW); digitalWrite(IN3, HIGH); digitalWrite(IN4, LOW); }
+void stopCar() { digitalWrite(IN1, LOW); digitalWrite(IN2, LOW); digitalWrite(IN3, LOW); digitalWrite(IN4, LOW); }
+
+float readDistanceCm() {
+  digitalWrite(TRIG_PIN, LOW); delayMicroseconds(2);
+  digitalWrite(TRIG_PIN, HIGH); delayMicroseconds(10);
+  digitalWrite(TRIG_PIN, LOW);
+  unsigned long duration = pulseIn(ECHO_PIN, HIGH, 30000UL);
+  return duration / 58.0;
+}
+
+void setup() {
+  Serial.begin(115200);
+  pinMode(IN1, OUTPUT); pinMode(IN2, OUTPUT); pinMode(IN3, OUTPUT); pinMode(IN4, OUTPUT);
+  pinMode(ENA, OUTPUT); pinMode(ENB, OUTPUT);
+  digitalWrite(ENA, HIGH); digitalWrite(ENB, HIGH);
+  pinMode(TRIG_PIN, OUTPUT); pinMode(ECHO_PIN, INPUT);
+  pinMode(GRIPPER_PIN, OUTPUT);
+}
+
+void loop() {
+  float distance = readDistanceCm();
+  if (distance > GRAB_DISTANCE_CM) {
+    forward();
+    digitalWrite(GRIPPER_PIN, LOW);
+    Serial.println("Trang thai: DI CHUYEN");
+  } else {
+    stopCar();
+    digitalWrite(GRIPPER_PIN, HIGH);
+    Serial.println("Trang thai: DA GAP RAC");
+  }
+  delay(300);
+}
+`;
+
+const trashRobot: VirtualLabSampleExercise = {
+  title: 'Robot nhặt rác lớp học',
+  slug: 'robot-nhat-rac-lop-hoc',
+  category: 'robotics',
+  level: 'intermediate',
+  estimatedTimeMinutes: 35,
+  objective: 'Kết hợp cảm biến khoảng cách HC-SR04 với cơ cấu gắp (gripper) để tự động dừng và "gắp" vật khi phát hiện trong tầm với — mở rộng logic tránh vật cản (Bài 4/5) sang hành động chấp hành.',
+  description: 'Robot di chuyển tới khi phát hiện rác trong tầm gắp (<=15cm) thì dừng và kích hoạt gripper; ngoài tầm thì tiếp tục di chuyển.',
+  components: ['wokwi-l298n', 'wokwi-dc-motor', 'wokwi-battery-pack', 'wokwi-hc-sr04', 'wokwi-servo', 'wokwi-gripper', 'wokwi-sorting-box', 'wokwi-robot-wheel', 'wokwi-caster-wheel', 'wokwi-robot-chassis'],
+  supportedLevel: 'wokwi-l298n/wokwi-dc-motor/wokwi-hc-sr04: Mô phỏng được đầy đủ qua QEMU thật (đã proven ở LAB06/07/08). wokwi-servo: đặt đúng vị trí điện (PWM pin) nhưng code điều khiển bằng digitalWrite đơn giản hoá (xem Limitations) — KHÔNG dùng Servo.write() thật (PWM_QEMU_GAP). wokwi-gripper/wokwi-sorting-box/wokwi-robot-wheel/wokwi-caster-wheel/wokwi-robot-chassis: Chỉ hiển thị (visual-only, tái sử dụng đúng type đã có sẵn trong catalog).',
+  wiringGuide: [
+    'Nối L298N + 2 DC Motor + Battery Pack + HC-SR04 giống hệt LAB06.',
+    'Nối Servo (gripper): GND -> ESP32 GND, V+ -> ESP32 5V/VIN, PWM -> ESP32 GPIO21.',
+    'Đặt Gripper và Sorting Box (làm "Mini Trash Bin") cạnh robot — chỉ mang tính minh hoạ, không có kết nối điện.',
+  ],
+  starterCode: trashRobotStarterCode,
+  circuitConfig: {
+    board: 'esp32_devkit_v1',
+    parts: [
+      { id: 'l298n1', type: 'wokwi-l298n', x: 220, y: 120, pinMapping: { IN1: 13, IN2: 14, IN3: 16, IN4: 17, ENA: 18, ENB: 19 } },
+      { id: 'motorL', type: 'wokwi-dc-motor', x: 60, y: 60, pinMapping: {} },
+      { id: 'motorR', type: 'wokwi-dc-motor', x: 60, y: 200, pinMapping: {} },
+      { id: 'battery1', type: 'wokwi-battery-pack', x: 400, y: 120, pinMapping: {} },
+      { id: 'us1', type: 'wokwi-hc-sr04', x: 220, y: 20, pinMapping: { TRIG: 32, ECHO: 33 } },
+      { id: 'servo1', type: 'wokwi-servo', x: 340, y: 260, pinMapping: { PWM: 21 } },
+      { id: 'gripper1', type: 'wokwi-gripper', x: 400, y: 260, pinMapping: {} },
+      { id: 'bin1', type: 'wokwi-sorting-box', x: 460, y: 260, pinMapping: {} },
+      { id: 'chassis1', type: 'wokwi-robot-chassis', x: 180, y: 320, pinMapping: {} },
+      { id: 'wheelL', type: 'wokwi-robot-wheel', x: 30, y: 60, pinMapping: {} },
+      { id: 'wheelR', type: 'wokwi-robot-wheel', x: 30, y: 260, pinMapping: {} },
+      { id: 'caster1', type: 'wokwi-caster-wheel', x: 430, y: 320, pinMapping: {} },
+    ],
+    connections: [
+      [`${BOARD}:GPIO13`, 'l298n1:IN1'], [`${BOARD}:GPIO14`, 'l298n1:IN2'],
+      [`${BOARD}:GPIO16`, 'l298n1:IN3'], [`${BOARD}:GPIO17`, 'l298n1:IN4'],
+      [`${BOARD}:GPIO18`, 'l298n1:ENA'], [`${BOARD}:GPIO19`, 'l298n1:ENB'],
+      ['motorL:terminal1', 'l298n1:OUT1'], ['motorL:terminal2', 'l298n1:OUT2'],
+      ['motorR:terminal1', 'l298n1:OUT3'], ['motorR:terminal2', 'l298n1:OUT4'],
+      ['battery1:+', 'l298n1:VIN'], ['battery1:-', 'l298n1:GND'], ['l298n1:GND', GND],
+      [`${BOARD}:3V3`, 'us1:VCC'], [`${BOARD}:GPIO32`, 'us1:TRIG'], [`${BOARD}:GPIO33`, 'us1:ECHO'], ['us1:GND', GND],
+      [`${BOARD}:GND.2`, 'servo1:GND'], [`${BOARD}:5V`, 'servo1:V+'], [`${BOARD}:GPIO21`, 'servo1:PWM'],
+    ],
+    sensorScenario: {
+      sensors: {
+        us1: {
+          type: 'wokwi-hc-sr04',
+          timeline: [
+            { timeMs: 0, distanceCm: 100 },
+            { timeMs: 5000, distanceCm: 10 },
+          ],
+        },
+      },
+    },
+  },
+  expectedBehavior: 'Ở 100cm: robot di chuyển, gripper mở (GRIPPER_PIN=LOW). Khi khoảng cách giảm còn 10cm (<=15cm): robot dừng, gripper đóng (GRIPPER_PIN=HIGH), in "Trang thai: DA GAP RAC".',
+  testSteps: [
+    'Bấm Run/Compile — chờ QEMU thật khởi động.',
+    'Theo dõi Serial Monitor: "Trang thai: DI CHUYEN" khi 100cm, chuyển sang "Trang thai: DA GAP RAC" đúng lúc khoảng cách xuống 10cm.',
+    'Xác nhận cả 2 motor (part-state l298n) chuyển forward->stopped đúng lúc chuyển trạng thái.',
+  ],
+  serialExpectedOutput: 'Trang thai: DI CHUYEN\n...\nTrang thai: DA GAP RAC',
+  teacherNotes: 'Tái sử dụng logic tránh-vật-cản đã học ở LAB06/07 — điểm mới là gắn thêm 1 hành động chấp hành (gripper) khi tới ngưỡng, thay vì chỉ dừng xe.',
+  limitations: 'Gripper điều khiển bằng digitalWrite đơn giản hoá (KHÔNG dùng thư viện Servo.h/Servo.write() thật) — QEMU không instrument PWM (PWM_QEMU_GAP) nên góc servo thật không được mô phỏng, chỉ có 2 trạng thái mở/đóng rời rạc quan sát qua pin-state của GPIO21. Không mô phỏng việc rác thật sự rơi vào thùng.',
+};
+
+// ---- Bài "Robot leo cầu thang nâng cao" (doc #4) ----
+const stairRobotStarterCode = `// StemFlow Virtual Lab — Robot leo cau thang nang cao
+// ESP32 DevKit v1 — L298N: IN1-4=13,14,16,17, ENA/ENB=18,19; Servo can bang (digitalWrite don gian hoa): GPIO21
+
+const int IN1 = 13, IN2 = 14, IN3 = 16, IN4 = 17, ENA = 18, ENB = 19;
+const int BALANCE_PIN = 21;
+const unsigned long CLIMB_PHASE1_MS = 3000UL;
+const unsigned long BALANCE_MS = 1000UL;
+const unsigned long CLIMB_PHASE2_MS = 3000UL;
+
+void forward() { digitalWrite(IN1, HIGH); digitalWrite(IN2, LOW); digitalWrite(IN3, HIGH); digitalWrite(IN4, LOW); }
+void stopCar() { digitalWrite(IN1, LOW); digitalWrite(IN2, LOW); digitalWrite(IN3, LOW); digitalWrite(IN4, LOW); }
+
+int stage = 0;
+unsigned long stageStart = 0;
+
+void setup() {
+  Serial.begin(115200);
+  pinMode(IN1, OUTPUT); pinMode(IN2, OUTPUT); pinMode(IN3, OUTPUT); pinMode(IN4, OUTPUT);
+  pinMode(ENA, OUTPUT); pinMode(ENB, OUTPUT);
+  digitalWrite(ENA, HIGH); digitalWrite(ENB, HIGH);
+  pinMode(BALANCE_PIN, OUTPUT);
+  stageStart = millis();
+  forward();
+  Serial.println("Trang thai: BAT DAU LEO");
+}
+
+void loop() {
+  unsigned long elapsed = millis() - stageStart;
+  if (stage == 0) {
+    if (elapsed >= CLIMB_PHASE1_MS) {
+      stage = 1; stageStart = millis();
+      stopCar(); digitalWrite(BALANCE_PIN, HIGH);
+      Serial.println("Trang thai: CAN BANG");
+    }
+  } else if (stage == 1) {
+    if (elapsed >= BALANCE_MS) {
+      stage = 2; stageStart = millis();
+      digitalWrite(BALANCE_PIN, LOW); forward();
+      Serial.println("Trang thai: TIEP TUC LEO");
+    }
+  } else if (stage == 2) {
+    if (elapsed >= CLIMB_PHASE2_MS) {
+      stage = 3;
+      stopCar();
+      Serial.println("Trang thai: HOAN THANH");
+    }
+  } else {
+    stopCar();
+    delay(1000);
+    return;
+  }
+  delay(200);
+}
+`;
+
+const stairRobot: VirtualLabSampleExercise = {
+  title: 'Robot leo cầu thang nâng cao',
+  slug: 'robot-leo-cau-thang-nang-cao',
+  category: 'robotics',
+  level: 'intermediate',
+  estimatedTimeMinutes: 30,
+  objective: 'Áp dụng máy trạng thái theo thời gian thực (millis(), không dùng delay() chặn chương trình) để mô phỏng chuỗi hành vi leo bậc thang: di chuyển -> giữ cân bằng -> di chuyển tiếp -> hoàn thành.',
+  description: 'Robot leo bậc thang theo chuỗi thời gian cố định: leo 3s -> dừng giữ cân bằng 1s (servo) -> leo tiếp 3s -> dừng hẳn.',
+  components: ['wokwi-l298n', 'wokwi-dc-motor', 'wokwi-battery-pack', 'wokwi-servo', 'wokwi-robot-wheel', 'wokwi-robot-chassis'],
+  supportedLevel: 'wokwi-l298n/wokwi-dc-motor: Mô phỏng được đầy đủ qua QEMU. wokwi-servo: đặt đúng vị trí điện, code điều khiển bằng digitalWrite đơn giản hoá (xem Limitations). wokwi-robot-wheel (tái sử dụng cho "Stair Climbing Wheel" — KHÔNG có visual 3-spoke omni riêng, dùng chung Robot Wheel đã có)/wokwi-robot-chassis: Chỉ hiển thị.',
+  wiringGuide: [
+    'Nối L298N + 2 DC Motor + Battery Pack giống hệt Bài 4.',
+    'Nối Servo (cân bằng): GND -> ESP32 GND, V+ -> ESP32 5V, PWM -> ESP32 GPIO21.',
+  ],
+  starterCode: stairRobotStarterCode,
+  circuitConfig: {
+    board: 'esp32_devkit_v1',
+    parts: [
+      { id: 'l298n1', type: 'wokwi-l298n', x: 220, y: 120, pinMapping: { IN1: 13, IN2: 14, IN3: 16, IN4: 17, ENA: 18, ENB: 19 } },
+      { id: 'motorL', type: 'wokwi-dc-motor', x: 60, y: 60, pinMapping: {} },
+      { id: 'motorR', type: 'wokwi-dc-motor', x: 60, y: 200, pinMapping: {} },
+      { id: 'battery1', type: 'wokwi-battery-pack', x: 400, y: 120, pinMapping: {} },
+      { id: 'servo1', type: 'wokwi-servo', x: 340, y: 260, pinMapping: { PWM: 21 } },
+      { id: 'chassis1', type: 'wokwi-robot-chassis', x: 180, y: 320, pinMapping: {} },
+      { id: 'wheelL', type: 'wokwi-robot-wheel', x: 30, y: 60, pinMapping: {} },
+      { id: 'wheelR', type: 'wokwi-robot-wheel', x: 30, y: 260, pinMapping: {} },
+    ],
+    connections: [
+      [`${BOARD}:GPIO13`, 'l298n1:IN1'], [`${BOARD}:GPIO14`, 'l298n1:IN2'],
+      [`${BOARD}:GPIO16`, 'l298n1:IN3'], [`${BOARD}:GPIO17`, 'l298n1:IN4'],
+      [`${BOARD}:GPIO18`, 'l298n1:ENA'], [`${BOARD}:GPIO19`, 'l298n1:ENB'],
+      ['motorL:terminal1', 'l298n1:OUT1'], ['motorL:terminal2', 'l298n1:OUT2'],
+      ['motorR:terminal1', 'l298n1:OUT3'], ['motorR:terminal2', 'l298n1:OUT4'],
+      ['battery1:+', 'l298n1:VIN'], ['battery1:-', 'l298n1:GND'], ['l298n1:GND', GND],
+      [`${BOARD}:GND.2`, 'servo1:GND'], [`${BOARD}:5V`, 'servo1:V+'], [`${BOARD}:GPIO21`, 'servo1:PWM'],
+    ],
+  },
+  expectedBehavior: 'Forward 3s -> dừng + BALANCE_PIN=HIGH trong 1s ("Trang thai: CAN BANG") -> forward tiếp 3s -> dừng hẳn ("Trang thai: HOAN THANH"), không lặp lại.',
+  testSteps: [
+    'Bấm Run/Compile.',
+    'Theo dõi Serial Monitor đủ trình tự: BAT DAU LEO -> CAN BANG -> TIEP TUC LEO -> HOAN THANH.',
+    'Xác nhận cả 2 motor dừng hẳn (part-state stopped) trong khoảng CAN BANG, rồi forward trở lại ở TIEP TUC LEO.',
+  ],
+  serialExpectedOutput: 'Trang thai: BAT DAU LEO\nTrang thai: CAN BANG\nTrang thai: TIEP TUC LEO\nTrang thai: HOAN THANH',
+  teacherNotes: 'Bài đầu tiên dùng máy trạng thái theo millis() với 4 giai đoạn rõ rệt — nên dạy sau khi học sinh đã quen millis() ở LAB08 (Robot Giao Hàng Mini).',
+  limitations: 'Không mô phỏng vật lý leo bậc thang thật (ma sát/độ nghiêng/mô-men) — chỉ có chuỗi thời gian cố định. Servo cân bằng dùng digitalWrite đơn giản hoá, không có góc nghiêng thật (PWM_QEMU_GAP). Bánh xe dùng chung visual Robot Wheel, không có hình 3 nan omni riêng.',
+};
+
+// ---- Bài "Robot bóng đá mini" (doc #8) ----
+const soccerRobotStarterCode = `// StemFlow Virtual Lab — Robot bong da mini
+// ESP32 DevKit v1 — L298N nhu Bai 6; Line Tracking 3ch: OUT1/2/3=21,22,23; HC-SR04: TRIG=32,ECHO=33; Kicker (digitalWrite don gian hoa): GPIO25
+
+const int IN1 = 13, IN2 = 14, IN3 = 16, IN4 = 17, ENA = 18, ENB = 19;
+const int LEFT_PIN = 21, CENTER_PIN = 22, RIGHT_PIN = 23;
+const int TRIG_PIN = 32, ECHO_PIN = 33;
+const int KICKER_PIN = 25;
+const float KICK_DISTANCE_CM = 10.0;
+
+void carForward()  { digitalWrite(IN1, HIGH); digitalWrite(IN2, LOW);  digitalWrite(IN3, HIGH); digitalWrite(IN4, LOW); }
+void carTurnLeft()  { digitalWrite(IN1, LOW);  digitalWrite(IN2, LOW);  digitalWrite(IN3, HIGH); digitalWrite(IN4, LOW); }
+void carTurnRight() { digitalWrite(IN1, HIGH); digitalWrite(IN2, LOW);  digitalWrite(IN3, LOW);  digitalWrite(IN4, LOW); }
+void carStop()      { digitalWrite(IN1, LOW);  digitalWrite(IN2, LOW);  digitalWrite(IN3, LOW);  digitalWrite(IN4, LOW); }
+
+float readDistanceCm() {
+  digitalWrite(TRIG_PIN, LOW); delayMicroseconds(2);
+  digitalWrite(TRIG_PIN, HIGH); delayMicroseconds(10);
+  digitalWrite(TRIG_PIN, LOW);
+  unsigned long duration = pulseIn(ECHO_PIN, HIGH, 30000UL);
+  return duration / 58.0;
+}
+
+void setup() {
+  Serial.begin(115200);
+  pinMode(IN1, OUTPUT); pinMode(IN2, OUTPUT); pinMode(IN3, OUTPUT); pinMode(IN4, OUTPUT);
+  pinMode(ENA, OUTPUT); pinMode(ENB, OUTPUT);
+  digitalWrite(ENA, HIGH); digitalWrite(ENB, HIGH);
+  pinMode(LEFT_PIN, INPUT); pinMode(CENTER_PIN, INPUT); pinMode(RIGHT_PIN, INPUT);
+  pinMode(TRIG_PIN, OUTPUT); pinMode(ECHO_PIN, INPUT);
+  pinMode(KICKER_PIN, OUTPUT);
+}
+
+void loop() {
+  float distance = readDistanceCm();
+
+  if (distance <= KICK_DISTANCE_CM) {
+    carStop();
+    digitalWrite(KICKER_PIN, HIGH);
+    Serial.println("Trang thai: SUT BONG");
+    delay(500);
+    digitalWrite(KICKER_PIN, LOW);
+  } else {
+    bool left = digitalRead(LEFT_PIN) == HIGH;
+    bool center = digitalRead(CENTER_PIN) == HIGH;
+    bool right = digitalRead(RIGHT_PIN) == HIGH;
+
+    if (center) { carForward(); Serial.println("Trang thai: DI THANG"); }
+    else if (left) { carTurnLeft(); Serial.println("Trang thai: RE TRAI"); }
+    else if (right) { carTurnRight(); Serial.println("Trang thai: RE PHAI"); }
+    else { carStop(); Serial.println("Trang thai: MAT LINE"); }
+  }
+  delay(200);
+}
+`;
+
+const soccerRobot: VirtualLabSampleExercise = {
+  title: 'Robot bóng đá mini',
+  slug: 'robot-bong-da-mini',
+  category: 'robotics',
+  level: 'intermediate',
+  estimatedTimeMinutes: 35,
+  objective: 'Kết hợp 2 nguồn input độc lập (Line Tracking để bám sân, HC-SR04 để phát hiện bóng trong tầm sút) và quyết định ưu tiên hành động (sút bóng luôn được ưu tiên hơn bám line).',
+  description: 'Robot bám line di chuyển trên sân; khi phát hiện bóng trong tầm sút (<=10cm) thì dừng bám line và sút (kích hoạt kicker).',
+  components: ['wokwi-l298n', 'wokwi-dc-motor', 'wokwi-battery-pack', 'wokwi-line-tracking-3ch', 'wokwi-hc-sr04', 'wokwi-servo', 'wokwi-ball', 'wokwi-robot-wheel', 'wokwi-caster-wheel', 'wokwi-robot-chassis'],
+  supportedLevel: 'wokwi-l298n/wokwi-dc-motor/wokwi-line-tracking-3ch/wokwi-hc-sr04: Mô phỏng được đầy đủ qua QEMU (đã proven riêng lẻ ở Bài "Xe tự hành dò line" và LAB06/07/08). wokwi-servo (kicker): digitalWrite đơn giản hoá (xem Limitations). wokwi-ball/wokwi-robot-wheel/wokwi-caster-wheel/wokwi-robot-chassis: Chỉ hiển thị.',
+  wiringGuide: [
+    'Nối L298N + 2 DC Motor + Battery Pack + Line Tracking 3 kênh giống hệt bài "Xe tự hành dò line".',
+    'Nối thêm HC-SR04: VCC -> 3V3, TRIG -> GPIO32, ECHO -> GPIO33, GND -> GND.',
+    'Nối Servo (kicker): GND -> ESP32 GND, V+ -> ESP32 5V, PWM -> ESP32 GPIO25.',
+  ],
+  starterCode: soccerRobotStarterCode,
+  circuitConfig: {
+    board: 'esp32_devkit_v1',
+    parts: [
+      { id: 'l298n1', type: 'wokwi-l298n', x: 220, y: 120, pinMapping: { IN1: 13, IN2: 14, IN3: 16, IN4: 17, ENA: 18, ENB: 19 } },
+      { id: 'motorL', type: 'wokwi-dc-motor', x: 60, y: 60, pinMapping: {} },
+      { id: 'motorR', type: 'wokwi-dc-motor', x: 60, y: 200, pinMapping: {} },
+      { id: 'battery1', type: 'wokwi-battery-pack', x: 400, y: 120, pinMapping: {} },
+      { id: 'line1', type: 'wokwi-line-tracking-3ch', x: 220, y: 260, pinMapping: { OUT1: 21, OUT2: 22, OUT3: 23 } },
+      { id: 'us1', type: 'wokwi-hc-sr04', x: 220, y: 20, pinMapping: { TRIG: 32, ECHO: 33 } },
+      { id: 'servo1', type: 'wokwi-servo', x: 340, y: 300, pinMapping: { PWM: 25 } },
+      { id: 'ball1', type: 'wokwi-ball', x: 220, y: -30, pinMapping: {} },
+      { id: 'chassis1', type: 'wokwi-robot-chassis', x: 180, y: 320, pinMapping: {} },
+      { id: 'wheelL', type: 'wokwi-robot-wheel', x: 30, y: 60, pinMapping: {} },
+      { id: 'wheelR', type: 'wokwi-robot-wheel', x: 30, y: 260, pinMapping: {} },
+      { id: 'caster1', type: 'wokwi-caster-wheel', x: 430, y: 320, pinMapping: {} },
+    ],
+    connections: [
+      [`${BOARD}:GPIO13`, 'l298n1:IN1'], [`${BOARD}:GPIO14`, 'l298n1:IN2'],
+      [`${BOARD}:GPIO16`, 'l298n1:IN3'], [`${BOARD}:GPIO17`, 'l298n1:IN4'],
+      [`${BOARD}:GPIO18`, 'l298n1:ENA'], [`${BOARD}:GPIO19`, 'l298n1:ENB'],
+      ['motorL:terminal1', 'l298n1:OUT1'], ['motorL:terminal2', 'l298n1:OUT2'],
+      ['motorR:terminal1', 'l298n1:OUT3'], ['motorR:terminal2', 'l298n1:OUT4'],
+      ['battery1:+', 'l298n1:VIN'], ['battery1:-', 'l298n1:GND'], ['l298n1:GND', GND],
+      [`${BOARD}:3V3`, 'line1:VCC'], [`${BOARD}:GPIO21`, 'line1:OUT1'], [`${BOARD}:GPIO22`, 'line1:OUT2'], [`${BOARD}:GPIO23`, 'line1:OUT3'], ['line1:GND', GND],
+      [`${BOARD}:3V3`, 'us1:VCC'], [`${BOARD}:GPIO32`, 'us1:TRIG'], [`${BOARD}:GPIO33`, 'us1:ECHO'], ['us1:GND', GND],
+      [`${BOARD}:GND.2`, 'servo1:GND'], [`${BOARD}:5V`, 'servo1:V+'], [`${BOARD}:GPIO25`, 'servo1:PWM'],
+    ],
+    sensorScenario: {
+      sensors: {
+        line1: { type: 'wokwi-line-tracking-3ch', timeline: [{ timeMs: 0, pattern: 'center' }] },
+        us1: {
+          type: 'wokwi-hc-sr04',
+          timeline: [
+            { timeMs: 0, distanceCm: 100 },
+            { timeMs: 4000, distanceCm: 8 },
+          ],
+        },
+      },
+    },
+  },
+  expectedBehavior: 'Ban đầu bám line đi thẳng (line=center, 100cm). Khi khoảng cách còn 8cm (<=10cm): dừng ngay, kích hoạt kicker ("Trang thai: SUT BONG"), bất kể line đang ở trạng thái nào.',
+  testSteps: [
+    'Bấm Run/Compile.',
+    'Xác nhận "Trang thai: DI THANG" khi line=center và bóng còn xa.',
+    'Xác nhận chuyển ngay sang "Trang thai: SUT BONG" khi khoảng cách xuống 8cm, dù line vẫn đang center.',
+  ],
+  serialExpectedOutput: 'Trang thai: DI THANG\n...\nTrang thai: SUT BONG',
+  teacherNotes: 'Điểm học thuật chính: thứ tự ưu tiên if/else — kiểm tra điều kiện sút bóng TRƯỚC khi xét line, để đảm bảo hành động ưu tiên cao hơn luôn thắng.',
+  limitations: 'Kicker dùng digitalWrite đơn giản hoá (không Servo.write() thật, PWM_QEMU_GAP). Không mô phỏng vật lý bóng lăn/va chạm thật — "sút bóng" chỉ là 1 tín hiệu digital.',
+};
+
+// ---- Bài "Robot chữa cháy tự động" (doc #9) ----
+const firefightRobotStarterCode = `// StemFlow Virtual Lab — Robot chua chay tu dong
+// ESP32 DevKit v1 — L298N nhu Bai 4; Flame Sensor DOUT=21; Relay bom nuoc IN=25; Servo voi phun (digitalWrite don gian hoa): GPIO26
+
+const int IN1 = 13, IN2 = 14, IN3 = 16, IN4 = 17, ENA = 18, ENB = 19;
+const int FLAME_PIN = 21;
+const int PUMP_RELAY_PIN = 25;
+const int NOZZLE_PIN = 26;
+
+void forward() { digitalWrite(IN1, HIGH); digitalWrite(IN2, LOW); digitalWrite(IN3, HIGH); digitalWrite(IN4, LOW); }
+void stopCar() { digitalWrite(IN1, LOW); digitalWrite(IN2, LOW); digitalWrite(IN3, LOW); digitalWrite(IN4, LOW); }
+
+void setup() {
+  Serial.begin(115200);
+  pinMode(IN1, OUTPUT); pinMode(IN2, OUTPUT); pinMode(IN3, OUTPUT); pinMode(IN4, OUTPUT);
+  pinMode(ENA, OUTPUT); pinMode(ENB, OUTPUT);
+  digitalWrite(ENA, HIGH); digitalWrite(ENB, HIGH);
+  pinMode(FLAME_PIN, INPUT);
+  pinMode(PUMP_RELAY_PIN, OUTPUT);
+  pinMode(NOZZLE_PIN, OUTPUT);
+}
+
+void loop() {
+  bool flame = digitalRead(FLAME_PIN) == HIGH;
+
+  if (flame) {
+    stopCar();
+    digitalWrite(PUMP_RELAY_PIN, HIGH);
+    digitalWrite(NOZZLE_PIN, HIGH);
+    Serial.println("Trang thai: DANG DAP LUA");
+  } else {
+    forward();
+    digitalWrite(PUMP_RELAY_PIN, LOW);
+    digitalWrite(NOZZLE_PIN, LOW);
+    Serial.println("Trang thai: TUAN TRA");
+  }
+  delay(300);
+}
+`;
+
+const firefightRobot: VirtualLabSampleExercise = {
+  title: 'Robot chữa cháy tự động',
+  slug: 'robot-chua-chay-tu-dong',
+  category: 'robotics',
+  level: 'intermediate',
+  estimatedTimeMinutes: 30,
+  objective: 'Kết hợp cảm biến lửa (digital, đã học ở "Cảnh báo cháy bằng Flame Sensor") với cơ cấu chấp hành (bơm + vòi phun) để tự động phản ứng, thay vì chỉ cảnh báo.',
+  description: 'Robot tuần tra (di chuyển) cho tới khi phát hiện lửa thì dừng lại và kích hoạt bơm nước + vòi phun.',
+  components: ['wokwi-l298n', 'wokwi-dc-motor', 'wokwi-battery-pack', 'wokwi-flame-sensor', 'wokwi-relay-module', 'wokwi-servo', 'wokwi-water-tank', 'wokwi-robot-wheel', 'wokwi-caster-wheel', 'wokwi-robot-chassis'],
+  supportedLevel: 'wokwi-l298n/wokwi-dc-motor/wokwi-flame-sensor/wokwi-relay-module: Mô phỏng được đầy đủ qua QEMU (đã proven riêng lẻ ở LAB06 và "Cảnh báo cháy bằng Flame Sensor"). wokwi-servo (vòi phun): digitalWrite đơn giản hoá (xem Limitations). wokwi-water-tank/wokwi-robot-wheel/wokwi-caster-wheel/wokwi-robot-chassis: Chỉ hiển thị.',
+  wiringGuide: [
+    'Nối L298N + 2 DC Motor + Battery Pack giống hệt Bài 4.',
+    'Nối Flame Sensor: VCC -> 3V3, GND -> GND, DOUT -> GPIO21.',
+    'Nối Relay (bơm nước): VCC -> 3V3, GND -> GND, IN -> GPIO25.',
+    'Nối Servo (vòi phun): GND -> ESP32 GND, V+ -> ESP32 5V, PWM -> ESP32 GPIO26.',
+  ],
+  starterCode: firefightRobotStarterCode,
+  circuitConfig: {
+    board: 'esp32_devkit_v1',
+    parts: [
+      { id: 'l298n1', type: 'wokwi-l298n', x: 220, y: 120, pinMapping: { IN1: 13, IN2: 14, IN3: 16, IN4: 17, ENA: 18, ENB: 19 } },
+      { id: 'motorL', type: 'wokwi-dc-motor', x: 60, y: 60, pinMapping: {} },
+      { id: 'motorR', type: 'wokwi-dc-motor', x: 60, y: 200, pinMapping: {} },
+      { id: 'battery1', type: 'wokwi-battery-pack', x: 400, y: 120, pinMapping: {} },
+      { id: 'flame1', type: 'wokwi-flame-sensor', x: 220, y: 20, pinMapping: { DOUT: 21 } },
+      { id: 'relay1', type: 'wokwi-relay-module', x: 340, y: 260, pinMapping: { IN: 25 } },
+      { id: 'servo1', type: 'wokwi-servo', x: 460, y: 260, pinMapping: { PWM: 26 } },
+      { id: 'tank1', type: 'wokwi-water-tank', x: 400, y: 320, pinMapping: {} },
+      { id: 'chassis1', type: 'wokwi-robot-chassis', x: 180, y: 320, pinMapping: {} },
+      { id: 'wheelL', type: 'wokwi-robot-wheel', x: 30, y: 60, pinMapping: {} },
+      { id: 'wheelR', type: 'wokwi-robot-wheel', x: 30, y: 260, pinMapping: {} },
+      { id: 'caster1', type: 'wokwi-caster-wheel', x: 430, y: 20, pinMapping: {} },
+    ],
+    connections: [
+      [`${BOARD}:GPIO13`, 'l298n1:IN1'], [`${BOARD}:GPIO14`, 'l298n1:IN2'],
+      [`${BOARD}:GPIO16`, 'l298n1:IN3'], [`${BOARD}:GPIO17`, 'l298n1:IN4'],
+      [`${BOARD}:GPIO18`, 'l298n1:ENA'], [`${BOARD}:GPIO19`, 'l298n1:ENB'],
+      ['motorL:terminal1', 'l298n1:OUT1'], ['motorL:terminal2', 'l298n1:OUT2'],
+      ['motorR:terminal1', 'l298n1:OUT3'], ['motorR:terminal2', 'l298n1:OUT4'],
+      ['battery1:+', 'l298n1:VIN'], ['battery1:-', 'l298n1:GND'], ['l298n1:GND', GND],
+      [`${BOARD}:3V3`, 'flame1:VCC'], ['flame1:GND', GND], [`${BOARD}:GPIO21`, 'flame1:DOUT'],
+      [`${BOARD}:3V3`, 'relay1:VCC'], ['relay1:GND', GND], [`${BOARD}:GPIO25`, 'relay1:IN'],
+      [`${BOARD}:GND.2`, 'servo1:GND'], [`${BOARD}:5V`, 'servo1:V+'], [`${BOARD}:GPIO26`, 'servo1:PWM'],
+    ],
+    sensorScenario: {
+      sensors: {
+        flame1: {
+          type: 'wokwi-flame-sensor',
+          timeline: [
+            { timeMs: 0, detected: false },
+            { timeMs: 4000, detected: true },
+          ],
+        },
+      },
+    },
+  },
+  expectedBehavior: 'Ban đầu tuần tra (di chuyển, "Trang thai: TUAN TRA"). Khi phát hiện lửa (mốc 4s): dừng ngay, bật relay bơm + vòi phun, in "Trang thai: DANG DAP LUA".',
+  testSteps: [
+    'Bấm Run/Compile.',
+    'Xác nhận "Trang thai: TUAN TRA" và cả 2 motor forward khi chưa có lửa.',
+    'Xác nhận chuyển "Trang thai: DANG DAP LUA", cả 2 motor stopped, relay/vòi phun bật đúng lúc mốc 4s.',
+  ],
+  serialExpectedOutput: 'Trang thai: TUAN TRA\n...\nTrang thai: DANG DAP LUA',
+  teacherNotes: 'Mở rộng trực tiếp từ "Cảnh báo cháy bằng Flame Sensor" — thay vì chỉ bật LED/buzzer, ở đây điều khiển thêm động cơ (dừng xe) và relay (bơm).',
+  limitations: 'Không mô phỏng lưu lượng nước/áp suất phun thật (Water Pump vẫn ở mức structural-only theo component-compatibility.json). Vòi phun dùng digitalWrite đơn giản hoá (PWM_QEMU_GAP). Không mô phỏng cường độ lửa, chỉ digital HIGH/LOW.',
+};
+
+// ---- Bài "Hệ thống sấy nông sản thông minh" (doc #15) ----
+const dryingSystemStarterCode = `// StemFlow Virtual Lab — He thong say nong san thong minh
+// ESP32 DevKit v1 — DHT11 id="dht1" (SDA=GPIO19, chi de kiem tra day noi); Fan IN=13; Relay (may say) IN=14
+
+#include "StemFlowDHT.h"
+
+const int FAN_PIN = 13;
+const int HEATER_RELAY_PIN = 14;
+const float TARGET_TEMP_C = 40.0;
+
+StemFlowDHT dht("dht1");
+
+void setup() {
+  Serial.begin(115200);
+  pinMode(FAN_PIN, OUTPUT);
+  pinMode(HEATER_RELAY_PIN, OUTPUT);
+}
+
+void loop() {
+  float temperature = dht.readTemperature();
+  float humidity = dht.readHumidity();
+
+  Serial.print("Nhiet do: "); Serial.print(temperature);
+  Serial.print(" C, Do am: "); Serial.print(humidity); Serial.println(" %");
+
+  digitalWrite(FAN_PIN, HIGH);
+
+  if (temperature < TARGET_TEMP_C) {
+    digitalWrite(HEATER_RELAY_PIN, HIGH);
+    Serial.println("Trang thai: DANG SAY (heater ON)");
+  } else {
+    digitalWrite(HEATER_RELAY_PIN, LOW);
+    Serial.println("Trang thai: DU NHIET (heater OFF)");
+  }
+  delay(1000);
+}
+`;
+
+const dryingSystem: VirtualLabSampleExercise = {
+  title: 'Hệ thống sấy nông sản thông minh',
+  slug: 'he-thong-say-nong-san-thong-minh',
+  category: 'physics',
+  level: 'intermediate',
+  estimatedTimeMinutes: 30,
+  objective: 'Kết hợp cảm biến nhiệt độ (DHT) với 2 cơ cấu chấp hành độc lập (Fan luôn bật để lưu thông khí, Relay điều khiển máy sấy theo ngưỡng nhiệt) trong cùng 1 vòng lặp điều khiển.',
+  description: 'Quạt luôn chạy để lưu thông khí; máy sấy (qua relay) chỉ bật khi nhiệt độ dưới ngưỡng mục tiêu (40°C), tắt khi đã đủ nhiệt.',
+  components: ['wokwi-dht11', 'wokwi-fan', 'wokwi-relay-module', 'wokwi-heating-element', 'wokwi-battery-pack'],
+  supportedLevel: 'wokwi-dht11 (qua StemFlowDHT)/wokwi-fan/wokwi-relay-module: Mô phỏng được đầy đủ qua QEMU (đã proven riêng lẻ ở Bài 10 và các bài Relay/Fan trước). wokwi-heating-element: Structural-only (không có runtime bật/tắt riêng — nhiệt thật do Relay điều khiển, heating-element chỉ minh hoạ tải tiêu thụ).',
+  wiringGuide: [
+    'Đặt DHT11 với id "dht1" (khớp StemFlowDHT("dht1") trong code), SDA -> GPIO19 (chỉ để qua bước kiểm tra nối dây).',
+    'Nối Fan: IN -> GPIO13, "+"/"-" -> Battery Pack.',
+    'Nối Relay (máy sấy): VCC -> 3V3, GND -> GND, IN -> GPIO14.',
+    'Nối Heating Element vào đường ra của Relay (NO/COM) và Battery Pack — chỉ mang tính minh hoạ tải.',
+  ],
+  starterCode: dryingSystemStarterCode,
+  circuitConfig: {
+    board: 'esp32_devkit_v1',
+    parts: [
+      { id: 'dht1', type: 'wokwi-dht11', x: 220, y: 20, pinMapping: { SDA: 19 } },
+      { id: 'fan1', type: 'wokwi-fan', x: 220, y: 120, pinMapping: { IN: 13 } },
+      { id: 'relay1', type: 'wokwi-relay-module', x: 340, y: 120, pinMapping: { IN: 14 } },
+      { id: 'heater1', type: 'wokwi-heating-element', x: 460, y: 120, pinMapping: {} },
+      { id: 'battery1', type: 'wokwi-battery-pack', x: 340, y: 220, pinMapping: {} },
+    ],
+    connections: [
+      [`${BOARD}:3V3`, 'dht1:VCC'], [`${BOARD}:GPIO19`, 'dht1:SDA'], ['dht1:GND', GND],
+      [`${BOARD}:GPIO13`, 'fan1:IN'], ['fan1:+', 'battery1:+'], ['fan1:-', 'battery1:-'],
+      [`${BOARD}:3V3`, 'relay1:VCC'], ['relay1:GND', GND], [`${BOARD}:GPIO14`, 'relay1:IN'],
+      ['battery1:+', 'relay1:COM'], ['relay1:NO', 'heater1:+'], ['heater1:-', 'battery1:-'],
+    ],
+    sensorScenario: {
+      sensors: {
+        dht1: {
+          type: 'wokwi-dht11',
+          timeline: [
+            { timeMs: 0, temperature: 30, humidity: 70 },
+            { timeMs: 5000, temperature: 45, humidity: 40 },
+          ],
+        },
+      },
+    },
+  },
+  expectedBehavior: 'Fan luôn bật (FAN_PIN=HIGH). Khi nhiệt độ 30°C (< 40°C): relay máy sấy bật ("DANG SAY"). Khi nhiệt độ tăng lên 45°C (>= 40°C): relay tắt ("DU NHIET").',
+  testSteps: [
+    'Bấm Run/Compile.',
+    'Xác nhận Serial in đúng nhiệt độ/độ ẩm theo kịch bản.',
+    'Xác nhận "Trang thai: DANG SAY" khi 30°C, chuyển "Trang thai: DU NHIET" đúng lúc nhiệt độ đạt 45°C.',
+  ],
+  serialExpectedOutput: 'Nhiet do: 30.00 C, Do am: 70.00 %\nTrang thai: DANG SAY (heater ON)\n...\nNhiet do: 45.00 C, Do am: 40.00 %\nTrang thai: DU NHIET (heater OFF)',
+  teacherNotes: 'Điểm học thuật chính: 1 vòng lặp điều khiển 2 cơ cấu chấp hành ĐỘC LẬP theo 2 quy tắc khác nhau (Fan luôn bật, Relay theo ngưỡng) — không nhầm lẫn logic giữa 2 cơ cấu.',
+  limitations: 'Heating Element không có runtime bật/tắt riêng (structural-only theo component-compatibility.json) — nhiệt độ thật do relay quyết định, không mô phỏng nhiệt lượng/tốc độ sấy thật. Không có màn hình LCD/OLED hiển thị (cần I2C, hiện chưa hỗ trợ — xem I2C_CAPABILITY_GAP).',
 };
 
 // ============================================================================
@@ -2130,5 +2929,13 @@ export const VIRTUAL_LAB_SAMPLE_EXERCISES: VirtualLabSampleExercise[] = [
   rainAlert,
   soilMoisture,
   vibrationAlert,
+  pushButtonLed,
+  potentiometerLed,
+  lightSensorLed,
+  trashRobot,
+  stairRobot,
+  soccerRobot,
+  firefightRobot,
+  dryingSystem,
   ...ROBOT_DELIVERY_MINI_LABS,
 ];

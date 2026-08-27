@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import {
-  Building2,
   Users,
   BookOpen,
   GraduationCap,
@@ -57,7 +56,7 @@ export function SchoolAdminDashboard() {
       <div className={`flex flex-col md:flex-row md:items-center justify-between gap-4 border-b pb-5`}>
         <div>
           <h1 className={`text-3xl font-extrabold tracking-tight font-headline ${headingText}`}>
-            Xin chào, {user?.fullName} 👋
+            Xin chào, {user?.fullName}
           </h1>
           <p className={`text-sm mt-1 ${mutedText}`}>
             Trang quản trị trường học — theo dõi thông tin tổng quan về {user?.schoolName || 'trường của bạn'}.
@@ -151,21 +150,6 @@ export function SchoolAdminDashboard() {
 
       {/* Charts Section */}
       {!loading && stats && <SchoolAdminCharts stats={stats} role="school_admin" />}
-
-      {/* Info Card */}
-      <div className={`rounded-2xl p-6 border ${cardSurface}`}>
-        <div className="flex items-start gap-4">
-          <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${isDark ? 'bg-blue-500/10 text-blue-400' : 'bg-blue-50 text-blue-600'}`}>
-            <Building2 className="w-5 h-5" />
-          </div>
-          <div>
-            <h3 className={`font-bold text-lg ${headingText}`}>Trường: {user?.schoolName || 'Không xác định'}</h3>
-            <p className={`text-sm mt-1 ${mutedText}`}>
-              Bạn đang xem thông tin tổng quan của trường. Để quản lý chi tiết, vui lòng liên hệ Quản trị viên hệ thống.
-            </p>
-          </div>
-        </div>
-      </div>
     </div>
   );
 }

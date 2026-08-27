@@ -35,7 +35,6 @@ import {
   PaymentsPage,
   AiQuotaPage,
   SyllabusViewerPage,
-  ReportsPage,
 } from '@/pages/dashboard/school-admin';
 import { SyllabusPage } from '@/pages/dashboard/master-admin/SyllabusPage';
 import SyllabusesPage from '@/pages/dashboard/master-admin/SyllabusesPage';
@@ -186,11 +185,6 @@ export const dashboardRoutes = [
       { 
         path: 'school-syllabus', 
         element: <ProtectedElement element={<SyllabusViewerPage />} allowedRoles={['school_admin']} />,
-      },
-      // Reports (School Admin only)
-      { 
-        path: 'reports', 
-        element: <ProtectedElement element={<ReportsPage />} allowedRoles={['school_admin']} />,
       },
       // My Classes (Teacher/Student)
       { path: 'my-classes', element: <MyClassesPage /> },

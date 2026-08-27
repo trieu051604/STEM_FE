@@ -21,7 +21,7 @@ export const DashboardPage = () => {
       return (
         <div className="space-y-6">
           <h1 className="text-2xl font-bold">
-            Xin chào, {user?.fullName} 👋
+            Xin chào, {user?.fullName}
           </h1>
           <p className="text-muted-foreground">Chào mừng bạn đến với STEM</p>
         </div>

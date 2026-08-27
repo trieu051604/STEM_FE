@@ -241,33 +241,6 @@ export function ReviewReportSubmission({ submission, rubricCriteria }: ReviewRep
         </div>
       )}
 
-      {/* Rubric Grading */}
-      {rubricCriteria && rubricCriteria.length > 0 && submission.score !== undefined && submission.score !== null && (
-        <div className="p-4 bg-white dark:bg-black/20 rounded-lg border border-border">
-          <h4 className="font-medium mb-3 flex items-center gap-2">
-            <CheckCircle className="w-4 h-4 text-green-600" />
-            Tiêu chí chấm điểm
-          </h4>
-          <div className="space-y-2">
-            {rubricCriteria.map((criterion, index) => (
-              <div key={index} className="flex items-center justify-between p-2 bg-muted/50 rounded-lg">
-                <div className="flex items-center gap-2">
-                  <span className="text-sm text-muted-foreground">{index + 1}.</span>
-                  <span className="text-sm font-medium">{criterion.name}</span>
-                </div>
-                <span className="text-sm font-medium text-green-600">
-                  {criterion.maxPoints} điểm
-                </span>
-              </div>
-            ))}
-          </div>
-          <div className="mt-3 pt-3 border-t border-border flex items-center justify-between">
-            <span className="text-sm font-medium">Tổng điểm</span>
-            <span className="text-lg font-bold text-green-600">{submission.score}/{submission.maxScore}</span>
-          </div>
-        </div>
-      )}
-
       {/* Report Content */}
       {content.textContent && (
         <div className="p-4 bg-white dark:bg-black/20 rounded-lg border border-border">

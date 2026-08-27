@@ -14,7 +14,7 @@ import {
 } from 'lucide-react';
 import { paymentsApi, PaymentPackage } from '@/services/schoolAdminApi';
 import { api } from '@/services/api';
-import toast from 'react-hot-toast';
+import { useToast } from '@/components/ToastProvider';
 import {
   Dialog,
   DialogContent,
@@ -57,6 +57,7 @@ export const PackagesManagementPage = () => {
   const [showModal, setShowModal] = useState(false);
   const [editingPackage, setEditingPackage] = useState<PaymentPackage | null>(null);
   const [formData, setFormData] = useState<PackageFormData>(defaultFormData);
+  const { showToast } = useToast();
 
   const queryClient = useQueryClient();
 
@@ -106,10 +107,10 @@ export const PackagesManagementPage = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-payment-packages'] });
       handleCloseModal();
-      toast.success('Tạo gói thành công!');
+      showToast('Tạo gói thành công!');
     },
     onError: () => {
-      toast.error('Lỗi khi tạo gói');
+      showToast('Lỗi khi tạo gói', 'error');
     }
   });
 
@@ -129,10 +130,10 @@ export const PackagesManagementPage = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-payment-packages'] });
       handleCloseModal();
-      toast.success('Cập nhật gói thành công!');
+      showToast('Cập nhật gói thành công!');
     },
     onError: () => {
-      toast.error('Lỗi khi cập nhật gói');
+      showToast('Lỗi khi cập nhật gói', 'error');
     }
   });
 
@@ -150,17 +151,14 @@ export const PackagesManagementPage = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-payment-packages'] });
-      toast.success('Xóa gói thành công!');
+      showToast('Xóa gói thành công!');
     },
     onError: () => {
-      toast.error('Lỗi khi xóa gói');
+      showToast('Lỗi khi xóa gói', 'error');
     }
   });
 
   const handleDelete = (pkg: PaymentPackage) => {
-    toast.success(`Đã xóa gói "${pkg.name}"`, {
-      duration: 3000,
-    });
     deleteMutation.mutate(pkg.id);
   };
 

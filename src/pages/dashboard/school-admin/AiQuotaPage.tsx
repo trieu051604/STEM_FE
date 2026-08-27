@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import toast from 'react-hot-toast';
+import { useToast } from '@/components/ToastProvider';
 import { 
   Coins, 
   Users, 
@@ -25,6 +25,7 @@ import { vi } from 'date-fns/locale';
 
 export const AiQuotaPage = () => {
   const queryClient = useQueryClient();
+  const { showToast } = useToast();
   const [activeTab, setActiveTab] = useState<'overview' | 'users' | 'bulk' | 'history'>('overview');
   const [selectedUser, setSelectedUser] = useState<{ id: number; name: string; email: string; role: string } | null>(null);
   const [allocationAmount, setAllocationAmount] = useState('');
@@ -82,13 +83,13 @@ export const AiQuotaPage = () => {
         setSelectedUser(null);
         setAllocationAmount('');
         setAllocationNotes('');
-        toast.success('Phân bổ AI quota thành công!');
+        showToast('Phân bổ AI quota thành công!');
       } else {
-        toast.error(result.errorMessage || 'Không thể phân bổ AI quota');
+        showToast(result.errorMessage || 'Không thể phân bổ AI quota', 'error');
       }
     } catch (error) {
       console.error('Allocate failed:', error);
-      toast.error('Có lỗi xảy ra');
+      showToast('Có lỗi xảy ra', 'error');
     } finally {
       setAllocating(false);
     }

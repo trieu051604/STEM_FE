@@ -14,7 +14,7 @@ import {
 } from 'lucide-react';
 import { syllabusApi, Syllabus, CreateSyllabusPayload } from '@/services/syllabusApi';
 import { api } from '@/services/api';
-import toast from 'react-hot-toast';
+import { useToast } from '@/components/ToastProvider';
 import {
   Dialog,
   DialogContent,
@@ -71,6 +71,7 @@ export const SyllabusesPage = () => {
   const [showModal, setShowModal] = useState(false);
   const [editing, setEditing] = useState<Syllabus | null>(null);
   const [formData, setFormData] = useState<SyllabusFormData>(defaultFormData);
+  const { showToast } = useToast();
 
   const queryClient = useQueryClient();
 
@@ -87,12 +88,12 @@ export const SyllabusesPage = () => {
   const createMutation = useMutation({
     mutationFn: (payload: CreateSyllabusPayload) => syllabusApi.create(payload),
     onSuccess: () => {
-      toast.success('Đã tạo chương trình khung mới.');
+      showToast('Đã tạo chương trình khung mới.');
       queryClient.invalidateQueries({ queryKey: ['standard-syllabuses'] });
       handleCloseModal();
     },
     onError: (err: any) => {
-      toast.error(err?.response?.data?.message || 'Không thể tạo chương trình khung.');
+      showToast(err?.response?.data?.message || 'Không thể tạo chương trình khung.', 'error');
     },
   });
 
@@ -109,23 +110,23 @@ export const SyllabusesPage = () => {
         status: payload.status,
       }),
     onSuccess: () => {
-      toast.success('Đã cập nhật chương trình khung.');
+      showToast('Đã cập nhật chương trình khung.');
       queryClient.invalidateQueries({ queryKey: ['standard-syllabuses'] });
       handleCloseModal();
     },
     onError: (err: any) => {
-      toast.error(err?.response?.data?.message || 'Không thể cập nhật chương trình khung.');
+      showToast(err?.response?.data?.message || 'Không thể cập nhật chương trình khung.', 'error');
     },
   });
 
   const archiveMutation = useMutation({
     mutationFn: (id: number) => syllabusApi.archive(id),
     onSuccess: () => {
-      toast.success('Đã lưu trữ chương trình khung.');
+      showToast('Đã lưu trữ chương trình khung.');
       queryClient.invalidateQueries({ queryKey: ['standard-syllabuses'] });
     },
     onError: (err: any) => {
-      toast.error(err?.response?.data?.message || 'Không thể lưu trữ chương trình khung.');
+      showToast(err?.response?.data?.message || 'Không thể lưu trữ chương trình khung.', 'error');
     },
   });
 
@@ -157,7 +158,7 @@ export const SyllabusesPage = () => {
 
   const handleSubmit = () => {
     if (!formData.title.trim()) {
-      toast.error('Vui lòng nhập tên chương trình.');
+      showToast('Vui lòng nhập tên chương trình.', 'error');
       return;
     }
 

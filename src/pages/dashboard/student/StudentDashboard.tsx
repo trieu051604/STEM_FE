@@ -2,12 +2,13 @@ import { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useAuthStore } from '@/stores/authStore';
 import { Button } from '@/components/ui/button';
-import { BookOpen, Award, Clock, Play, CheckCircle, Calendar, Loader2, ChevronRight, FileText } from 'lucide-react';
+import { BookOpen, Award, Clock, Play, CheckCircle, Calendar, Loader2, ChevronRight, FileText, Sparkles } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { formatDistanceToNow, parseISO, isBefore } from 'date-fns';
 import { vi } from 'date-fns/locale';
 import { studentApi, StudentAssignment, StudentClass } from '@/services/teacherStudentApi';
 import { cn } from '@/lib/utils';
+import { AssignmentTypeBadge } from '@/components/Dashboard/AssignmentTypeBadge';
 
 export function StudentDashboard() {
   const { user } = useAuthStore();
@@ -151,7 +152,7 @@ export function StudentDashboard() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold">{getGreeting()}, {userName} 👋</h1>
+          <h1 className="text-2xl font-bold">{getGreeting()}, {userName}</h1>
           <p className="text-muted-foreground">Có gì mới hôm nay?</p>
         </div>
         <Button 
@@ -303,40 +304,73 @@ export function StudentDashboard() {
           </Link>
         </div>
 
-        {/* Tab Navigation */}
-        <div className="flex gap-2 mb-4 border-b">
+        {/* Tab Navigation - Improved Design */}
+        <div className="flex flex-wrap gap-3 mb-6">
           <button
             onClick={() => setActiveTab('quiz')}
             className={cn(
-              "px-4 py-2 text-sm font-medium border-b-2 transition-colors",
+              "relative px-4 py-2.5 rounded-xl text-sm font-semibold transition-all duration-300",
               activeTab === 'quiz' 
-                ? "border-primary text-primary" 
-                : "border-transparent text-muted-foreground hover:text-foreground"
+                ? "bg-gradient-to-r from-blue-500 to-cyan-500 text-white shadow-lg shadow-blue-500/30" 
+                : "bg-muted/50 text-muted-foreground hover:bg-muted hover:text-foreground border border-transparent"
             )}
           >
-            📝 Quiz ({quizAssignments.length})
+            <span className="flex items-center gap-2">
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+              </svg>
+              Quiz
+              <span className={cn(
+                "ml-1 px-1.5 py-0.5 rounded-full text-xs",
+                activeTab === 'quiz' ? "bg-white/20" : "bg-muted"
+              )}>
+                {quizAssignments.length}
+              </span>
+            </span>
           </button>
           <button
             onClick={() => setActiveTab('text_report')}
             className={cn(
-              "px-4 py-2 text-sm font-medium border-b-2 transition-colors",
+              "relative px-4 py-2.5 rounded-xl text-sm font-semibold transition-all duration-300",
               activeTab === 'text_report' 
-                ? "border-primary text-primary" 
-                : "border-transparent text-muted-foreground hover:text-foreground"
+                ? "bg-gradient-to-r from-orange-500 to-amber-500 text-white shadow-lg shadow-orange-500/30" 
+                : "bg-muted/50 text-muted-foreground hover:bg-muted hover:text-foreground border border-transparent"
             )}
           >
-            📄 Báo cáo ({reportAssignments.length})
+            <span className="flex items-center gap-2">
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+              Báo cáo
+              <span className={cn(
+                "ml-1 px-1.5 py-0.5 rounded-full text-xs",
+                activeTab === 'text_report' ? "bg-white/20" : "bg-muted"
+              )}>
+                {reportAssignments.length}
+              </span>
+            </span>
           </button>
           <button
             onClick={() => setActiveTab('practical_simulation')}
             className={cn(
-              "px-4 py-2 text-sm font-medium border-b-2 transition-colors",
+              "relative px-4 py-2.5 rounded-xl text-sm font-semibold transition-all duration-300",
               activeTab === 'practical_simulation' 
-                ? "border-primary text-primary" 
-                : "border-transparent text-muted-foreground hover:text-foreground"
+                ? "bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-lg shadow-purple-500/30" 
+                : "bg-muted/50 text-muted-foreground hover:bg-muted hover:text-foreground border border-transparent"
             )}
           >
-            🧪 Mô phỏng ({simulationAssignments.length})
+            <span className="flex items-center gap-2">
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" />
+              </svg>
+              Mô phỏng
+              <span className={cn(
+                "ml-1 px-1.5 py-0.5 rounded-full text-xs",
+                activeTab === 'practical_simulation' ? "bg-white/20" : "bg-muted"
+              )}>
+                {simulationAssignments.length}
+              </span>
+            </span>
           </button>
         </div>
 
@@ -511,40 +545,46 @@ function AssignmentRow({ assignment }: { assignment: StudentAssignment }) {
   };
 
   return (
-    <div className="flex items-center justify-between p-4 rounded-lg bg-muted/50 hover:bg-muted transition-colors">
+    <div className="group flex items-center justify-between p-4 rounded-2xl bg-card border border-border/50 hover:border-primary/30 hover:shadow-lg hover:shadow-primary/5 transition-all duration-300">
       <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2">
-          <h3 className="font-medium truncate">{assignment.title}</h3>
+        <div className="flex items-center gap-3 mb-1.5">
+          <h3 className="font-semibold truncate group-hover:text-primary transition-colors">{assignment.title}</h3>
+          <AssignmentTypeBadge type={assignment.assignmentType} size="sm" />
           {isOverdue && !assignment.hasSubmitted && (
-            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400 shrink-0">
+            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400 shrink-0">
               Quá hạn
             </span>
           )}
         </div>
-        <p className="text-sm text-muted-foreground">{assignment.className}</p>
+        <p className="text-sm text-muted-foreground mb-1">{assignment.className}</p>
         {dueDate ? (
-          <p className={cn("text-xs mt-1", getUrgencyColor())}>
+          <p className={cn("text-xs font-medium", getUrgencyColor())}>
             {isOverdue ? 'Đã quá hạn' : `Còn ${daysUntilDue} ngày`} • {formatDistanceToNow(dueDate, { locale: vi })}
           </p>
         ) : (
-          <p className="text-xs mt-1 text-muted-foreground">Không có hạn nộp</p>
+          <p className="text-xs text-muted-foreground">Không có hạn nộp</p>
         )}
       </div>
-      <div className="flex items-center gap-2 ml-4">
+      <div className="flex items-center gap-3 ml-4">
         {displayScore !== undefined && (
-          <span className="text-sm font-medium px-2 py-1 rounded bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">
-            {displayScore}/{assignment.maxScore}
-          </span>
+          <div className="flex flex-col items-end">
+            <span className="text-lg font-bold text-green-600">{displayScore}</span>
+            <span className="text-xs text-muted-foreground">/{assignment.maxScore}</span>
+          </div>
         )}
         {!assignment.hasSubmitted ? (
           <Link to={`/dashboard/student/assignments/${assignment.id}/submit`}>
-            <Button size="sm" className="gap-1">
+            <Button size="sm" className="gap-1.5 shadow-lg shadow-primary/20">
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+              </svg>
               Nộp bài
             </Button>
           </Link>
         ) : (
           <Link to={`/dashboard/student/assignments/${assignment.id}/submit?view=true`}>
-            <Button size="sm" variant="outline">
+            <Button size="sm" variant="outline" className="gap-1.5">
+              <Sparkles className="w-4 h-4" />
               Xem lại
             </Button>
           </Link>

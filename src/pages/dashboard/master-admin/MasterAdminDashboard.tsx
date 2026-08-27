@@ -104,7 +104,7 @@ export function MasterAdminDashboard() {
         <div className={`flex flex-col md:flex-row md:items-center justify-between gap-4 border-b pb-5`}>
         <div>
           <h1 className={`text-3xl font-extrabold tracking-tight font-headline ${headingText}`}>
-            Xin chào, {user?.fullName} 👋
+            Xin chào, {user?.fullName}
           </h1>
           <p className={`text-sm mt-1 ${mutedText}`}>
             Trang quản trị hệ thống STEM — theo dõi hoạt động và xử lý yêu cầu trường học.

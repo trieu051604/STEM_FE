@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { AlertCircle, BookOpen, ChevronDown, Plus, PlusCircle, RefreshCw } from 'lucide-react';
 import { useAuthStore } from '@/stores/authStore';
+import { useToast } from '@/components/ToastProvider';
 import { assignmentsApi, classesApi, labsApi, usersApi } from '@/services/dashboardApi';
 import { lessonsApi } from '@/services/curriculumApi';
 import { schedulesApi } from '@/services/dashboardApi';
@@ -13,6 +14,7 @@ import type {
   ValidateWokwiProjectResponse,
 } from '@/services/dashboardApi';
 import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { LabStatsHeader } from '@/components/Dashboard/VirtualLab/LabStatsHeader';
 import type { LabStats } from '@/components/Dashboard/VirtualLab/LabStatsHeader';
 import { LabCard } from '@/components/Dashboard/VirtualLab/LabCard';
@@ -183,6 +185,7 @@ function buildStats(labs: LabEntity[]): LabStats {
 
 export const VirtualLabPage = () => {
   const { token, user } = useAuthStore();
+  const { showToast } = useToast();
   const [labs, setLabs] = useState<LabEntity[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -201,6 +204,7 @@ export const VirtualLabPage = () => {
   const [isComponentsLoading, setIsComponentsLoading] = useState(false);
   const [metaError, setMetaError] = useState<string | null>(null);
   const [componentsError, setComponentsError] = useState<string | null>(null);
+  const [deletingLab, setDeletingLab] = useState<LabEntity | null>(null);
 
   const canManageLabs = user?.role === 'teacher' || user?.role === 'school_admin';
   const [teacherFilterId, setTeacherFilterId] = useState<number | null>(null);
@@ -225,7 +229,7 @@ export const VirtualLabPage = () => {
 
       setLabs(response.items);
     } catch (fetchError) {
-      setError(getErrorMessage(fetchError, 'Không tải được danh sách phòng lab.'));
+      showToast(getErrorMessage(fetchError, 'Không tải được danh sách phòng lab.'), 'error');
       setLabs([]);
     } finally {
       setIsLoading(false);
@@ -466,14 +470,19 @@ export const VirtualLabPage = () => {
   };
 
   const handleDeleteLab = async (lab: LabEntity) => {
-    const confirmed = window.confirm(`Xóa phòng lab "${lab.title}"?`);
-    if (!confirmed) return;
+    setDeletingLab(lab);
+  };
 
+  const confirmDeleteLab = async () => {
+    if (!deletingLab) return;
+    const lab = deletingLab;
+    setDeletingLab(null);
     try {
       await labsApi.delete(lab.id);
+      showToast(`Đã xóa phòng lab "${lab.title}"`);
       await fetchLabs();
     } catch (deleteError) {
-      setError(getErrorMessage(deleteError, 'Không xóa được phòng lab.'));
+      showToast(getErrorMessage(deleteError, 'Không xóa được phòng lab.'), 'error');
     }
   };
 
@@ -627,6 +636,25 @@ export const VirtualLabPage = () => {
         onClose={() => setIsTemplatePickerOpen(false)}
         onSelect={handleSelectTemplate}
       />
+
+      <Dialog open={!!deletingLab} onOpenChange={(open) => !open && setDeletingLab(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Xác nhận xóa phòng lab</DialogTitle>
+          </DialogHeader>
+          <div className="px-6 py-4 text-sm text-foreground">
+            Bạn có chắc chắn muốn xóa phòng lab <strong>"{deletingLab?.title}"</strong>? Hành động này không thể hoàn tác.
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeletingLab(null)}>
+              Hủy
+            </Button>
+            <Button variant="destructive" onClick={confirmDeleteLab}>
+              Xóa
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

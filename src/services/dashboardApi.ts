@@ -2907,10 +2907,62 @@ export const schoolRequestsApi = {
 };
 
 // Notifications API
+export type NotificationType = 
+  | 'submission'    // Bài nộp
+  | 'grade'         // Chấm điểm
+  | 'class'         // Lớp học
+  | 'reminder'      // Nhắc nhở
+  | 'success'       // Thành công
+  | 'error'         // Lỗi
+  | 'warning'       // Cảnh báo
+  | 'info'          // Thông tin chung
+  | 'message'       // Tin nhắn/Bình luận
+  | 'school_request' // Yêu cầu từ trường
+  // Backend notification types
+  | 'System'
+  | 'GradeReport'
+  | 'AttendanceWarning'
+  | 'Assignment'
+  | 'Announcement'
+  | 'SubmissionComment'
+  | 'SubmissionReceived'
+  | 'ResubmitRequest'
+  | 'ResubmitRequestReviewed'
+  | 'AddedToClass'
+  | 'AssignmentAssigned'
+  | 'VirtualLabAssigned'
+  | 'LessonAvailable'
+  | 'ClassAnnouncement'
+  | 'AssignmentDueSoon'
+  | 'VirtualLabDueSoon'
+  | 'AssignmentSubmitted'
+  | 'AssignmentGraded'
+  | 'TeacherFeedback'
+  | 'ResubmissionApproved'
+  | 'ResubmissionRejected'
+  | 'VirtualLabCompleted'
+  | 'LabResultAvailable'
+  | 'ScheduleReminder'
+  | 'AssignmentDueToday'
+  | 'VirtualLabDueToday'
+  | 'ProgressAlert'
+  | 'ClassAssigned'
+  | 'ClassRemoved'
+  | 'NewClassAvailable'
+  | 'StudentProgressAlert'
+  | 'NewCourseAvailable'
+  | 'CourseUpdated'
+  | 'NewVirtualLabAvailable'
+  | 'TokenBalanceLow'
+  | 'SubscriptionExpiring'
+  | 'PaymentCompleted'
+  | 'PaymentFailed';
+
 export interface Notification {
   id: number;
   title: string;
   message: string;
+  type: NotificationType;
   isRead: boolean;
   createdAt: string;
 }
@@ -2924,12 +2976,25 @@ export interface NotificationsResponse {
 export const notificationsApi = {
   getAll: async (params?: { page?: number; pageSize?: number }): Promise<NotificationsResponse> => {
     const response = await api.get('/notifications', { params });
-    return response.data.data;
+    const raw = unwrapApiData<unknown>(response.data);
+    const list = Array.isArray(raw)
+      ? (raw as Array<{ id: number; title: string; content: string; isRead: boolean; createdAt: string }>)
+      : [];
+    const items: Notification[] = list.map((n) => ({
+      id: n.id,
+      title: n.title,
+      message: n.content,
+      type: 'info' as NotificationType,
+      isRead: n.isRead,
+      createdAt: n.createdAt,
+    }));
+    const unreadCount = items.filter((n) => !n.isRead).length;
+    return { items, total: items.length, unreadCount };
   },
   markAsRead: async (id: number): Promise<void> => {
-    await api.put(`/notifications/${id}/read`);
+    await api.patch(`/notifications/${id}/mark-as-read`);
   },
   markAllAsRead: async (): Promise<void> => {
-    await api.put('/notifications/read-all');
+    await api.patch('/notifications/mark-all-as-read');
   },
 };

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import toast from 'react-hot-toast';
+import { useToast } from '@/components/ToastProvider';
 import { Button } from '@/components/ui/button';
 import { 
   CreditCard, 
@@ -25,6 +25,7 @@ const ITEMS_PER_PAGE = 10;
 
 export const PaymentsPage = () => {
   const queryClient = useQueryClient();
+  const { showToast } = useToast();
   const [searchParams, setSearchParams] = useSearchParams();
   const [selectedPackage, setSelectedPackage] = useState<PaymentPackage | null>(null);
   const [purchasing, setPurchasing] = useState(false);
@@ -71,11 +72,11 @@ export const PaymentsPage = () => {
         window.location.href = result.checkoutUrl;
       } else {
         console.error('Failed to create payment:', result.errorMessage);
-        toast.error(result.errorMessage || 'Không thể tạo thanh toán');
+        showToast(result.errorMessage || 'Không thể tạo thanh toán', 'error');
       }
     } catch (error) {
       console.error('Purchase failed:', error);
-      toast.error('Có lỗi xảy ra');
+      showToast('Có lỗi xảy ra', 'error');
     } finally {
       setPurchasing(false);
     }

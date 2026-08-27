@@ -212,7 +212,7 @@ export const TeacherDashboard = () => {
       <div className={`flex flex-col md:flex-row md:items-center justify-between gap-4`}>
         <div>
           <h1 className={`text-3xl font-extrabold tracking-tight font-headline ${headingText}`}>
-            Xin chào, {user?.fullName} 👋
+            Xin chào, {user?.fullName}
           </h1>
           <p className={`text-sm mt-1 ${mutedText}`}>
             Hôm nay thầy/cô có {todayClassCount} lớp học và {stats.pendingSubmissions} bài nộp mới đang chờ chấm điểm.

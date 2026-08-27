@@ -1,26 +1,52 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Bell, Check, CheckCheck, Loader2, Trash2, AlertCircle, Info, CheckCircle, XCircle } from 'lucide-react';
+import { notificationsApi } from '@/services';
 import { Button } from '@/components/ui/button';
-import { TeacherCard } from '@/components/Dashboard/teacher/TeacherCard';
-import { TeacherPageHeader } from '@/components/Dashboard/teacher/TeacherPageHeader';
-import { notificationsApi, Notification } from '@/services/dashboardApi';
-import { formatDistanceToNow } from 'date-fns';
+import { Card, CardContent } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Bell, Check, Loader2, Filter, Search } from 'lucide-react';
+import { format, parse } from 'date-fns';
 import { vi } from 'date-fns/locale';
 
-const ITEMS_PER_PAGE = 20;
+interface Notification {
+  id: number;
+  title: string;
+  message: string;
+  isRead: boolean;
+  type: string;
+  createdAt: string;
+}
+
+const notificationTypeLabels: Record<string, string> = {
+  assignment: 'Bài tập',
+  grade: 'Điểm số',
+  class: 'Lớp học',
+  system: 'Hệ thống',
+  course: 'Khóa học',
+  reminder: 'Nhắc nhở',
+  info: 'Thông báo',
+};
+
+const notificationTypeColors: Record<string, string> = {
+  assignment: 'bg-blue-500/10 text-blue-500',
+  grade: 'bg-green-500/10 text-green-500',
+  class: 'bg-purple-500/10 text-purple-500',
+  system: 'bg-gray-500/10 text-gray-500',
+  course: 'bg-orange-500/10 text-orange-500',
+  reminder: 'bg-yellow-500/10 text-yellow-500',
+  info: 'bg-blue-500/10 text-blue-500',
+};
 
 export function NotificationsPage() {
   const queryClient = useQueryClient();
-  const [currentPage, setCurrentPage] = useState(1);
+  const [filter, setFilter] = useState<'all' | 'unread'>('all');
+  const [searchQuery, setSearchQuery] = useState('');
 
-  // Fetch notifications
-  const { data: notificationsData, isLoading } = useQuery({
-    queryKey: ['notifications', currentPage],
-    queryFn: () => notificationsApi.getAll({ page: currentPage, pageSize: ITEMS_PER_PAGE }),
+  const { data, isLoading } = useQuery({
+    queryKey: ['notifications', filter],
+    queryFn: () => notificationsApi.getAll(),
   });
 
-  // Mark as read mutation
   const markAsReadMutation = useMutation({
     mutationFn: (id: number) => notificationsApi.markAsRead(id),
     onSuccess: () => {
@@ -28,7 +54,6 @@ export function NotificationsPage() {
     },
   });
 
-  // Mark all as read mutation
   const markAllAsReadMutation = useMutation({
     mutationFn: () => notificationsApi.markAllAsRead(),
     onSuccess: () => {
@@ -36,143 +61,163 @@ export function NotificationsPage() {
     },
   });
 
-  const notifications = notificationsData?.items || [];
-  const totalPages = Math.ceil((notificationsData?.total || 0) / ITEMS_PER_PAGE);
+  const notifications = data?.items || [];
+  
+  const filteredNotifications = notifications.filter((notification: Notification) => {
+    if (filter === 'unread' && notification.isRead) return false;
+    if (!searchQuery) return true;
+    const query = searchQuery.toLowerCase();
+    return (
+      notification.title.toLowerCase().includes(query) ||
+      notification.message.toLowerCase().includes(query)
+    );
+  });
 
-  const getNotificationIcon = (type: string) => {
-    switch (type) {
-      case 'success':
-      case 'user_register':
-        return <CheckCircle className="w-5 h-5 text-green-500" />;
-      case 'error':
-      case 'submission':
-        return <XCircle className="w-5 h-5 text-red-500" />;
-      case 'warning':
-      case 'school_request':
-        return <AlertCircle className="w-5 h-5 text-yellow-500" />;
-      default:
-        return <Info className="w-5 h-5 text-blue-500" />;
-    }
-  };
-
-  const handleMarkAllRead = () => {
-    if (confirm('Đánh dấu tất cả thông báo đã đọc?')) {
-      markAllAsReadMutation.mutate();
-    }
-  };
+  const unreadCount = data?.unreadCount || 0;
 
   return (
-    <div className="space-y-6">
+    <div className="container mx-auto p-6 space-y-6">
       {/* Header */}
-      <TeacherPageHeader
-        title="Thông báo"
-        description={notificationsData?.unreadCount ? `Bạn có ${notificationsData.unreadCount} thông báo chưa đọc` : 'Tất cả thông báo của bạn'}
-        action={
-          notificationsData?.unreadCount && notificationsData.unreadCount > 0 && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleMarkAllRead}
-              disabled={markAllAsReadMutation.isPending}
-              className="border-border hover:bg-accent"
-            >
-              <CheckCheck className="w-4 h-4 mr-2" />
-              {markAllAsReadMutation.isPending ? 'Đang xử lý...' : 'Đánh dấu đã đọc tất cả'}
-            </Button>
-          )
-        }
-      />
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold">Thông báo</h1>
+          <p className="text-muted-foreground">
+            Quản lý thông báo của bạn
+            {unreadCount > 0 && (
+              <span className="ml-2 text-primary font-medium">
+                ({unreadCount} chưa đọc)
+              </span>
+            )}
+          </p>
+        </div>
+        {unreadCount > 0 && (
+          <Button
+            variant="outline"
+            onClick={() => markAllAsReadMutation.mutate()}
+            disabled={markAllAsReadMutation.isPending}
+          >
+            <Check className="w-4 h-4 mr-2" />
+            Đánh dấu tất cả đã đọc
+          </Button>
+        )}
+      </div>
+
+      {/* Filters */}
+      <div className="flex flex-col sm:flex-row gap-4">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          <input
+            type="text"
+            placeholder="Tìm kiếm thông báo..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full h-10 pl-10 pr-4 rounded-lg border border-border bg-background text-sm"
+          />
+        </div>
+        <div className="flex gap-2">
+          <Button
+            variant={filter === 'all' ? 'default' : 'outline'}
+            size="sm"
+            onClick={() => setFilter('all')}
+          >
+            Tất cả
+          </Button>
+          <Button
+            variant={filter === 'unread' ? 'default' : 'outline'}
+            size="sm"
+            onClick={() => setFilter('unread')}
+          >
+            <Filter className="w-4 h-4 mr-2" />
+            Chưa đọc
+          </Button>
+        </div>
+      </div>
 
       {/* Notifications List */}
       {isLoading ? (
-        <div className="flex items-center justify-center py-20">
-          <Loader2 className="w-8 h-8 animate-spin text-indigo-500" />
+        <div className="flex items-center justify-center py-12">
+          <Loader2 className="w-8 h-8 animate-spin text-primary" />
         </div>
-      ) : notifications.length === 0 ? (
-        <TeacherCard className="p-12 text-center" noPadding={false}>
-          <div className="w-16 h-16 rounded-full bg-muted mx-auto mb-4 flex items-center justify-center">
-            <Bell className="w-8 h-8 text-muted-foreground" />
-          </div>
-          <h3 className="text-lg font-semibold mb-2">Không có thông báo nào</h3>
-          <p className="text-muted-foreground text-sm">Bạn sẽ nhận được thông báo khi có cập nhật mới.</p>
-        </TeacherCard>
+      ) : filteredNotifications.length === 0 ? (
+        <Card>
+          <CardContent className="flex flex-col items-center justify-center py-12">
+            <Bell className="w-12 h-12 text-muted-foreground mb-4" />
+            <p className="text-muted-foreground">
+              {filter === 'unread' ? 'Không có thông báo chưa đọc' : 'Chưa có thông báo nào'}
+            </p>
+          </CardContent>
+        </Card>
       ) : (
-        <TeacherCard noPadding className="divide-y divide-border">
-          {notifications.map((notification) => (
-            <div
+        <div className="space-y-3">
+          {filteredNotifications.map((notification: Notification) => (
+            <Card
               key={notification.id}
-              className={`p-4 hover:bg-accent/50 transition-colors ${
-                !notification.isRead ? 'bg-indigo-500/10' : ''
+              className={`transition-all ${
+                !notification.isRead
+                  ? 'border-l-4 border-l-indigo-500 bg-indigo-50/30 dark:bg-indigo-950/20'
+                  : ''
               }`}
             >
-              <div className="flex items-start gap-4">
-                <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center shrink-0">
-                  {getNotificationIcon(notification.title)}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-start justify-between gap-2">
-                    <div>
-                      <p className={`font-medium ${!notification.isRead ? 'text-foreground' : 'text-muted-foreground'}`}>
-                        {notification.title}
-                      </p>
-                      <p className="text-sm text-muted-foreground mt-0.5">
-                        {notification.message}
-                      </p>
-                    </div>
-                    {!notification.isRead && (
-                      <div className="w-2 h-2 rounded-full bg-indigo-500 shrink-0 mt-2" />
-                    )}
+              <CardContent className="p-4">
+                <div className="flex items-start gap-4">
+                  {/* Icon */}
+                  <div
+                    className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${
+                      notificationTypeColors[notification.type] || 'bg-gray-500/10 text-gray-500'
+                    }`}
+                  >
+                    <Bell className="w-5 h-5" />
                   </div>
-                  <p className="text-xs text-muted-foreground mt-2">
-                    {formatDistanceToNow(new Date(notification.createdAt), {
-                      addSuffix: true,
-                      locale: vi,
-                    })}
-                  </p>
-                </div>
-                <div className="flex items-center gap-1 shrink-0">
-                  {!notification.isRead && (
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="size-8"
-                      onClick={() => markAsReadMutation.mutate(notification.id)}
-                      title="Đánh dấu đã đọc"
-                    >
-                      <Check className="w-4 h-4" />
-                    </Button>
-                  )}
-                </div>
-              </div>
-            </div>
-          ))}
-        </TeacherCard>
-      )}
 
-      {/* Pagination */}
-      {totalPages > 1 && (
-        <div className="flex items-center justify-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            className="border-border hover:bg-accent"
-            onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-            disabled={currentPage === 1}
-          >
-            Trước
-          </Button>
-          <span className="text-sm text-muted-foreground px-4">
-            Trang {currentPage} / {totalPages}
-          </span>
-          <Button
-            variant="outline"
-            size="sm"
-            className="border-border hover:bg-accent"
-            onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-            disabled={currentPage === totalPages}
-          >
-            Sau
-          </Button>
+                  {/* Content */}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex-1 min-w-0">
+                        <h3 className={`font-medium ${!notification.isRead ? 'text-indigo-600 dark:text-indigo-400' : ''}`}>
+                          {notification.title}
+                        </h3>
+                        <p className="text-sm text-muted-foreground mt-1">
+                          {notification.message}
+                        </p>
+                      </div>
+                      <Badge className={`self-start shrink-0 ${notificationTypeColors[notification.type] || ''}`}>
+                        {notificationTypeLabels[notification.type] || notification.type}
+                      </Badge>
+                    </div>
+
+                    <div className="flex items-center justify-between mt-3">
+                      <span className="text-xs text-muted-foreground">
+                        {(() => {
+                          try {
+                            const date = new Date(notification.createdAt);
+                            if (isNaN(date.getTime())) {
+                              return notification.createdAt;
+                            }
+                            return format(date, 'HH:mm - dd/MM/yyyy', { locale: vi });
+                          } catch {
+                            return notification.createdAt;
+                          }
+                        })()}
+                      </span>
+                      <div className="flex gap-2">
+                        {!notification.isRead && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => markAsReadMutation.mutate(notification.id)}
+                            disabled={markAsReadMutation.isPending}
+                          >
+                            <Check className="w-4 h-4 mr-1" />
+                            Đánh dấu đã đọc
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
         </div>
       )}
     </div>

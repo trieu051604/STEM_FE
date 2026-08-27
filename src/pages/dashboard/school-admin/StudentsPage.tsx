@@ -376,8 +376,8 @@ export const StudentsPage = () => {
 
       {/* Stats Cards */}
       {isLoading ? (
-        <div className="grid grid-cols-2 sm:grid-cols-5 gap-4">
-          {[1, 2, 3, 4, 5].map((i) => (
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          {[1, 2, 3].map((i) => (
             <div key={i} className="bg-card rounded-xl border border-border p-4 animate-pulse">
               <div className="flex items-center gap-3">
                 <div className="w-12 h-12 rounded-lg bg-muted" />
@@ -390,7 +390,7 @@ export const StudentsPage = () => {
           ))}
         </div>
       ) : studentsData && !studentsError ? (
-        <div className="grid grid-cols-2 sm:grid-cols-5 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div className="bg-card rounded-xl border border-border p-4">
             <div className="flex items-center gap-3">
               <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center">
@@ -417,19 +417,6 @@ export const StudentsPage = () => {
           </div>
           <div className="bg-card rounded-xl border border-border p-4">
             <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-lg bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center">
-                <Clock className="w-6 h-6 text-amber-600 dark:text-amber-400" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold">
-                  {studentsData.totalWithoutScores}
-                </p>
-                <p className="text-sm text-muted-foreground">Chưa có điểm</p>
-              </div>
-            </div>
-          </div>
-          <div className="bg-card rounded-xl border border-border p-4">
-            <div className="flex items-center gap-3">
               <div className="w-12 h-12 rounded-lg bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
                 <CheckCircle className="w-6 h-6 text-green-600 dark:text-green-400" />
               </div>
@@ -438,19 +425,6 @@ export const StudentsPage = () => {
                   {studentsData.totalActiveStudents}
                 </p>
                 <p className="text-sm text-muted-foreground">Đang học</p>
-              </div>
-            </div>
-          </div>
-          <div className="bg-card rounded-xl border border-border p-4">
-            <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-lg bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
-                <TrendingUp className="w-6 h-6 text-blue-600 dark:text-blue-400" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold">
-                  {studentsData.totalWithScores}
-                </p>
-                <p className="text-sm text-muted-foreground">Có điểm TB</p>
               </div>
             </div>
           </div>

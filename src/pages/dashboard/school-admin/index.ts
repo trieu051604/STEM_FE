@@ -6,4 +6,3 @@ export { PaymentsPage } from './PaymentsPage';
 export { SchoolAdminDashboard } from './SchoolAdminDashboard';
 export { AiQuotaPage } from './AiQuotaPage';
 export { SyllabusViewerPage } from './SyllabusViewerPage';
-export { ReportsPage } from './ReportsPage';

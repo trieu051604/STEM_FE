@@ -72,7 +72,7 @@ export function MasterAdminDashboard() {
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-brand-800/60 pb-5">
         <div>
           <h1 className="text-3xl font-extrabold tracking-tight text-white font-headline">
-            Xin chào, {user?.fullName} 👋
+            Xin chào, {user?.fullName}
           </h1>
           <p className="text-brand-400 text-sm mt-1">
             Chào mừng bạn quay trở lại trang quản trị hệ thống STEM.

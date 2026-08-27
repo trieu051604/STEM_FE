@@ -15,7 +15,6 @@ const roleSidebarItems: Record<UserRole, SidebarItem[]> = {
     { label: 'Quản lý trường', path: '/dashboard/schools', icon: 'Building2' },
     { label: 'Quản lý gói token', path: '/dashboard/packages', icon: 'Package' },
     { label: 'Thống kê doanh thu', path: '/dashboard/revenue', icon: 'DollarSign' },
-    { label: 'Thông báo', path: '/dashboard/notifications', icon: 'Bell' },
     { label: 'Hồ sơ', path: '/dashboard/profile', icon: 'User' },
   ],
   school_admin: [
@@ -24,11 +23,9 @@ const roleSidebarItems: Record<UserRole, SidebarItem[]> = {
     { label: 'Quản lý học sinh', path: '/dashboard/students', icon: 'GraduationCap' },
     { label: 'Quản lý giáo viên', path: '/dashboard/teachers', icon: 'UserCheck' },
     { label: 'Lớp học', path: '/dashboard/classes', icon: 'School' },
-    { label: 'Báo cáo', path: '/dashboard/reports', icon: 'BarChart3' },
     { label: 'Mua Token', path: '/dashboard/payments', icon: 'Coins' },
     { label: 'Quản lý AI Quota', path: '/dashboard/ai-quota', icon: 'Sparkles' },
     { label: 'Lịch sử đăng nhập', path: '/dashboard/login-history', icon: 'History' },
-    { label: 'Thông báo', path: '/dashboard/notifications', icon: 'Bell' },
     { label: 'Hồ sơ', path: '/dashboard/profile', icon: 'User' },
   ],
   teacher: [

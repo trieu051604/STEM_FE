@@ -77,8 +77,6 @@ export const ReportsPage = () => {
     ? Math.round(((stats?.totalSubmissions || 0) / (totalStudents * 10)) * 10) 
     : 0;
 
-  const averageScore = stats?.averageScore || 0;
-
   const colorClasses: Record<string, string> = {
     blue: 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400',
     green: 'bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400',
@@ -179,20 +177,6 @@ export const ReportsPage = () => {
                     <div 
                       className="h-full bg-primary rounded-full transition-all"
                       style={{ width: `${completionRate}%` }}
-                    />
-                  </div>
-                </div>
-
-                {/* Average Score */}
-                <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-sm font-medium">Điểm trung bình</span>
-                    <span className="text-sm font-bold text-primary">{averageScore.toFixed(1)}/10</span>
-                  </div>
-                  <div className="h-2 bg-muted rounded-full overflow-hidden">
-                    <div 
-                      className="h-full bg-green-500 rounded-full transition-all"
-                      style={{ width: `${averageScore * 10}%` }}
                     />
                   </div>
                 </div>

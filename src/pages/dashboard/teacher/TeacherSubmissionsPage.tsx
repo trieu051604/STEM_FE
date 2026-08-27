@@ -200,7 +200,7 @@ export default function TeacherSubmissionsPage() {
                 <tr
                   key={submission.id}
                   ref={String(submission.id) === highlightId ? highlightRef : undefined}
-                  onClick={() => navigate(`/dashboard/submissions/${submission.id}`)}
+                  onClick={() => navigate(`/dashboard/teacher/submissions/${submission.id}/grade`)}
                   className={
                     String(submission.id) === highlightId
                       ? 'border-b border-border/50 bg-indigo-500/10 cursor-pointer'

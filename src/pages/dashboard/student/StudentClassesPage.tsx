@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
-import { BookOpen, User, Calendar, MapPin, Play, Loader2, Search, CheckCircle } from 'lucide-react';
+import { BookOpen, User, Calendar, Play, Loader2, Search, CheckCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { studentApi, StudentClass } from '@/services/teacherStudentApi';
@@ -148,12 +148,6 @@ export default function StudentClassesPage() {
                   <div className="flex items-center gap-2 text-muted-foreground">
                     <Calendar className="w-4 h-4" />
                     <span>{cls.schedule}</span>
-                  </div>
-                )}
-                {cls.room && (
-                  <div className="flex items-center gap-2 text-muted-foreground">
-                    <MapPin className="w-4 h-4" />
-                    <span>{cls.room}</span>
                   </div>
                 )}
               </div>

@@ -512,7 +512,7 @@ export default function StudentAssignmentsPage() {
 
                             if (assignment.submission) {
                               return (
-                                <Link to={`/dashboard/submissions/${assignment.submission.id}`}>
+                                <Link to={`/dashboard/student/assignments/${assignment.id}/submit?view=true`}>
                                   <Button variant="outline" size="sm" className="gap-2">
                                     <CheckCircle className="w-4 h-4" />
                                     <span className="hidden sm:inline">Xem kết quả</span>

@@ -219,19 +219,6 @@ export const StudentsPage = () => {
       ),
     },
     {
-      key: 'averageScore',
-      header: 'Điểm TB',
-      render: (student) => {
-        const score = student.averageScore;
-        return (
-          <span className="flex items-center gap-1.5 text-sm">
-            <CheckCircle className="w-3.5 h-3.5 text-success" />
-            {score != null && score > 0 ? score.toFixed(1) : '—'}
-          </span>
-        );
-      },
-    },
-    {
       key: 'isActive',
       header: 'Trạng thái',
       render: (student) => (
@@ -655,10 +642,10 @@ export const StudentsPage = () => {
                 </div>
                 <div className="bg-accent/50 rounded-lg p-3">
                   <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
-                    <CheckCircle className="w-4 h-4" />
-                    Điểm TB
+                    <BookOpen className="w-4 h-4" />
+                    Bài tập đã nộp
                   </div>
-                  <p className="text-2xl font-bold">{selectedStudent.averageScore?.toFixed(1) || '—'}</p>
+                  <p className="text-2xl font-bold">{selectedStudent.totalSubmissions || 0}</p>
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-4 pt-2">

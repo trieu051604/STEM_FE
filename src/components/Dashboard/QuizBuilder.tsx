@@ -238,6 +238,15 @@ export const QuizBuilder: React.FC<QuizBuilderProps> = ({
       return;
     }
 
+    if (basics.dueDate) {
+      const selectedDate = new Date(basics.dueDate);
+      const now = new Date();
+      if (selectedDate <= now) {
+        setLocalError('Hạn nộp phải lớn hơn thời gian hiện tại.');
+        return;
+      }
+    }
+
     const questionError = validateQuestions();
     if (questionError) {
       setLocalError(questionError);

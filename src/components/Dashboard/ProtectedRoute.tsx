@@ -12,7 +12,6 @@ import { ClassMonitorPage } from '@/pages/dashboard/ClassMonitorPage';
 import { ComponentRegistryPage } from '@/pages/dashboard/ComponentRegistryPage';
 import { AttendancePage } from '@/pages/dashboard/AttendancePage';
 import { NotificationsPage } from '@/pages/dashboard/NotificationsPage';
-import SubmissionDetailPage from '@/pages/dashboard/SubmissionDetailPage';
 import { StudentDashboard } from '@/pages/dashboard/student/StudentDashboard';
 import TeacherClassesPage from '@/pages/dashboard/teacher/TeacherClassesPage';
 import TeacherClassDetailPage from '@/pages/dashboard/teacher/TeacherClassDetailPage';
@@ -201,7 +200,6 @@ export const dashboardRoutes = [
       { path: 'teacher/assignments/:id', element: <TeacherAssignmentsPage /> },
       { path: 'teacher/submissions', element: <TeacherSubmissionsPage /> },
       { path: 'teacher/submissions/:id/grade', element: <TeacherGradeSubmissionPage /> },
-      { path: 'submissions/:submissionId', element: <SubmissionDetailPage /> },
       { path: 'teacher/schedule', element: <TeacherSchedulePage /> },
       { path: 'teacher/schedule/attendance', element: <TeacherSessionAttendance /> },
       { path: 'student/classes', element: <StudentClassesPage /> },

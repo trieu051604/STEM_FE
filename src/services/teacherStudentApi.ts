@@ -385,12 +385,12 @@ const studentApi = {
       // Map backend response to frontend interface
       const items: StudentClass[] = (data?.items || []).map((item: any) => ({
         id: item.id,
-        name: item.classCode || item.courseName || `Lớp #${item.id}`,
+        name: item.className || item.courseName || `Lớp #${item.id}`,
         courseName: item.courseName || '',
         teacherName: item.teacherName || '',
-        schedule: '', // Will be fetched from schedule API
-        room: '', // Will be fetched from schedule API
-        progress: 0, // Will be calculated from assignments
+        schedule: '',
+        room: '',
+        progress: 0,
         nextSession: '',
         status: getClassStatus(item),
         courseId: item.courseId,
@@ -440,7 +440,7 @@ const studentApi = {
     const items: StudentAssignment[] = (data?.items || []).map((item: any) => ({
       id: item.id,
       title: item.title,
-      className: item.classCode || item.courseTitle || 'Chưa gán lớp',
+      className: item.className || item.courseName || item.classCode || 'Chưa gán lớp',
       classId: item.classId,
       dueDate: item.dueDate,
       assignmentType: item.assignmentType,
@@ -639,7 +639,7 @@ const studentApi = {
   },
 
   // Submit report assignment
-  submitReportAssignment: async (assignmentId: number, data: { content?: string; fileId?: number; fileUrl?: string }): Promise<{
+  submitReportAssignment: async (assignmentId: number, data: { content?: string; fileId?: number; fileUrl?: string; videoUrl?: string }): Promise<{
     submissionId: number;
     attemptNumber: number;
     status: string;

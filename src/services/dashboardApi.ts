@@ -933,6 +933,18 @@ function normalizeAssignment(value: unknown): AssignmentEntity {
     pick(source, 'assignment_type', 'assignmentType', 'AssignmentType')
   );
 
+  // Parse dueDate - handle multiple formats
+  let dueDate: string | null = null;
+  const rawDueDate = pick(source, 'dueDate', 'DueDate');
+  if (rawDueDate) {
+    if (typeof rawDueDate === 'string') {
+      dueDate = rawDueDate;
+    } else if (typeof rawDueDate === 'number') {
+      // Unix timestamp (milliseconds)
+      dueDate = new Date(rawDueDate).toISOString();
+    }
+  }
+
   return {
     id: toNumberValue(pick(source, 'id', 'Id')),
     classId: toNumberValue(pick(source, 'classId', 'ClassId')),
@@ -947,7 +959,7 @@ function normalizeAssignment(value: unknown): AssignmentEntity {
     description: toStringValue(pick(source, 'description', 'Description')),
     assignmentType,
     assignment_type: assignmentType,
-    dueDate: (pick(source, 'dueDate', 'DueDate') as string | null | undefined) ?? null,
+    dueDate,
     maxScore: toNumberValue(pick(source, 'maxScore', 'MaxScore'), 100),
     rubricId: toNullableNumber(pick(source, 'rubricId', 'RubricId')),
     rubricCriteria: normalizeRubricCriteria(pick(source, 'rubricCriteria', 'RubricCriteria')),

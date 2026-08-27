@@ -5,8 +5,8 @@ import { ArrowLeft, FileText, Download, Save, AlertCircle, CheckCircle, Loader2 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { gradingApi, type SubmissionDetailResponse } from '@/services/dashboardApi';
-import { ReviewQuizSubmission } from '@/components/Dashboard/ReviewSubmission';
+import { gradingApi, assignmentsApi } from '@/services/dashboardApi';
+import { ReviewQuizSubmission, ReviewQuizFromResults } from '@/components/Dashboard/ReviewSubmission';
 import { format, parseISO } from 'date-fns';
 import { vi } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
@@ -23,12 +23,26 @@ export default function TeacherGradeSubmissionPage() {
     enabled: !!submissionId,
   });
 
+  // Query để lấy assignment với quiz questions
+  const { data: assignmentWithQuiz } = useQuery({
+    queryKey: ['assignment-with-quiz', submission?.assignmentId],
+    queryFn: () => assignmentsApi.getById(submission!.assignmentId),
+    enabled: !!submission?.assignmentId && submission.assignmentType === 'quiz',
+  });
+
   const gradeMutation = useMutation({
     mutationFn: ({ score, feedback }: { score: number; feedback?: string }) =>
       gradingApi.gradeSubmission(submissionId, { score, feedback }),
     onSuccess: () => {
+      // Refetch để lấy data mới từ server
       queryClient.invalidateQueries({ queryKey: ['submission-detail', submissionId] });
       queryClient.invalidateQueries({ queryKey: ['teacher-grading-submissions'] });
+    },
+    onSettled: () => {
+      // Reset state để hiển thị thành công
+    },
+    onError: (error) => {
+      console.error('Lỗi chấm điểm:', error);
     },
   });
 
@@ -81,6 +95,8 @@ export default function TeacherGradeSubmissionPage() {
   }
 
   const content = submission.contentJson ? JSON.parse(submission.contentJson) : {};
+
+  const isGraded = submission.status === 'graded';
 
   return (
     <div className="space-y-6">
@@ -159,18 +175,18 @@ export default function TeacherGradeSubmissionPage() {
             </div>
           )}
 
-          {/* Quiz Review */}
-          {submission.assignmentType === 'quiz' && submission.quizDetail && (
+          {/* Quiz Review - với quizDetail từ assignment API */}
+          {submission.assignmentType === 'quiz' && (assignmentWithQuiz?.quizDetail?.questions || submission.quizDetail?.questions) && (
             <div className="bg-card rounded-xl border border-border p-6">
               <h2 className="font-semibold mb-4">Chi tiết bài Quiz</h2>
               <ReviewQuizSubmission
-                questions={submission.quizDetail.questions as any}
+                questions={(assignmentWithQuiz?.quizDetail?.questions || submission.quizDetail?.questions) as any}
                 submission={{
                   submissionId: submission.id,
                   attemptNumber: submission.attemptNumber,
                   submittedAt: submission.createdAt,
                   status: submission.status,
-                  score: submission.score,
+                  score: submission.score ?? undefined,
                   maxScore: submission.maxScore,
                   contentJson: submission.contentJson,
                   feedback: submission.feedback ?? undefined,
@@ -186,7 +202,7 @@ export default function TeacherGradeSubmissionPage() {
         <div className="space-y-6">
           <div className="bg-card rounded-xl border border-border p-6 sticky top-6">
             <h2 className="font-semibold mb-4 flex items-center gap-2">
-              {submission.status === 'graded' ? (
+              {isGraded ? (
                 <>
                   <CheckCircle className="w-5 h-5 text-green-500" />
                   <span>Đã chấm điểm</span>
@@ -203,74 +219,100 @@ export default function TeacherGradeSubmissionPage() {
             {submission.rubricCriteria && submission.rubricCriteria.length > 0 && (
               <div className="space-y-4 mb-6">
                 <h3 className="text-sm font-medium text-muted-foreground">Tiêu chí chấm điểm</h3>
-                {submission.rubricCriteria.map((criterion, index) => (
-                  <div key={index} className="p-3 bg-muted/50 rounded-lg">
-                    <div className="flex items-start justify-between mb-2">
-                      <p className="text-sm font-medium">{criterion.name}</p>
-                      <span className="text-xs text-muted-foreground">
-                        Tối đa: {criterion.maxPoints}
-                      </span>
-                    </div>
-                    {criterion.description && (
-                      <p className="text-xs text-muted-foreground mb-2">{criterion.description}</p>
-                    )}
-                    <div className="flex items-center gap-2">
-                      <Input
-                        type="number"
-                        min={0}
-                        max={criterion.maxPoints}
-                        value={rubricScores[`rubric_${index}`] ?? ''}
-                        onChange={(e) =>
-                          handleRubricScoreChange(index, parseInt(e.target.value) || 0, criterion.maxPoints)
-                        }
-                        className="w-20 text-center"
-                        disabled={submission.status === 'graded'}
-                      />
-                      <span className="text-sm text-muted-foreground">/ {criterion.maxPoints}</span>
-                    </div>
+                {isGraded ? (
+                  <div className="p-4 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-800">
+                    <p className="text-sm text-muted-foreground mb-1">Tổng điểm đã chấm</p>
+                    <p className="text-3xl font-bold text-green-600 dark:text-green-400">
+                      {submission.score} / {submission.maxScore}
+                    </p>
                   </div>
-                ))}
-                <div className="pt-3 border-t border-border">
-                  <div className="flex items-center justify-between">
-                    <span className="font-medium">Tổng điểm:</span>
-                    <span className="text-lg font-bold text-primary">
-                      {getTotalRubricScore()} / {submission.rubricCriteria.reduce((sum, c) => sum + c.maxPoints, 0)}
-                    </span>
-                  </div>
-                </div>
+                ) : (
+                  <>
+                    {submission.rubricCriteria.map((criterion, index) => (
+                      <div key={index} className="p-3 bg-muted/50 rounded-lg">
+                        <div className="flex items-start justify-between mb-2">
+                          <p className="text-sm font-medium">{criterion.name}</p>
+                          <span className="text-xs text-muted-foreground">
+                            Tối đa: {criterion.maxPoints}
+                          </span>
+                        </div>
+                        {criterion.description && (
+                          <p className="text-xs text-muted-foreground mb-2">{criterion.description}</p>
+                        )}
+                        <div className="flex items-center gap-2">
+                          <Input
+                            type="number"
+                            min={0}
+                            max={criterion.maxPoints}
+                            value={rubricScores[`rubric_${index}`] ?? ''}
+                            onChange={(e) =>
+                              handleRubricScoreChange(index, parseInt(e.target.value) || 0, criterion.maxPoints)
+                            }
+                            className="w-20 text-center"
+                            disabled={isGraded}
+                          />
+                          <span className="text-sm text-muted-foreground">/ {criterion.maxPoints}</span>
+                        </div>
+                      </div>
+                    ))}
+                    <div className="pt-3 border-t border-border">
+                      <div className="flex items-center justify-between">
+                        <span className="font-medium">Tổng điểm:</span>
+                        <span className="text-lg font-bold text-primary">
+                          {getTotalRubricScore()} / {submission.rubricCriteria.reduce((sum, c) => sum + c.maxPoints, 0)}
+                        </span>
+                      </div>
+                    </div>
+                  </>
+                )}
               </div>
             )}
 
             {/* Simple Score Input (if no rubric) */}
             {(!submission.rubricCriteria || submission.rubricCriteria.length === 0) && (
               <div className="space-y-4 mb-6">
-                <div>
-                  <label className="text-sm text-muted-foreground block mb-2">Điểm</label>
-                  <Input
-                    type="number"
-                    min={0}
-                    max={submission.maxScore}
-                    value={score}
-                    onChange={(e) => setScore(parseInt(e.target.value) || 0)}
-                    disabled={submission.status === 'graded'}
-                  />
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Tối đa: {submission.maxScore} điểm
-                  </p>
-                </div>
+                {isGraded ? (
+                  <div className="p-4 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-800">
+                    <p className="text-sm text-muted-foreground mb-1">Điểm đã chấm</p>
+                    <p className="text-3xl font-bold text-green-600 dark:text-green-400">
+                      {submission.score} / {submission.maxScore}
+                    </p>
+                  </div>
+                ) : (
+                  <div>
+                    <label className="text-sm text-muted-foreground block mb-2">Điểm</label>
+                    <Input
+                      type="number"
+                      min={0}
+                      max={submission.maxScore}
+                      value={score}
+                      onChange={(e) => setScore(parseInt(e.target.value) || 0)}
+                      disabled={isGraded}
+                    />
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Tối đa: {submission.maxScore} điểm
+                    </p>
+                  </div>
+                )}
               </div>
             )}
 
             {/* Feedback */}
             <div className="mb-6">
               <label className="text-sm text-muted-foreground block mb-2">Nhận xét</label>
-              <Textarea
-                value={feedback}
-                onChange={(e) => setFeedback(e.target.value)}
-                placeholder="Nhập nhận xét cho học sinh..."
-                rows={4}
-                disabled={submission.status === 'graded'}
-              />
+              {isGraded ? (
+                <div className="p-3 bg-muted/50 rounded-lg">
+                  <p className="text-sm">{submission.feedback || '(Không có nhận xét)'}</p>
+                </div>
+              ) : (
+                <Textarea
+                  value={feedback}
+                  onChange={(e) => setFeedback(e.target.value)}
+                  placeholder="Nhập nhận xét cho học sinh..."
+                  rows={4}
+                  disabled={isGraded}
+                />
+              )}
             </div>
 
             {/* Actions */}
@@ -299,7 +341,7 @@ export default function TeacherGradeSubmissionPage() {
             {gradeMutation.isError && (
               <div className="mt-4 p-3 bg-red-500/10 border border-red-500/20 rounded-lg text-red-600 text-sm">
                 <AlertCircle className="w-4 h-4 inline mr-2" />
-                Có lỗi xảy ra. Vui lòng thử lại.
+                Có lỗi xảy ra: {gradeMutation.error?.message || 'Không rõ lỗi'}
               </div>
             )}
           </div>

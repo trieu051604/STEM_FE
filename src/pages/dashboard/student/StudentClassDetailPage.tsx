@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft, BookOpen, User, Calendar, MapPin, Clock, Play, CheckCircle, FileText, Cpu, Loader2, FlaskConical, ClipboardCheck, XCircle, ChevronDown, X } from 'lucide-react';
+import { ArrowLeft, BookOpen, User, Calendar, Clock, Play, CheckCircle, FileText, Cpu, Loader2, FlaskConical, ClipboardCheck, XCircle, ChevronDown, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Icon } from '@/components/ui/Icon';
 import { WeeklyScheduleGrid } from '@/components/WeeklyScheduleGrid';
@@ -58,8 +58,17 @@ export default function StudentClassDetailPage() {
         <div className="flex-1">
           <div className="flex items-start justify-between">
             <div>
-              <h1 className="text-2xl font-bold">{classDetail.className}</h1>
-              <p className="text-muted-foreground">{classDetail.courseName}</p>
+              <div className="flex items-center gap-3 mb-1">
+                <h1 className="text-3xl font-bold">{classDetail.className}</h1>
+                {classDetail.classCode && (
+                  <span className="px-3 py-1 bg-muted rounded text-sm font-mono text-muted-foreground">
+                    {classDetail.classCode}
+                  </span>
+                )}
+              </div>
+              {classDetail.courseName && classDetail.courseName !== classDetail.className && (
+                <p className="text-muted-foreground text-base">{classDetail.courseName}</p>
+              )}
             </div>
             <span className={`px-3 py-1 rounded-full text-sm font-medium ${
               classDetail.status === 'active' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' :
@@ -297,12 +306,6 @@ function OverviewTab({ classDetail }: { classDetail: StudentClassDetail }) {
               <User className="w-4 h-4 text-muted-foreground" />
               <span className="text-muted-foreground">Giáo viên:</span>
               <span className="font-medium">{classDetail.teacherName}</span>
-            </div>
-
-            <div className="flex items-center gap-3 text-sm">
-              <MapPin className="w-4 h-4 text-muted-foreground" />
-              <span className="text-muted-foreground">Phòng:</span>
-              <span className="font-medium">{classDetail.room || '—'}</span>
             </div>
 
             <div className="flex items-center gap-3 text-sm">

@@ -12,7 +12,8 @@ import {
   Lightbulb,
   RefreshCw,
   Trophy,
-  Eye
+  Eye,
+  MessageSquare
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { studentApi } from '@/services/teacherStudentApi';
@@ -22,7 +23,7 @@ import { cn } from '@/lib/utils';
 import { StudentQuizSubmit } from '@/components/Dashboard/StudentQuizSubmit';
 import { StudentReportSubmit } from '@/components/Dashboard/StudentReportSubmit';
 import { StudentSimulationSubmit } from '@/components/Dashboard/StudentSimulationSubmit';
-import { ReviewQuizSubmission, ReviewReportSubmission, ReviewSimulationSubmission } from '@/components/Dashboard/ReviewSubmission';
+import { ReviewQuizSubmission, ReviewReportSubmission, ReviewSimulationSubmission, ReviewQuizFromResults } from '@/components/Dashboard/ReviewSubmission';
 
 interface QuizQuestion {
   id: string;
@@ -103,6 +104,17 @@ export default function StudentSubmitAssignmentPage() {
     enabled: !!assignmentId,
     retry: 1,
     staleTime: 30 * 1000,
+  });
+
+  // Query để lấy quiz questions từ assignment API riêng
+  const { data: assignmentWithQuizQuestions } = useQuery({
+    queryKey: ['assignment-quiz-questions', assignmentId],
+    queryFn: async () => {
+      const response = await studentApi.getAssignmentDetailWithQuiz(assignmentId);
+      return response;
+    },
+    enabled: !!assignmentId,
+    retry: 1,
   });
 
   const queryClient = useQueryClient();
@@ -371,57 +383,6 @@ export default function StudentSubmitAssignmentPage() {
         </div>
       </div>
 
-      {/* Previous Submission Info */}
-      {hasSubmitted && mySubmission && (
-        <div className={cn(
-          "bg-card rounded-xl border p-5",
-          mySubmission.status === 'graded' 
-            ? "border-green-200 dark:border-green-800 bg-green-50/50 dark:bg-green-900/20" 
-            : "border-blue-200 dark:border-blue-800 bg-blue-50/50 dark:bg-blue-900/20"
-        )}>
-          <div className="flex items-center justify-between">
-            <div>
-              <h3 className="font-semibold flex items-center gap-2">
-                {mySubmission.status === 'graded' ? (
-                  <>
-                    <CheckCircle className="w-5 h-5 text-green-600" />
-                    Đã hoàn thành
-                  </>
-                ) : (
-                  <>
-                    <Clock className="w-5 h-5 text-blue-600" />
-                    Đã nộp bài
-                  </>
-                )}
-              </h3>
-              <p className="text-sm text-muted-foreground mt-1">
-                Lần nộp #{mySubmission.attemptNumber} - {format(parseISO(mySubmission.submittedAt), 'HH:mm, dd/MM/yyyy', { locale: vi })}
-              </p>
-            </div>
-            <div className="text-right">
-              {mySubmission.score !== undefined && mySubmission.score !== null ? (
-                <>
-                  <div className="flex items-center gap-2">
-                    <Trophy className="w-5 h-5 text-yellow-500" />
-                    <span className="text-2xl font-bold text-green-600">{mySubmission.score}</span>
-                    <span className="text-muted-foreground">/{mySubmission.maxScore}</span>
-                  </div>
-                  <p className="text-xs text-muted-foreground mt-1">Điểm cao nhất</p>
-                </>
-              ) : (
-                <span className="text-muted-foreground">Chờ chấm điểm</span>
-              )}
-            </div>
-          </div>
-          {mySubmission.feedback && (
-            <div className="mt-3 p-3 bg-white/50 dark:bg-black/20 rounded-lg">
-              <p className="text-sm text-muted-foreground">Phản hồi:</p>
-              <p className="text-sm mt-1">{mySubmission.feedback}</p>
-            </div>
-          )}
-        </div>
-      )}
-
       {/* Instructions for Report */}
       {(assignment.assignmentType === 'text_report'
         ? (assignment.description || assignment.reportDetail?.instructions)
@@ -476,16 +437,27 @@ export default function StudentSubmitAssignmentPage() {
       )}
 
       {/* Xem lại bài đã nộp - Quiz */}
-      {showReviewMode && assignment.assignmentType === 'quiz' && mySubmission?.contentJson && (
+      {showReviewMode && assignment.assignmentType === 'quiz' && (
         <div className="bg-card rounded-xl border border-indigo-200 dark:border-indigo-800 p-6">
           <h3 className="font-semibold mb-4 flex items-center gap-2">
             <Eye className="w-5 h-5" />
             Xem lại bài làm Quiz
           </h3>
-          <ReviewQuizSubmission 
-            questions={assignment.quizDetail?.questions || []} 
-            submission={mySubmission}
-          />
+          {(mySubmission?.autoGradeResultJson || mySubmission?.contentJson) && assignmentWithQuizQuestions?.quizDetail?.questions?.length ? (
+            <ReviewQuizFromResults 
+              submission={mySubmission} 
+              questions={assignmentWithQuizQuestions.quizDetail.questions}
+            />
+          ) : mySubmission?.contentJson && assignmentWithQuizQuestions?.quizDetail?.questions?.length ? (
+            <ReviewQuizSubmission 
+              questions={assignmentWithQuizQuestions.quizDetail.questions} 
+              submission={mySubmission}
+            />
+          ) : (
+            <div className="text-center py-8 text-muted-foreground">
+              <p>Không có dữ liệu để hiển thị</p>
+            </div>
+          )}
         </div>
       )}
 
@@ -545,7 +517,6 @@ export default function StudentSubmitAssignmentPage() {
           {assignment.assignmentType === 'text_report' && (
             <StudentReportSubmit 
               assignment={assignment}
-              instructions={assignment.reportDetail?.instructions}
               onSuccess={() => {
                 refetchSubmission();
                 queryClient.invalidateQueries({ queryKey: ['student-assignments'] });
@@ -588,7 +559,6 @@ export default function StudentSubmitAssignmentPage() {
           {assignment.assignmentType === 'text_report' && (
             <StudentReportSubmit 
               assignment={assignment}
-              instructions={assignment.reportDetail?.instructions}
               isResubmit
               previousAttempt={mySubmission.attemptNumber}
               onSuccess={() => {

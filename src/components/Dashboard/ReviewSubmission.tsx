@@ -43,19 +43,51 @@ interface ReviewQuizSubmissionProps {
 }
 
 export function ReviewQuizSubmission({ questions, submission }: ReviewQuizSubmissionProps) {
-  // Parse grade results từ autoGradeResultJson (cấu trúc backend trả về)
-  let gradeResults: GradeResult[] = [];
+  // Parse grade results từ autoGradeResultJson (hỗ trợ cả camelCase và PascalCase)
+  let gradeResults: any[] = [];
   try {
     if (submission.autoGradeResultJson) {
-      gradeResults = JSON.parse(submission.autoGradeResultJson);
+      const parsed = typeof submission.autoGradeResultJson === 'string'
+        ? JSON.parse(submission.autoGradeResultJson)
+        : submission.autoGradeResultJson;
+      gradeResults = Array.isArray(parsed) ? parsed : (parsed.results || parsed.Results || []);
     }
   } catch (e) {
     console.error('Failed to parse autoGradeResultJson:', e);
   }
 
+  // Parse contentJson để lấy đáp án học sinh nếu có
+  let contentAnswers: Array<{ questionId: string; answer: any }> = [];
+  try {
+    if (submission.contentJson) {
+      const parsed = typeof submission.contentJson === 'string'
+        ? JSON.parse(submission.contentJson)
+        : submission.contentJson;
+      if (Array.isArray(parsed)) {
+        contentAnswers = parsed.map((item: any) => ({
+          questionId: String(item.questionId || item.QuestionId || item.id || ''),
+          answer: item.answer !== undefined ? item.answer : item.Answer,
+        }));
+      } else if (parsed && typeof parsed === 'object') {
+        const arr = parsed.answers || parsed.Answers || [];
+        if (Array.isArray(arr)) {
+          contentAnswers = arr.map((item: any) => ({
+            questionId: String(item.questionId || item.QuestionId || item.id || ''),
+            answer: item.answer !== undefined ? item.answer : item.Answer,
+          }));
+        }
+      }
+    }
+  } catch (e) {
+    console.error('Failed to parse contentJson:', e);
+  }
+
   // Map questionId -> gradeResult để tra cứu nhanh
-  const gradeResultMap = new Map<string, GradeResult>();
-  gradeResults.forEach(gr => gradeResultMap.set(gr.QuestionId, gr));
+  const gradeResultMap = new Map<string, any>();
+  gradeResults.forEach((gr: any) => {
+    const qId = String(gr.QuestionId || gr.questionId || gr.id || '');
+    if (qId) gradeResultMap.set(qId, gr);
+  });
 
   return (
     <div className="space-y-6">
@@ -68,7 +100,7 @@ export function ReviewQuizSubmission({ questions, submission }: ReviewQuizSubmis
           <div>
             <p className="text-sm text-muted-foreground">Lần nộp #{submission.attemptNumber}</p>
             <p className="text-xs text-muted-foreground">
-              {format(parseISO(submission.submittedAt), 'HH:mm, dd/MM/yyyy', { locale: vi })}
+              {submission.submittedAt ? format(parseISO(submission.submittedAt), 'HH:mm, dd/MM/yyyy', { locale: vi }) : ''}
             </p>
           </div>
         </div>
@@ -83,21 +115,69 @@ export function ReviewQuizSubmission({ questions, submission }: ReviewQuizSubmis
       {/* Questions Review */}
       <div className="space-y-4">
         {questions.map((question, index) => {
-          // Lấy grade result từ autoGradeResultJson
-          const gradeResult = gradeResultMap.get(question.id);
-          const isCorrect = gradeResult?.IsCorrect ?? false;
+          const qId = String(question.id);
+          const gradeResult = gradeResultMap.get(qId);
+          const contentAnswer = contentAnswers.find(ca => ca.questionId === qId);
+
+          const isCorrect = gradeResult ? (gradeResult.IsCorrect ?? gradeResult.isCorrect ?? false) : false;
           const isMultipleChoice = question.type === 'multiple_choice';
 
-          // Lấy câu trả lời của user từ grade result
-          const studentAnswer = gradeResult?.StudentAnswer;
-          const correctAnswer = gradeResult?.CorrectAnswer;
+          // Lấy câu trả lời của user từ contentAnswers hoặc gradeResult
+          const studentAnswer = contentAnswer?.answer !== undefined
+            ? contentAnswer.answer
+            : (gradeResult?.StudentAnswer ?? gradeResult?.studentAnswer ?? gradeResult?.Answer ?? gradeResult?.answer);
+          const correctAnswer = gradeResult?.CorrectAnswer ?? gradeResult?.correctAnswer;
+
+          const isUserAnswer = (optionId: string, optionText?: string) => {
+            if (studentAnswer === undefined || studentAnswer === null) return false;
+            if (isMultipleChoice || Array.isArray(studentAnswer)) {
+              if (!Array.isArray(studentAnswer)) {
+                return String(studentAnswer).trim() === String(optionId).trim() ||
+                  (optionText ? String(studentAnswer).trim().toLowerCase() === String(optionText).trim().toLowerCase() : false);
+              }
+              return studentAnswer.some(a =>
+                String(a).trim() === String(optionId).trim() ||
+                (optionText && String(a).trim().toLowerCase() === String(optionText).trim().toLowerCase())
+              );
+            }
+            const str = String(studentAnswer).trim();
+            return str === String(optionId).trim() || (optionText ? str.toLowerCase() === String(optionText).trim().toLowerCase() : false);
+          };
+
+          const isCorrectOption = (optionId: string, optionText?: string, isOptionMarkedCorrect?: boolean) => {
+            if (isOptionMarkedCorrect) return true;
+            if (correctAnswer === undefined || correctAnswer === null) return false;
+            if (Array.isArray(correctAnswer)) {
+              return correctAnswer.some(a =>
+                String(a).trim() === String(optionId).trim() ||
+                (optionText && String(a).trim().toLowerCase() === String(optionText).trim().toLowerCase())
+              );
+            }
+            const str = String(correctAnswer).trim();
+            return str === String(optionId).trim() || (optionText ? str.toLowerCase() === String(optionText).trim().toLowerCase() : false);
+          };
+
+          const formatStudentAnswerDisplay = () => {
+            if (studentAnswer === undefined || studentAnswer === null) return '(Trống)';
+            if (Array.isArray(studentAnswer)) {
+              if (studentAnswer.length === 0) return '(Trống)';
+              return studentAnswer.map(a => {
+                const opt = question.options?.find(o => String(o.id) === String(a) || o.text === a);
+                return opt ? opt.text : String(a);
+              }).join(', ');
+            }
+            const str = String(studentAnswer).trim();
+            if (!str) return '(Trống)';
+            const opt = question.options?.find(o => String(o.id) === str || o.text === str);
+            return opt ? opt.text : str;
+          };
 
           return (
-            <div 
-              key={question.id} 
+            <div
+              key={question.id}
               className={cn(
                 "p-4 rounded-lg border",
-                isCorrect 
+                isCorrect
                   ? "bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800"
                   : "bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800"
               )}
@@ -117,33 +197,41 @@ export function ReviewQuizSubmission({ questions, submission }: ReviewQuizSubmis
                       <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400">Sai</span>
                     )}
                   </div>
-                  
+
+                  {/* Student Answer preview box */}
+                  <div className={cn(
+                    "p-2 rounded text-sm mb-3",
+                    isCorrect
+                      ? "bg-green-100/50 dark:bg-green-900/30"
+                      : "bg-red-100/50 dark:bg-red-900/30"
+                  )}>
+                    <span className="text-muted-foreground">Câu trả lời của học sinh: </span>
+                    <span className="font-medium">
+                      {formatStudentAnswerDisplay()}
+                    </span>
+                  </div>
+
                   {/* Options */}
-                  {question.options && (
+                  {question.options && question.options.length > 0 && (
                     <div className="space-y-2 ml-4">
                       {question.options.map((option) => {
-                        // Kiểm tra option có phải là đáp án của user không
-                        const isUserAnswer = isMultipleChoice
-                          ? Array.isArray(studentAnswer) && studentAnswer.includes(option.id)
-                          : studentAnswer === option.id;
-                        const isCorrectOption = Array.isArray(correctAnswer) 
-                          ? correctAnswer.includes(option.id)
-                          : correctAnswer === option.id;
+                        const userSelected = isUserAnswer(option.id, option.text);
+                        const correctSelected = isCorrectOption(option.id, option.text, option.isCorrect);
 
                         return (
-                          <div 
+                          <div
                             key={option.id}
                             className={cn(
-                              "p-2 rounded text-sm",
-                              isCorrectOption && "bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300",
-                              isUserAnswer && !isCorrectOption && "bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300",
-                              isUserAnswer && isCorrectOption && "ring-2 ring-green-500"
+                              "p-2.5 rounded text-sm transition-all",
+                              correctSelected && "bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-200 border border-green-300 dark:border-green-700",
+                              userSelected && !correctSelected && "bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-200 border border-red-300 dark:border-red-700",
+                              userSelected && correctSelected && "ring-2 ring-green-500 font-bold",
+                              !userSelected && !correctSelected && "bg-muted/40 text-muted-foreground"
                             )}
                           >
                             <span className="font-medium">{option.text}</span>
-                            {isCorrectOption && <span className="ml-2 text-green-600 font-medium">✓ Đúng</span>}
-                            {isUserAnswer && !isCorrectOption && <span className="ml-2 text-red-600 font-medium">✗ Sai</span>}
-                            {isUserAnswer && isCorrectOption && <span className="ml-2 text-green-600 font-medium">✓ Bạn chọn</span>}
+                            {correctSelected && <span className="ml-2 text-green-600 font-semibold">✓ Đáp án đúng</span>}
+                            {userSelected && !correctSelected && <span className="ml-2 text-red-600 font-semibold">✗ Đã chọn (Sai)</span>}
                           </div>
                         );
                       })}
@@ -155,13 +243,13 @@ export function ReviewQuizSubmission({ questions, submission }: ReviewQuizSubmis
                     <div className="ml-4 space-y-2">
                       <div className={cn(
                         "p-2 rounded text-sm",
-                        isCorrect 
-                          ? "bg-green-100 dark:bg-green-900/30" 
+                        isCorrect
+                          ? "bg-green-100 dark:bg-green-900/30"
                           : "bg-red-100 dark:bg-red-900/30"
                       )}>
-                        <span className="text-muted-foreground">Câu trả lời của bạn: </span>
+                        <span className="text-muted-foreground">Câu trả lời của học sinh: </span>
                         <span className="font-medium">
-                          {Array.isArray(studentAnswer) ? studentAnswer.join(', ') : studentAnswer || '(Trống)'}
+                          {formatStudentAnswerDisplay()}
                         </span>
                         {isCorrect ? (
                           <span className="ml-2 text-green-600 font-medium">✓ Đúng</span>
@@ -498,51 +586,59 @@ interface QuizResultItem {
 
 export function ReviewQuizFromResults({ submission, questions: questionsFromProp }: ReviewQuizFromResultsProps) {
   // Parse grade results từ autoGradeResultJson
-  let gradeResults: QuizResultItem[] = [];
+  let gradeResults: any[] = [];
   try {
     if (submission.autoGradeResultJson) {
-      gradeResults = JSON.parse(submission.autoGradeResultJson);
+      const parsed = typeof submission.autoGradeResultJson === 'string'
+        ? JSON.parse(submission.autoGradeResultJson)
+        : submission.autoGradeResultJson;
+      gradeResults = Array.isArray(parsed) ? parsed : (parsed.results || parsed.Results || []);
     }
   } catch (e) {
     console.error('Failed to parse autoGradeResultJson:', e);
   }
 
   // Parse contentJson để lấy đáp án HS đã chọn
-  let contentData: Record<string, unknown> = {};
+  let contentAnswers: Array<{ questionId: string; answer: any }> = [];
   try {
     if (submission.contentJson) {
-      contentData = JSON.parse(submission.contentJson);
+      const parsed = typeof submission.contentJson === 'string'
+        ? JSON.parse(submission.contentJson)
+        : submission.contentJson;
+      if (Array.isArray(parsed)) {
+        contentAnswers = parsed.map((item: any) => ({
+          questionId: String(item.questionId || item.QuestionId || item.id || ''),
+          answer: item.answer !== undefined ? item.answer : item.Answer,
+        }));
+      } else if (parsed && typeof parsed === 'object') {
+        const arr = parsed.answers || parsed.Answers || [];
+        if (Array.isArray(arr)) {
+          contentAnswers = arr.map((item: any) => ({
+            questionId: String(item.questionId || item.QuestionId || item.id || ''),
+            answer: item.answer !== undefined ? item.answer : item.Answer,
+          }));
+        }
+      }
     }
   } catch (e) {
     console.error('Failed to parse contentJson:', e);
   }
 
-  // Lấy answers từ contentJson (format: [{Answer, QuestionId}, ...])
-  const contentAnswers = contentData.answers as Array<{ Answer?: string | string[]; QuestionId: string }> | undefined;
+  const questions = questionsFromProp && questionsFromProp.length > 0
+    ? questionsFromProp
+    : [];
 
-  // LUÔN hiển thị TẤT CẢ câu hỏi từ assignment
-  // Nếu questions từ prop có dữ liệu, dùng nó; không thì dùng từ contentJson
-  const questions = questionsFromProp && questionsFromProp.length > 0 
-    ? questionsFromProp 
-    : (contentData.questions as Array<{
-        id: string;
-        text: string;
-        type: string;
-        options?: { id: string; text: string; isCorrect?: boolean }[];
-        correctAnswer?: string | string[];
-      }> || []);
-
-  // Build quizResults cho TẤT CẢ câu hỏi (từ questions prop)
+  // Build quizResults cho TẤT CẢ câu hỏi
   const quizResults = questions.map(question => {
-    // Tìm đáp án HS đã chọn từ contentAnswers
-    const answerItem = contentAnswers?.find(a => a.QuestionId === question.id);
-    const studentAnswer = answerItem?.Answer;
-    
-    // Tìm kết quả chấm từ autoGradeResultJson (chỉ để lấy IsCorrect)
-    const gradeResult = gradeResults.find(r => r.QuestionId === question.id);
-    
-    // Ưu tiên IsCorrect từ autoGradeResultJson, nếu không có thì đánh dấu false
-    const isCorrect = gradeResult?.IsCorrect ?? false;
+    const qId = String(question.id);
+    const answerItem = contentAnswers.find(a => a.questionId === qId);
+    const gradeResult = gradeResults.find((r: any) => String(r.QuestionId || r.questionId || r.id) === qId);
+
+    const isCorrect = gradeResult ? (gradeResult.IsCorrect ?? gradeResult.isCorrect ?? false) : false;
+    const studentAnswer = answerItem?.answer !== undefined
+      ? answerItem.answer
+      : (gradeResult?.StudentAnswer ?? gradeResult?.studentAnswer ?? gradeResult?.Answer ?? gradeResult?.answer);
+    const correctAnswer = gradeResult?.CorrectAnswer ?? gradeResult?.correctAnswer;
 
     return {
       QuestionId: question.id,
@@ -550,6 +646,7 @@ export function ReviewQuizFromResults({ submission, questions: questionsFromProp
       QuestionType: question.type,
       IsCorrect: isCorrect,
       StudentAnswer: studentAnswer,
+      CorrectAnswer: correctAnswer,
       Options: question.options,
     };
   });
@@ -598,9 +695,8 @@ export function ReviewQuizFromResults({ submission, questions: questionsFromProp
 
       {/* Questions */}
       <div className="space-y-4">
-        {quizResults.length > 0 ? quizResults.map((result, index) => {
-          // Tìm câu hỏi từ questions array hoặc dùng text từ result
-          const question = questions.find(q => q.id === result.QuestionId) || {
+        {quizResults.map((result, index) => {
+          const question = questions.find(q => String(q.id) === String(result.QuestionId)) || {
             id: result.QuestionId,
             text: result.QuestionText || `Câu hỏi ${index + 1}`,
             type: result.QuestionType || 'single_choice',
@@ -614,24 +710,6 @@ export function ReviewQuizFromResults({ submission, questions: questionsFromProp
               question={question}
               result={result}
             />
-          );
-        }) : questions.map((question, index) => {
-          // Lấy đáp án từ contentAnswers nếu có
-          const answerItem = contentAnswers?.find(a => a.QuestionId === question.id);
-          const studentAnswer = answerItem?.Answer;
-
-          return (
-            <div
-              key={question.id}
-              className="p-4 rounded-lg border border-border bg-muted/30"
-            >
-              <p className="font-medium">Câu {index + 1}: {question.text}</p>
-              {studentAnswer && (
-                <p className="text-sm text-muted-foreground mt-2">
-                  Đáp án: {Array.isArray(studentAnswer) ? studentAnswer.join(', ') : studentAnswer}
-                </p>
-              )}
-            </div>
           );
         })}
       </div>
@@ -653,29 +731,59 @@ interface QuizResultCardProps {
     id: string;
     text: string;
     type: string;
-    options?: { id: string; text: string }[];
+    options?: { id: string; text: string; isCorrect?: boolean }[];
   };
-  result: QuizResultItem;
+  result: any;
 }
 
 function QuizResultCard({ index, question, result }: QuizResultCardProps) {
-  const isCorrect = result.IsCorrect;
+  const isCorrect = result.IsCorrect ?? result.isCorrect ?? false;
   const isMultipleChoice = question.type === 'multiple_choice';
-  const studentAnswer = result.StudentAnswer;
-  const correctAnswer = result.CorrectAnswer;
+  const studentAnswer = result.StudentAnswer ?? result.studentAnswer ?? result.Answer ?? result.answer;
+  const correctAnswer = result.CorrectAnswer ?? result.correctAnswer;
 
-  const isUserAnswer = (optionId: string) => {
-    if (isMultipleChoice) {
-      return Array.isArray(studentAnswer) && studentAnswer.includes(optionId);
+  const isUserAnswer = (optionId: string, optionText?: string) => {
+    if (studentAnswer === undefined || studentAnswer === null) return false;
+    if (isMultipleChoice || Array.isArray(studentAnswer)) {
+      if (!Array.isArray(studentAnswer)) {
+        return String(studentAnswer).trim() === String(optionId).trim() ||
+          (optionText ? String(studentAnswer).trim().toLowerCase() === String(optionText).trim().toLowerCase() : false);
+      }
+      return studentAnswer.some(a =>
+        String(a).trim() === String(optionId).trim() ||
+        (optionText && String(a).trim().toLowerCase() === String(optionText).trim().toLowerCase())
+      );
     }
-    return studentAnswer === optionId;
+    const str = String(studentAnswer).trim();
+    return str === String(optionId).trim() || (optionText ? str.toLowerCase() === String(optionText).trim().toLowerCase() : false);
   };
 
-  const isCorrectOption = (optionId: string) => {
-    if (isMultipleChoice) {
-      return Array.isArray(correctAnswer) && correctAnswer.includes(optionId);
+  const isCorrectOption = (optionId: string, optionText?: string, isOptionMarkedCorrect?: boolean) => {
+    if (isOptionMarkedCorrect) return true;
+    if (correctAnswer === undefined || correctAnswer === null) return false;
+    if (Array.isArray(correctAnswer)) {
+      return correctAnswer.some(a =>
+        String(a).trim() === String(optionId).trim() ||
+        (optionText && String(a).trim().toLowerCase() === String(optionText).trim().toLowerCase())
+      );
     }
-    return correctAnswer === optionId;
+    const str = String(correctAnswer).trim();
+    return str === String(optionId).trim() || (optionText ? str.toLowerCase() === String(optionText).trim().toLowerCase() : false);
+  };
+
+  const formatStudentAnswerDisplay = () => {
+    if (studentAnswer === undefined || studentAnswer === null) return '(Trống)';
+    if (Array.isArray(studentAnswer)) {
+      if (studentAnswer.length === 0) return '(Trống)';
+      return studentAnswer.map(a => {
+        const opt = question.options?.find(o => String(o.id) === String(a) || o.text === a);
+        return opt ? opt.text : String(a);
+      }).join(', ');
+    }
+    const str = String(studentAnswer).trim();
+    if (!str) return '(Trống)';
+    const opt = question.options?.find(o => String(o.id) === str || o.text === str);
+    return opt ? opt.text : str;
   };
 
   return (
@@ -705,26 +813,14 @@ function QuizResultCard({ index, question, result }: QuizResultCardProps) {
 
           {/* Student Answer */}
           <div className={cn(
-            "p-2 rounded text-sm mb-2",
+            "p-2.5 rounded text-sm mb-3",
             isCorrect
               ? "bg-green-100/50 dark:bg-green-900/30"
               : "bg-red-100/50 dark:bg-red-900/30"
           )}>
             <span className="text-muted-foreground">Câu trả lời của học sinh: </span>
-            <span className="font-medium">
-              {Array.isArray(studentAnswer)
-                ? studentAnswer.length > 0
-                  ? studentAnswer.map(a => {
-                      const opt = question.options?.find(o => o.id === a);
-                      return opt ? opt.text : a;
-                    }).join(', ')
-                  : '(Trống)'
-                : studentAnswer
-                  ? (() => {
-                      const opt = question.options?.find(o => o.id === studentAnswer);
-                      return opt ? opt.text : studentAnswer;
-                    })()
-                  : '(Trống)'}
+            <span className="font-semibold text-foreground">
+              {formatStudentAnswerDisplay()}
             </span>
           </div>
 
@@ -732,43 +828,43 @@ function QuizResultCard({ index, question, result }: QuizResultCardProps) {
           {question.options && question.options.length > 0 && (
             <div className="space-y-2 ml-4">
               {question.options.map((option) => {
-                const userSelected = isUserAnswer(option.id);
-                const correctSelected = isCorrectOption(option.id);
+                const userSelected = isUserAnswer(option.id, option.text);
+                const correctSelected = isCorrectOption(option.id, option.text, option.isCorrect);
 
                 return (
                   <div
                     key={option.id}
                     className={cn(
-                      "p-2 rounded text-sm",
-                      correctSelected && "bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300",
-                      userSelected && !correctSelected && "bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300",
-                      userSelected && correctSelected && "ring-2 ring-green-500"
+                      "p-2.5 rounded text-sm transition-all",
+                      correctSelected && "bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-200 border border-green-300 dark:border-green-700",
+                      userSelected && !correctSelected && "bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-200 border border-red-300 dark:border-red-700",
+                      userSelected && correctSelected && "ring-2 ring-green-500 font-bold",
+                      !userSelected && !correctSelected && "bg-muted/40 text-muted-foreground"
                     )}
                   >
                     <span className="font-medium">{option.text}</span>
-                    {correctSelected && <span className="ml-2 text-green-600 font-medium">✓ Đáp án đúng</span>}
-                    {userSelected && !correctSelected && <span className="ml-2 text-red-600 font-medium">✗ Sai</span>}
-                    {userSelected && correctSelected && <span className="ml-2 text-green-600 font-medium">✓ Học sinh chọn</span>}
+                    {correctSelected && <span className="ml-2 text-green-600 font-semibold">✓ Đáp án đúng</span>}
+                    {userSelected && !correctSelected && <span className="ml-2 text-red-600 font-semibold">✗ Đã chọn (Sai)</span>}
                   </div>
                 );
               })}
             </div>
           )}
 
-          {/* Show correct answer if wrong */}
-          {!isCorrect && correctAnswer && (
+          {/* Show correct answer if wrong and no options */}
+          {!isCorrect && correctAnswer && (!question.options || question.options.length === 0) && (
             <div className="mt-2 p-2 rounded text-sm bg-green-100/50 dark:bg-green-900/30">
               <span className="text-muted-foreground">Đáp án đúng: </span>
               <span className="font-medium">
                 {Array.isArray(correctAnswer)
                   ? correctAnswer.map(a => {
-                      const opt = question.options?.find(o => o.id === a);
-                      return opt ? opt.text : a;
-                    }).join(', ')
+                    const opt = question.options?.find(o => o.id === a);
+                    return opt ? opt.text : a;
+                  }).join(', ')
                   : (() => {
-                      const opt = question.options?.find(o => o.id === correctAnswer);
-                      return opt ? opt.text : correctAnswer;
-                    })()}
+                    const opt = question.options?.find(o => o.id === correctAnswer);
+                    return opt ? opt.text : correctAnswer;
+                  })()}
               </span>
             </div>
           )}

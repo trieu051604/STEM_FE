@@ -89,7 +89,10 @@
 
   html {
     scroll-behavior: smooth;
-    font-family: "Geist Variable", sans-serif;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
   }
 
   h1,
@@ -99,7 +102,8 @@
   h5,
   h6,
   .font-headline {
-    font-family: "Manrope", sans-serif;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    letter-spacing: -0.015em;
   }
 }
 

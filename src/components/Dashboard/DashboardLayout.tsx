@@ -94,14 +94,9 @@ export const StandardDashboardLayout = () => {
         )}
       >
         <div className="h-16 flex items-center justify-between px-4 border-b border-border shrink-0">
-          <Link to="/dashboard" className="flex items-center gap-2">
-            <div className={cn(
-              "w-8 h-8 rounded-lg flex items-center justify-center font-bold text-sm",
-              isMasterAdmin ? "bg-brand text-brand-foreground" : "bg-primary text-primary-foreground"
-            )}>
-              <span>ST</span>
-            </div>
-            <span className="font-semibold text-lg text-foreground">STEM</span>
+          <Link to="/dashboard" className="font-bold text-xl tracking-tight text-foreground flex items-center gap-2 select-none">
+            <Icon name="Cpu" className="text-brand-500 animate-pulse w-6 h-6" />
+            <span>Stem<span className="text-brand-500">Flow</span></span>
           </Link>
           <button
             onClick={handleSidebarToggle}
@@ -192,21 +187,10 @@ export const StandardDashboardLayout = () => {
               <button
                 onClick={() => navigate(-1)}
                 className="p-1.5 hover:bg-accent rounded-md transition-colors"
+                title="Quay lại"
               >
                 <ChevronLeft className="w-4 h-4 text-foreground" />
               </button>
-
-              <Link
-                to="/dashboard"
-                className="p-1.5 hover:bg-accent rounded-md transition-colors"
-              >
-                <Home className="w-4 h-4 text-foreground" />
-              </Link>
-
-              <span className="text-foreground/50">/</span>
-              <span className="text-sm font-medium text-foreground">
-                {getPageTitle()}
-              </span>
             </div>
           </div>
 

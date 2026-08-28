@@ -33,14 +33,9 @@ export const TeacherSidebar = ({ isDesktop }: { isDesktop: boolean }) => {
       )}
     >
       <div className="h-16 flex items-center justify-between px-4 border-b border-border shrink-0">
-        <Link to="/dashboard" className="flex items-center gap-2">
-          <div className={cn(
-            "w-8 h-8 rounded-lg flex items-center justify-center font-bold text-sm",
-            "bg-primary text-primary-foreground"
-          )}>
-            <span>ST</span>
-          </div>
-          <span className="font-semibold text-lg text-foreground">STEM</span>
+        <Link to="/dashboard" className="font-bold text-xl tracking-tight text-foreground flex items-center gap-2 select-none">
+          <Icon name="Cpu" className="text-brand-500 animate-pulse w-6 h-6" />
+          <span>Stem<span className="text-brand-500">Flow</span></span>
         </Link>
         <button
           onClick={handleSidebarToggle}

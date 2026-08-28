@@ -1,26 +1,18 @@
 import React from 'react';
 import { Icon } from '@/components/ui/Icon';
 
+const VIRTUAL_LAB_IMAGE_URL = 'https://xvookhjvebxszqfdfuen.supabase.co/storage/v1/object/public/avatars/dashboard/1.jpg';
+
 const LAB_HIGHLIGHTS = [
   {
     icon: 'MousePointerClick',
     title: 'Kéo thả linh kiện, nối dây trực quan',
-    desc: 'Dựng mạch trên breadboard ảo bằng thao tác kéo thả, với thư viện cảm biến, động cơ, màn hình OLED và các board Arduino Uno R3, ESP32 DevKit V1.',
+    desc: 'Dựng mạch trên breadboard ảo bằng thao tác kéo thả, với thư viện cảm biến, động cơ, màn hình OLED và vi điều khiển chuẩn ESP32 DevKit V1.',
   },
   {
     icon: 'PlayCircle',
     title: 'Biên dịch & chạy mô phỏng tức thì',
-    desc: 'Viết code C++ và nhấn Chạy để xem mạch phản ứng theo thời gian thực ngay trên trình duyệt, không cần cài đặt phần mềm hay phần cứng vật lý.',
-  },
-  {
-    icon: 'Save',
-    title: 'Tự động lưu & phục hồi tiến độ',
-    desc: 'Sơ đồ mạch và mã nguồn được lưu lại theo từng học sinh, cho phép dừng và tiếp tục thực hành bất cứ lúc nào.',
-  },
-  {
-    icon: 'RadioTower',
-    title: 'Giáo viên giám sát trực tiếp',
-    desc: 'Theo dõi trạng thái mạch và tiến trình chạy code của cả lớp trong thời gian thực, phát hiện lỗi và hỗ trợ học sinh kịp thời.',
+    desc: 'Viết code C và nhấn Chạy để xem mạch phản ứng theo thời gian thực ngay trên trình duyệt, không cần cài đặt phần mềm hay phần cứng vật lý.',
   },
 ];
 
@@ -42,13 +34,13 @@ export function LabRoomSection() {
                 <Icon name="FlaskConical" size={14} />
                 Phòng Lab ảo
               </div>
-              <h2 className="text-4xl md:text-5xl font-black tracking-tight text-slate-950 dark:text-white leading-tight">
-                Một phòng thực hành đầy đủ, <br />
+              <h2 className="text-3xl sm:text-4xl font-bold tracking-tight text-foreground leading-snug">
+                Một phòng thực hành đầy đủ,{' '}
                 <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-600 to-brand-600 dark:from-emerald-400 dark:to-brand-400">
                   ngay trên trình duyệt
                 </span>
               </h2>
-              <p className="text-lg text-slate-600 dark:text-slate-400 leading-relaxed font-medium">
+              <p className="text-base sm:text-lg text-muted-foreground leading-relaxed">
                 Không cần phòng máy, không cần bộ Kit vật lý. Học sinh có thể dựng mạch, viết code và quan sát kết quả mô phỏng như đang thực hành trên bàn Lab thật.
               </p>
             </div>
@@ -68,62 +60,38 @@ export function LabRoomSection() {
             </div>
           </div>
 
-          {/* Right: Virtual Lab Mockup */}
+          {/* Right: Virtual Lab Interface Representation */}
           <div className="relative">
-            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-80 h-80 bg-emerald-500/10 rounded-full blur-[100px] pointer-events-none"></div>
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-brand-500/10 rounded-full blur-[120px] pointer-events-none"></div>
 
-            <div className="relative bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-2xl">
-              {/* Fake toolbar */}
-              <div className="bg-slate-950/80 px-5 py-3.5 border-b border-slate-850 flex items-center justify-between">
+            <div className="relative bg-zinc-950 border border-border rounded-2xl overflow-hidden shadow-2xl">
+              {/* Lab Workspace Top Bar */}
+              <div className="bg-zinc-900 px-4 py-2.5 border-b border-zinc-800 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="flex gap-1.5">
+                    <div className="w-3 h-3 rounded-full bg-red-500/80"></div>
+                    <div className="w-3 h-3 rounded-full bg-amber-500/80"></div>
+                    <div className="w-3 h-3 rounded-full bg-emerald-500/80"></div>
+                  </div>
+                  <span className="text-xs font-semibold text-zinc-300">
+                    Phòng Lab Trực Tuyến • ESP32 & L298N Robot Car
+                  </span>
+                </div>
                 <div className="flex items-center gap-2">
-                  <span className="w-2.5 h-2.5 rounded-full bg-red-500/70"></span>
-                  <span className="w-2.5 h-2.5 rounded-full bg-amber-500/70"></span>
-                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-500/70"></span>
+                  <span className="px-2.5 py-1 rounded-lg bg-emerald-500/20 text-emerald-400 text-[11px] font-bold flex items-center gap-1.5 border border-emerald-500/30">
+                    <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                    Đang chạy mô phỏng
+                  </span>
                 </div>
-                <span className="text-[11px] font-mono text-slate-500">lab_04_soil_moisture.json</span>
-                <span className="px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 text-[10px] font-bold flex items-center gap-1">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
-                  RUNNING
-                </span>
               </div>
 
-              {/* Fake breadboard canvas */}
-              <div className="relative h-72 bg-slate-950/60 flex items-center justify-center overflow-hidden">
-                <div className="absolute inset-0 bg-[radial-gradient(#475569_1px,transparent_1px)] [background-size:18px_18px] opacity-20"></div>
-
-                <svg viewBox="0 0 260 140" className="w-4/5 h-4/5 relative z-10">
-                  <path d="M20 100 H90 V40 H160" stroke="#34d399" strokeWidth="2" strokeDasharray="4" fill="none" className="animate-[dash_6s_linear_infinite]" />
-                  <path d="M160 40 H230" stroke="#818cf8" strokeWidth="2" strokeDasharray="4" fill="none" className="animate-[dash_6s_linear_infinite]" />
-
-                  <rect x="0" y="90" width="40" height="20" rx="4" fill="#1e293b" stroke="#475569" />
-                  <text x="20" y="103" fontSize="7" fill="#94a3b8" textAnchor="middle">Soil</text>
-
-                  <rect x="150" y="20" width="40" height="40" rx="6" fill="#1e293b" stroke="#475569" />
-                  <text x="170" y="43" fontSize="7" fill="#94a3b8" textAnchor="middle">ESP32</text>
-
-                  <rect x="220" y="30" width="30" height="20" rx="4" fill="#1e293b" stroke="#475569" />
-                  <text x="235" y="43" fontSize="7" fill="#94a3b8" textAnchor="middle">Pump</text>
-
-                  <circle cx="20" cy="100" r="3" fill="#34d399" />
-                  <circle cx="160" cy="40" r="3" fill="#818cf8" />
-                  <circle cx="230" cy="40" r="3" fill="#818cf8" />
-                </svg>
-              </div>
-
-              {/* Fake telemetry footer */}
-              <div className="grid grid-cols-3 divide-x divide-slate-850 border-t border-slate-850">
-                <div className="p-4 text-center">
-                  <p className="text-[10px] text-slate-500 mb-1">Độ ẩm đất</p>
-                  <p className="text-lg font-bold text-amber-400 font-mono">38%</p>
-                </div>
-                <div className="p-4 text-center">
-                  <p className="text-[10px] text-slate-500 mb-1">Máy bơm</p>
-                  <p className="text-lg font-bold text-emerald-400">BẬT</p>
-                </div>
-                <div className="p-4 text-center">
-                  <p className="text-[10px] text-slate-500 mb-1">Học sinh online</p>
-                  <p className="text-lg font-bold text-white font-mono">24/28</p>
-                </div>
+              {/* Real Virtual Lab Screenshot */}
+              <div className="relative bg-[#121214] overflow-hidden group">
+                <img 
+                  src={VIRTUAL_LAB_IMAGE_URL} 
+                  alt="StemFlow Virtual Lab Interface" 
+                  className="w-full h-auto object-cover rounded-b-2xl shadow-inner transition-transform duration-500 group-hover:scale-[1.015]"
+                />
               </div>
             </div>
           </div>

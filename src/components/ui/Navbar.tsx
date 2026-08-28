@@ -20,9 +20,9 @@ export function Navbar() {
           
           {/* Middle Navigation Links */}
           <nav className="hidden md:flex gap-8 items-center text-sm font-semibold text-muted-foreground">
-            <a href="#paths" className="hover:text-brand-500 hover:scale-105 transition-all duration-250">Chương trình</a>
-            <a href="#features" className="hover:text-brand-500 hover:scale-105 transition-all duration-250">Phòng Lab</a>
-            <a href="#b2b" className="hover:text-brand-500 hover:scale-105 transition-all duration-250">Giải pháp</a>
+            <a href="#features" className="hover:text-brand-500 hover:scale-105 transition-all duration-250">Phòng Lab ảo</a>
+            <a href="#ai-lab" className="hover:text-brand-500 hover:scale-105 transition-all duration-250">Trợ lý AI</a>
+            <a href="#pricing" className="hover:text-brand-500 hover:scale-105 transition-all duration-250">Gói AI Token</a>
           </nav>
           
           {/* Right Actions */}
@@ -60,27 +60,27 @@ export function Navbar() {
       {/* Mobile Navigation Drawer */}
       {mobileMenuOpen && (
         <div className="md:hidden border-b border-border/80 bg-background/95 backdrop-blur-lg animate-in slide-in-from-top duration-250">
-          <div className="px-4 pt-2 pb-6 space-y-3 font-semibold">
-            <a 
-              href="#paths" 
-              onClick={() => setMobileMenuOpen(false)}
-              className="block px-3 py-2.5 rounded-xl text-base text-muted-foreground hover:text-brand-500 hover:bg-muted/50 transition-colors"
-            >
-              Chương trình
-            </a>
+          <div className="px-4 pt-2 pb-6 space-y-2 font-semibold">
             <a 
               href="#features" 
               onClick={() => setMobileMenuOpen(false)}
-              className="block px-3 py-2.5 rounded-xl text-base text-muted-foreground hover:text-brand-500 hover:bg-muted/50 transition-colors"
+              className="block px-3 py-2 rounded-xl text-base text-muted-foreground hover:text-brand-500 hover:bg-muted/50 transition-colors"
             >
-              Phòng Lab
+              Phòng Lab ảo
             </a>
             <a 
-              href="#b2b" 
+              href="#ai-lab" 
               onClick={() => setMobileMenuOpen(false)}
-              className="block px-3 py-2.5 rounded-xl text-base text-muted-foreground hover:text-brand-500 hover:bg-muted/50 transition-colors"
+              className="block px-3 py-2 rounded-xl text-base text-muted-foreground hover:text-brand-500 hover:bg-muted/50 transition-colors"
             >
-              Giải pháp
+              Trợ lý AI
+            </a>
+            <a 
+              href="#pricing" 
+              onClick={() => setMobileMenuOpen(false)}
+              className="block px-3 py-2 rounded-xl text-base text-muted-foreground hover:text-brand-500 hover:bg-muted/50 transition-colors"
+            >
+              Gói AI Token
             </a>
             <div className="border-t border-border/50 pt-4 flex flex-col gap-3">
               <Link 

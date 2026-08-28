@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { AlertTriangle, Bot, Loader2, Send, Sparkles, Undo2, X } from 'lucide-react';
 import { aiAssistantApi, type ProposedChange } from '@/services/aiAssistantApi';
 import { AiProposedChangesPanel } from './AiProposedChangesPanel';
+import { MarkdownContent } from '@/components/ui/MarkdownContent';
 
 interface ChatMessage {
   id: string;
@@ -215,7 +216,11 @@ export const AiAssistantPanel = ({
                       : 'bg-card border border-border text-foreground'
                 }`}
               >
-                <p className="whitespace-pre-wrap">{message.text}</p>
+                {message.role === 'user' ? (
+                  <p className="whitespace-pre-wrap">{message.text}</p>
+                ) : (
+                  <MarkdownContent content={message.text} />
+                )}
                 {message.changes && message.changes.length > 0 && (
                   <AiProposedChangesPanel
                     changes={message.changes}

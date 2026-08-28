@@ -233,7 +233,14 @@ export const SyllabusViewerPage = () => {
                 </h4>
 
                 {/* Lấy modules từ course đầu tiên (vì mỗi syllabus chỉ có 1 môn Science) */}
-                {syllabusDetail.courses?.[0]?.modules?.map((module, index) => (
+                {([...(syllabusDetail.courses?.[0]?.modules || [])])
+                  .sort((a, b) => {
+                    const orderA = a.displayOrder ?? 0;
+                    const orderB = b.displayOrder ?? 0;
+                    if (orderA !== orderB) return orderA - orderB;
+                    return a.title.localeCompare(b.title, undefined, { numeric: true, sensitivity: 'base' });
+                  })
+                  .map((module, index) => (
                   <div
                     key={module.id}
                     className="bg-card rounded-lg border border-border p-4 hover:border-primary/50 transition-colors cursor-pointer"
@@ -256,30 +263,24 @@ export const SyllabusViewerPage = () => {
 
                     {/* INPUT & OUTPUT cho Module (Chương) */}
                     {module.input && (
-                      <div className="mt-3 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
-                        <div className="flex items-center gap-2 mb-1">
-                          <ArrowDown className="w-4 h-4 text-blue-600" />
-                          <span className="text-xs font-semibold text-blue-600 uppercase">Đầu vào (Input)</span>
-                        </div>
-                        <ul className="text-sm text-blue-800 dark:text-blue-200 list-disc pl-5 space-y-1">
+                      <div className="mt-2.5 text-xs text-muted-foreground">
+                        <strong className="text-foreground/80 font-medium block mb-1">Yêu cầu:</strong>
+                        <div className="pl-2.5 border-l border-border/60 space-y-0.5">
                           {module.input.split('\n').filter(Boolean).map((item, idx) => (
-                            <li key={idx}>{item.trim()}</li>
+                            <span key={idx} className="block text-[11px]">— {item.trim()}</span>
                           ))}
-                        </ul>
+                        </div>
                       </div>
                     )}
 
                     {module.output && (
-                      <div className="mt-2 p-3 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-800">
-                        <div className="flex items-center gap-2 mb-1">
-                          <ArrowUp className="w-4 h-4 text-green-600" />
-                          <span className="text-xs font-semibold text-green-600 uppercase">Đầu ra (Output)</span>
-                        </div>
-                        <ul className="text-sm text-green-800 dark:text-green-200 list-disc pl-5 space-y-1">
+                      <div className="mt-2 text-xs text-muted-foreground">
+                        <strong className="text-foreground/80 font-medium block mb-1">Kết quả:</strong>
+                        <div className="pl-2.5 border-l border-border/60 space-y-0.5">
                           {module.output.split('\n').filter(Boolean).map((item, idx) => (
-                            <li key={idx}>{item.trim()}</li>
+                            <span key={idx} className="block text-[11px]">— {item.trim()}</span>
                           ))}
-                        </ul>
+                        </div>
                       </div>
                     )}
 
@@ -304,37 +305,39 @@ export const SyllabusViewerPage = () => {
                 </div>
 
                 {/* INPUT & OUTPUT cho Module (hiển thị lại) */}
-                {selectedModule.input && (
-                  <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
-                    <div className="flex items-center gap-2 mb-1">
-                      <ArrowDown className="w-4 h-4 text-blue-600" />
-                      <span className="text-xs font-semibold text-blue-600 uppercase">Đầu vào (Input)</span>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 bg-muted/20 border border-border/40 p-3 rounded-lg text-sm mb-3">
+                  {selectedModule.input && (
+                    <div>
+                      <strong className="text-foreground/80 font-medium block mb-1">Yêu cầu chung:</strong>
+                      <div className="pl-2.5 border-l border-border/60 space-y-0.5 text-xs text-muted-foreground">
+                        {selectedModule.input.split('\n').filter(Boolean).map((item, idx) => (
+                          <span key={idx} className="block">— {item.trim()}</span>
+                        ))}
+                      </div>
                     </div>
-                    <ul className="text-sm text-blue-800 dark:text-blue-200 list-disc pl-5 space-y-1">
-                      {selectedModule.input.split('\n').filter(Boolean).map((item, idx) => (
-                        <li key={idx}>{item.trim()}</li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-
-                {selectedModule.output && (
-                  <div className="p-3 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-800">
-                    <div className="flex items-center gap-2 mb-1">
-                      <ArrowUp className="w-4 h-4 text-green-600" />
-                      <span className="text-xs font-semibold text-green-600 uppercase">Đầu ra (Output)</span>
+                  )}
+                  {selectedModule.output && (
+                    <div>
+                      <strong className="text-foreground/80 font-medium block mb-1">Mục tiêu chương:</strong>
+                      <div className="pl-2.5 border-l border-border/60 space-y-0.5 text-xs text-muted-foreground">
+                        {selectedModule.output.split('\n').filter(Boolean).map((item, idx) => (
+                          <span key={idx} className="block">— {item.trim()}</span>
+                        ))}
+                      </div>
                     </div>
-                    <ul className="text-sm text-green-800 dark:text-green-200 list-disc pl-5 space-y-1">
-                      {selectedModule.output.split('\n').filter(Boolean).map((item, idx) => (
-                        <li key={idx}>{item.trim()}</li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
+                  )}
+                </div>
 
                 {/* Danh sách Bài học */}
                 <div className="space-y-3 mt-4">
-                  {selectedModule.lessons?.map((lesson, index) => (
+                  {([...(selectedModule.lessons || [])])
+                    .sort((a, b) => {
+                      const orderA = a.displayOrder ?? 0;
+                      const orderB = b.displayOrder ?? 0;
+                      if (orderA !== orderB) return orderA - orderB;
+                      return a.title.localeCompare(b.title, undefined, { numeric: true, sensitivity: 'base' });
+                    })
+                    .map((lesson, index) => (
                     <div
                       key={lesson.id}
                       className="bg-card rounded-lg border border-border p-4"
@@ -346,7 +349,9 @@ export const SyllabusViewerPage = () => {
                         <div className="flex-1 min-w-0">
                           <h5 className="font-medium">{lesson.title}</h5>
                           <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
-                            <span className="px-2 py-0.5 bg-muted rounded">{lesson.lessonType}</span>
+                            <span className="px-2 py-0.5 bg-muted rounded text-[11px] font-medium">
+                              {lesson.lessonType === 'theory' ? 'Lý thuyết' : lesson.lessonType === 'lab' ? 'Thực hành' : lesson.lessonType}
+                            </span>
                             <span>{lesson.estimatedMinutes} phút</span>
                             {lesson.hasVirtualLab && (
                               <span className="flex items-center gap-1 text-orange-600">
@@ -358,30 +363,24 @@ export const SyllabusViewerPage = () => {
 
                           {/* INPUT & OUTPUT cho Lesson (Bài) */}
                           {lesson.input && (
-                            <div className="mt-3 p-2 bg-blue-50 dark:bg-blue-900/20 rounded border border-blue-200 dark:border-blue-800">
-                              <div className="flex items-center gap-2 mb-1">
-                                <ArrowDown className="w-3 h-3 text-blue-600" />
-                                <span className="text-xs font-semibold text-blue-600">Input</span>
-                              </div>
-                              <ul className="text-xs text-blue-800 dark:text-blue-200 list-disc pl-4 space-y-0.5">
-                                {lesson.input.split('\n').filter(Boolean).map((item, idx) => (
-                                  <li key={idx}>{item.trim()}</li>
+                            <div className="mt-2.5 text-xs text-muted-foreground">
+                              <strong className="text-foreground/75 font-semibold block mb-1">Yêu cầu:</strong>
+                              <div className="pl-2.5 border-l border-border/50 space-y-0.5">
+                                {lesson.input.split('\n').filter(Boolean).map((item: string, idx: number) => (
+                                  <span key={idx} className="block text-[11px]">— {item.trim()}</span>
                                 ))}
-                              </ul>
+                              </div>
                             </div>
                           )}
 
                           {lesson.output && (
-                            <div className="mt-2 p-2 bg-green-50 dark:bg-green-900/20 rounded border border-green-200 dark:border-green-800">
-                              <div className="flex items-center gap-2 mb-1">
-                                <ArrowUp className="w-3 h-3 text-green-600" />
-                                <span className="text-xs font-semibold text-green-600">Output</span>
-                              </div>
-                              <ul className="text-xs text-green-800 dark:text-green-200 list-disc pl-4 space-y-0.5">
-                                {lesson.output.split('\n').filter(Boolean).map((item, idx) => (
-                                  <li key={idx}>{item.trim()}</li>
+                            <div className="mt-2 text-xs text-muted-foreground">
+                              <strong className="text-foreground/75 font-semibold block mb-1">Kết quả:</strong>
+                              <div className="pl-2.5 border-l border-border/50 space-y-0.5">
+                                {lesson.output.split('\n').filter(Boolean).map((item: string, idx: number) => (
+                                  <span key={idx} className="block text-[11px]">— {item.trim()}</span>
                                 ))}
-                              </ul>
+                              </div>
                             </div>
                           )}
                         </div>

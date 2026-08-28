@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft, BookOpen, User, Calendar, Clock, Play, CheckCircle, FileText, Cpu, Loader2, FlaskConical, ClipboardCheck, XCircle, ChevronDown, X } from 'lucide-react';
+import { ArrowLeft, BookOpen, User, Calendar, Clock, CheckCircle, FileText, Cpu, Loader2, FlaskConical, ClipboardCheck, XCircle, ChevronDown, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Icon } from '@/components/ui/Icon';
 import { WeeklyScheduleGrid } from '@/components/WeeklyScheduleGrid';
@@ -17,7 +17,7 @@ export default function StudentClassDetailPage() {
   const { classId } = useParams<{ classId: string }>();
   const { user } = useAuthStore();
   const queryClient = useQueryClient();
-  const [activeTab, setActiveTab] = useState<'overview' | 'assignments' | 'schedule' | 'virtualLabs' | 'attendance'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'assignments' | 'schedule' | 'attendance'>('overview');
   const [refreshKey, setRefreshKey] = useState(0);
   const [updatingSlotId, setUpdatingSlotId] = useState<number | null>(null);
 
@@ -117,17 +117,6 @@ export default function StudentClassDetailPage() {
           Lịch học
         </button>
         <button
-          onClick={() => setActiveTab('virtualLabs')}
-          className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
-            activeTab === 'virtualLabs'
-              ? 'border-primary text-primary'
-              : 'border-transparent text-muted-foreground hover:text-foreground'
-          }`}
-        >
-          <FlaskConical className="w-4 h-4 inline mr-2" />
-          Phòng Lab Ảo
-        </button>
-        <button
           onClick={() => setActiveTab('attendance')}
           className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
             activeTab === 'attendance'
@@ -144,7 +133,6 @@ export default function StudentClassDetailPage() {
       {activeTab === 'overview' && <OverviewTab classDetail={classDetail} />}
       {activeTab === 'assignments' && <AssignmentsTab classDetail={classDetail} />}
       {activeTab === 'schedule' && <ScheduleTab classId={Number(classId)} classInfo={{ classCode: classDetail.classCode, className: classDetail.className }} refreshKey={refreshKey} />}
-      {activeTab === 'virtualLabs' && <VirtualLabsTab classId={Number(classId)} />}
       {activeTab === 'attendance' && <AttendanceTab classId={Number(classId)} user={user || undefined} queryClient={queryClient} />}
     </div>
   );
@@ -176,6 +164,36 @@ function OverviewTab({ classDetail }: { classDetail: StudentClassDetail }) {
     enabled: !!selectedLessonId,
   });
 
+  // Bài học không tự lưu lab của nó (hasVirtualLab/labId trên Lesson không
+  // còn được ghi — xem TeacherClassDetailPage). Việc gán lab -> bài học đi
+  // qua Schedule.lessonId (mỗi buổi dạy đã trỏ sẵn về 1 bài học) + xem lab
+  // nào đang gắn với buổi dạy đó, giống hệt cách giáo viên gán.
+  const { data: lessonSchedule } = useQuery({
+    queryKey: ['student-lesson-schedule', classDetail.id, selectedLessonId],
+    queryFn: async () => {
+      if (!selectedLessonId) return null;
+      const { schedulesApi } = await import('@/services/dashboardApi');
+      const schedules = await schedulesApi.getByClass(classDetail.id);
+      return schedules.find((s) => s.lessonId === selectedLessonId) ?? null;
+    },
+    enabled: !!selectedLessonId,
+  });
+
+  const { data: lessonClassLabs } = useQuery({
+    queryKey: ['student-class-labs-for-lesson', classDetail.id],
+    queryFn: async () => {
+      const result = await labsApi.getAll({ classId: classDetail.id, pageSize: 100 });
+      return result.items;
+    },
+    enabled: !!selectedLessonId,
+  });
+
+  const assignedLab = lessonSchedule
+    ? lessonClassLabs?.find((lab) =>
+        lab.classes.some((c) => c.id === classDetail.id && c.scheduleId === lessonSchedule.id)
+      ) ?? null
+    : null;
+
   const modulesWithLessons = curriculumData?.modules || [];
 
   // Helper to get module info from either type
@@ -191,101 +209,97 @@ function OverviewTab({ classDetail }: { classDetail: StudentClassDetail }) {
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
       {/* Main Content */}
       <div className="lg:col-span-2 space-y-6">
-        {/* Progress Card */}
-        <div className="bg-card rounded-xl border border-border p-6">
-          <h3 className="text-lg font-semibold mb-4">Tiến độ học tập</h3>
-          <div className="space-y-4">
-            <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">Hoàn thành</span>
-              <span className="font-medium">{classDetail.progress}%</span>
-            </div>
-            <div className="w-full bg-muted rounded-full h-3">
-              <div
-                className="bg-primary rounded-full h-3 transition-all"
-                style={{ width: `${classDetail.progress}%` }}
-              />
-            </div>
-          </div>
-        </div>
-
         {/* Modules with Lessons */}
         <div className="bg-card rounded-xl border border-border p-6">
           <h3 className="text-lg font-semibold mb-4">Bài học</h3>
           <div className="space-y-3">
             {modulesWithLessons.length > 0 ? (
-              modulesWithLessons.map((module) => {
-                const lessonCount = getModuleLessonsCount(module);
-                const completed = isModuleCompleted(module);
-                return (
-                  <div key={module.id} className="border border-border rounded-lg overflow-hidden">
-                    {/* Module Header */}
-                    <div
-                      className="flex items-center gap-4 p-4 cursor-pointer hover:bg-muted/30 transition-colors"
-                      onClick={() => setExpandedModuleId(expandedModuleId === module.id ? null : module.id)}
-                    >
-                      <div className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 ${
-                        completed
-                          ? 'bg-green-100 dark:bg-green-900/30'
-                          : 'bg-muted'
-                      }`}>
-                        {completed ? (
-                          <CheckCircle className="w-5 h-5 text-green-600 dark:text-green-400" />
-                        ) : (
-                          <BookOpen className="w-5 h-5 text-muted-foreground" />
-                        )}
-                      </div>
-                      <div className="flex-1">
-                        <p className="font-medium">{module.title}</p>
-                      </div>
-                      <ChevronDown className={`w-5 h-5 text-muted-foreground transition-transform ${expandedModuleId === module.id ? 'rotate-180' : ''}`} />
-                    </div>
+              [...modulesWithLessons]
+                .sort((a, b) => {
+                  const orderA = a.displayOrder ?? 0;
+                  const orderB = b.displayOrder ?? 0;
+                  if (orderA !== orderB) return orderA - orderB;
+                  return a.title.localeCompare(b.title, undefined, { numeric: true, sensitivity: 'base' });
+                })
+                .map((module, mIdx) => {
+                  const completed = isModuleCompleted(module);
+                  const sortedLessons = [...(module.lessons || [])].sort((a, b) => {
+                    const orderA = a.displayOrder ?? 0;
+                    const orderB = b.displayOrder ?? 0;
+                    if (orderA !== orderB) return orderA - orderB;
+                    return a.title.localeCompare(b.title, undefined, { numeric: true, sensitivity: 'base' });
+                  });
 
-                    {/* Lessons List (Expanded) */}
-                    {expandedModuleId === module.id && (
-                      <div className="border-t border-border bg-muted/20">
-                        {(module as any).lessons?.length > 0 ? (
-                          <div className="p-4 space-y-2">
-                            {(module as any).lessons.map((lesson: any) => (
-                              <div key={lesson.id} className="flex items-center gap-3 p-3 bg-card rounded-lg">
-                                <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
-                                  <span className="text-xs font-medium text-primary">{lesson.displayOrder}</span>
-                                </div>
-                                <div className="flex-1">
-                                  <p className="text-sm font-medium">{lesson.title}</p>
-                                  <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                                    {lesson.estimatedMinutes && (
-                                      <span className="flex items-center gap-1">
-                                        <Clock className="w-3 h-3" />
-                                        {lesson.estimatedMinutes} phút
-                                      </span>
-                                    )}
-                                    {lesson.lessonType && (
-                                      <span className="px-2 py-0.5 bg-muted rounded-full">{lesson.lessonType}</span>
-                                    )}
-                                    {lesson.hasVirtualLab && (
-                                      <span className="flex items-center gap-1 text-purple-600">
-                                        <FlaskConical className="w-3 h-3" />
-                                        Lab
-                                      </span>
-                                    )}
-                                  </div>
-                                </div>
-                                <Button size="sm" variant="outline" onClick={() => setSelectedLessonId(lesson.id)}>
-                                  Mở
-                                </Button>
-                              </div>
-                            ))}
-                          </div>
-                        ) : (
-                          <div className="p-4 text-center text-muted-foreground text-sm">
-                            Chưa có bài học nào trong chương này
-                          </div>
-                        )}
+                  return (
+                    <div key={module.id} className="border border-border rounded-lg overflow-hidden">
+                      <div
+                        className="flex items-center gap-4 p-4 cursor-pointer hover:bg-muted/30 transition-colors"
+                        onClick={() => setExpandedModuleId(expandedModuleId === module.id ? null : module.id)}
+                      >
+                        <div className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 ${
+                          completed ? 'bg-green-100 dark:bg-green-900/30' : 'bg-muted'
+                        }`}>
+                          {completed ? (
+                            <CheckCircle className="w-5 h-5 text-green-600 dark:text-green-400" />
+                          ) : (
+                            <BookOpen className="w-5 h-5 text-muted-foreground" />
+                          )}
+                        </div>
+                        <div className="flex-1">
+                          <p className="font-medium">{module.title}</p>
+                        </div>
+                        <ChevronDown className={`w-5 h-5 text-muted-foreground transition-transform ${expandedModuleId === module.id ? 'rotate-180' : ''}`} />
                       </div>
-                    )}
-                  </div>
-                );
-              })
+
+                      {expandedModuleId === module.id && (
+                        <div className="border-t border-border bg-muted/20">
+                          {sortedLessons.length > 0 ? (
+                            <div className="p-4 space-y-2">
+                              {sortedLessons.map((lesson: any, lIdx: number) => (
+                                <div key={lesson.id} className="flex items-center gap-3 p-3 bg-card rounded-lg">
+                                  <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                                    <span className="text-xs font-medium text-primary">
+                                      {lesson.displayOrder || (lIdx + 1)}
+                                    </span>
+                                  </div>
+                                  <div className="flex-1">
+                                    <p className="text-sm font-medium">{lesson.title}</p>
+                                    <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                                      {lesson.estimatedMinutes && (
+                                        <span className="flex items-center gap-1">
+                                          <Clock className="w-3 h-3" />
+                                          {lesson.estimatedMinutes} phút
+                                        </span>
+                                      )}
+                                      {lesson.lessonType && (
+                                         <span className="px-2 py-0.5 bg-muted rounded-full">
+                                           {lesson.lessonType === 'theory' ? 'Lý thuyết' : lesson.lessonType === 'lab' ? 'Thực hành' : lesson.lessonType}
+                                         </span>
+                                       )}
+                                      {lesson.hasVirtualLab && (
+                                        <span className="flex items-center gap-1 text-purple-600">
+                                          <FlaskConical className="w-3 h-3" />
+                                          Lab
+                                        </span>
+                                      )}
+                                    </div>
+                                  </div>
+                                  <Button size="sm" variant="outline" onClick={() => setSelectedLessonId(lesson.id)}>
+                                    Mở
+                                  </Button>
+                                </div>
+                              ))}
+                            </div>
+                          ) : (
+                            <div className="p-4 text-center text-muted-foreground text-sm">
+                              Chưa có bài học nào trong chương này
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })
             ) : (
               <p className="text-center text-muted-foreground py-8">
                 Chưa có bài học nào
@@ -295,7 +309,6 @@ function OverviewTab({ classDetail }: { classDetail: StudentClassDetail }) {
         </div>
       </div>
 
-      {/* Sidebar */}
       <div className="space-y-6">
         {/* Class Info */}
         <div className="bg-card rounded-xl border border-border p-6 space-y-4">
@@ -372,8 +385,10 @@ function OverviewTab({ classDetail }: { classDetail: StudentClassDetail }) {
                         </span>
                       )}
                       {lessonDetail.lessonType && (
-                        <span className="px-2 py-0.5 bg-muted rounded-full">{lessonDetail.lessonType}</span>
-                      )}
+                         <span className="px-2 py-0.5 bg-muted rounded-full">
+                           {lessonDetail.lessonType === 'theory' ? 'Lý thuyết' : lessonDetail.lessonType === 'lab' ? 'Thực hành' : lessonDetail.lessonType}
+                         </span>
+                       )}
                     </div>
                   </div>
 
@@ -412,15 +427,21 @@ function OverviewTab({ classDetail }: { classDetail: StudentClassDetail }) {
                   )}
 
                   {/* Virtual Lab Link */}
-                  {lessonDetail.hasVirtualLab && (
+                  {assignedLab && (
                     <div className="mt-6 p-4 bg-purple-50 dark:bg-purple-900/20 rounded-lg">
-                      <div className="flex items-center gap-2 text-purple-700 dark:text-purple-300">
+                      <div className="flex items-center gap-2 text-purple-700 dark:text-purple-300 mb-1">
                         <FlaskConical className="w-5 h-5" />
-                        <span className="font-medium">Bài thực hành Lab</span>
+                        <span className="font-medium">Bài thực hành Lab ảo</span>
                       </div>
-                      <p className="text-sm text-purple-600 dark:text-purple-400 mt-1">
-                        Bài học này có phòng lab ảo. Vui lòng truy cập qua tab "Phòng Lab Ảo" để thực hành.
+                      <p className="text-sm text-purple-600 dark:text-purple-400 mb-3">
+                        {assignedLab.title}
                       </p>
+                      <Link to={`/dashboard/virtual-lab/${assignedLab.id}`}>
+                        <Button size="sm" className="gap-2">
+                          <Cpu className="w-4 h-4" />
+                          Mở phòng lab
+                        </Button>
+                      </Link>
                     </div>
                   )}
                 </>
@@ -528,159 +549,6 @@ function ScheduleTab({ classId, classInfo, refreshKey }: { classId: number; clas
 
 // VirtualLabs Tab Component
 //
-// Trước đây gọi studentApi.getVirtualLabs() -> GET /api/VirtualLabs/student — hệ thống
-// Virtual Lab LEGACY, tách biệt hoàn toàn với hệ thống Lab thật (đã xác nhận qua audit:
-// response luôn {totalCount:0,items:[]}). Sidebar "Phòng Lab Ảo" (/dashboard/virtual-lab)
-// đã được vá sang labsApi (GET /api/labs) từ trước — tab này là consumer legacy còn sót
-// lại, giờ đổi sang CÙNG nguồn dữ liệu thật, filter theo classId thay vì gọi lại toàn bộ.
-type LabProgressStatus = 'not_started' | 'in_progress' | 'completed';
-
-function VirtualLabsTab({ classId }: { classId: number }) {
-  const { data: labsResponse, isLoading: isLabsLoading } = useQuery({
-    queryKey: ['student-class-labs', classId],
-    queryFn: () => labsApi.getAll({ classId, pageSize: 100 }),
-  });
-
-  // Đọc thuần (không mutate) — xem comment ở labsApi.getMyProgress. Không dùng
-  // startProgress ở đây vì gọi hàng loạt cho cả danh sách sẽ tự "start" progress
-  // cho những lab Student chưa từng mở.
-  const { data: progressList, isLoading: isProgressLoading } = useQuery({
-    queryKey: ['student-class-lab-progress', classId],
-    queryFn: () => labsApi.getMyProgress(classId),
-  });
-
-  const isLoading = isLabsLoading || isProgressLoading;
-
-  // Phase 7: filter theo classId thật (ID), không dựa vào classCode/title —
-  // phòng trường hợp API sau này không tự scope hết theo query param.
-  const labs = (labsResponse?.items ?? []).filter((lab) => lab.classIds.includes(classId));
-
-  const progressByLabId = new Map(progressList?.map((progress) => [progress.labId, progress]) ?? []);
-
-  const getLabStatus = (labId: string): LabProgressStatus => {
-    const progress = progressByLabId.get(labId);
-    if (!progress) return 'not_started';
-    return progress.completedAt ? 'completed' : 'in_progress';
-  };
-
-  const getStatusBadge = (status: LabProgressStatus) => {
-    switch (status) {
-      case 'not_started':
-        return <span className="px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300">Chưa làm</span>;
-      case 'in_progress':
-        return <span className="px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400">Đang làm</span>;
-      case 'completed':
-        return <span className="px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">Hoàn thành</span>;
-      default:
-        return null;
-    }
-  };
-
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center py-12">
-        <Loader2 className="w-8 h-8 animate-spin text-primary" />
-      </div>
-    );
-  }
-
-  const notStartedCount = labs.filter((lab) => getLabStatus(lab.id) === 'not_started').length;
-  const inProgressCount = labs.filter((lab) => getLabStatus(lab.id) === 'in_progress').length;
-  const completedCount = labs.filter((lab) => getLabStatus(lab.id) === 'completed').length;
-
-  return (
-    <div className="space-y-6">
-      {/* Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div className="bg-card rounded-xl border border-border p-4">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-lg bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center">
-              <FlaskConical className="w-5 h-5 text-purple-600 dark:text-purple-400" />
-            </div>
-            <div>
-              <p className="text-2xl font-bold">{labs.length}</p>
-              <p className="text-sm text-muted-foreground">Tổng phòng lab</p>
-            </div>
-          </div>
-        </div>
-        <div className="bg-card rounded-xl border border-border p-4">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-lg bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
-              <Cpu className="w-5 h-5 text-gray-600 dark:text-gray-400" />
-            </div>
-            <div>
-              <p className="text-2xl font-bold">{notStartedCount}</p>
-              <p className="text-sm text-muted-foreground">Chưa làm</p>
-            </div>
-          </div>
-        </div>
-        <div className="bg-card rounded-xl border border-border p-4">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-lg bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
-              <Play className="w-5 h-5 text-blue-600 dark:text-blue-400" />
-            </div>
-            <div>
-              <p className="text-2xl font-bold">{inProgressCount}</p>
-              <p className="text-sm text-muted-foreground">Đang làm</p>
-            </div>
-          </div>
-        </div>
-        <div className="bg-card rounded-xl border border-border p-4">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-lg bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
-              <CheckCircle className="w-5 h-5 text-green-600 dark:text-green-400" />
-            </div>
-            <div>
-              <p className="text-2xl font-bold">{completedCount}</p>
-              <p className="text-sm text-muted-foreground">Hoàn thành</p>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Labs Grid */}
-      {labs.length > 0 ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {labs.map((lab) => {
-            const status = getLabStatus(lab.id);
-            return (
-              <div key={lab.id} className="bg-card rounded-xl border border-border overflow-hidden hover:shadow-md transition-shadow">
-                <div className="h-32 bg-gradient-to-br from-purple-500/10 to-blue-500/10 flex items-center justify-center relative">
-                  <FlaskConical className="w-12 h-12 text-purple-600 dark:text-purple-400" />
-                  <div className="absolute top-3 right-3">
-                    {getStatusBadge(status)}
-                  </div>
-                </div>
-                <div className="p-4 space-y-3">
-                  <div>
-                    <h3 className="font-semibold line-clamp-1">{lab.title}</h3>
-                    <p className="text-sm text-muted-foreground line-clamp-2 mt-1">{lab.description}</p>
-                  </div>
-                  {/* Lab-level entity không có "score" — điểm thuộc về Submission,
-                      không phải Lab (xem VIRTUAL_LAB_PLAN Submission workflow). */}
-                  <Link to={`/dashboard/virtual-lab/${lab.id}`} className="block">
-                    <Button className="w-full gap-2" variant={status === 'completed' ? 'outline' : 'default'}>
-                      {status === 'not_started' && <><Cpu className="w-4 h-4" /> Bắt đầu</>}
-                      {status === 'in_progress' && <><Play className="w-4 h-4" /> Tiếp tục</>}
-                      {status === 'completed' && <><CheckCircle className="w-4 h-4" /> Xem lại</>}
-                    </Button>
-                  </Link>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      ) : (
-        <div className="text-center py-12 bg-card rounded-xl border border-border">
-          <FlaskConical className="w-16 h-16 mx-auto mb-4 text-muted-foreground opacity-50" />
-          <h3 className="text-lg font-medium mb-2">Chưa có phòng lab nào</h3>
-          <p className="text-muted-foreground">Phòng lab sẽ xuất hiện khi được giao bởi giáo viên</p>
-        </div>
-      )}
-    </div>
-  );
-}
-
 // Attendance Tab Component
 function AttendanceTab({ classId, user, queryClient }: { classId: number; user?: { role: string }; queryClient: ReturnType<typeof useQueryClient> }) {
   const [updatingSlotId, setUpdatingSlotId] = useState<number | null>(null);

@@ -11,7 +11,7 @@ interface LabCardProps {
 }
 
 const fallbackImage =
-  'https://images.unsplash.com/photo-1532094349884-543bc11b234d?auto=format&fit=crop&q=80&w=600';
+  'https://m.media-amazon.com/images/I/612eALAbpgL.jpg';
 
 export const LabCard = ({ lab, canManage, onEdit, onDelete }: LabCardProps) => {
   const navigate = useNavigate();

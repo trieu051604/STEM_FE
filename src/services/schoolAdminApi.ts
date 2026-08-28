@@ -21,6 +21,7 @@ export interface StudentProfile {
   totalEnrolledClasses?: number;
   certificatesEarned?: number;
   averageScore?: number;
+  totalSubmissions?: number;
   createdAt: string;
   updatedAt?: string;
 }
@@ -323,6 +324,7 @@ export interface Course {
   isRequired?: boolean;
   isActive?: boolean;
   enrolledStudents?: number;
+  schoolName?: string;
   createdAt: string;
   updatedAt?: string;
 }

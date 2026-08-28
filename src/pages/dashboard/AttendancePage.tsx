@@ -101,10 +101,15 @@ export const AttendancePage = () => {
         setExistingRecords(attendanceResult.items);
 
         const initialDrafts: Record<number, AttendanceStatus> = {};
-        const existingByStudent = new Map(attendanceResult.items.map(r => [r.studentId, r.status ?? 'Present']));
+        const existingByStudent = new Map(attendanceResult.items.map(r => [r.studentId, r.status]));
         students.forEach((s) => {
-          // Use existing record status (null means "Present" as default), or default to 'Present'
-          initialDrafts[s.id] = existingByStudent.get(s.id) ?? 'Present';
+          // Only seed a draft when a real record already exists; a student with
+          // no record yet has not been marked and must stay unselected instead
+          // of silently showing as "Present".
+          const existingStatus = existingByStudent.get(s.id);
+          if (existingStatus) {
+            initialDrafts[s.id] = existingStatus;
+          }
         });
         setDraftStatuses(initialDrafts);
       } catch (err) {
@@ -145,15 +150,16 @@ export const AttendancePage = () => {
     setSaveSuccess(null);
     try {
       // Create attendance records for ALL schedules in the day
+      const markedRoster = roster.filter((s) => draftStatuses[s.id]);
       const createdRecords: AttendanceRecord[] = [];
       for (const scheduleId of scheduleIds) {
         const created = await attendanceApi.createAttendance({
           classId: selectedClassId,
           scheduleId: scheduleId ?? undefined,
           attendanceDate: selectedDate,
-          records: roster.map((s) => ({
+          records: markedRoster.map((s) => ({
             studentId: s.id,
-            status: draftStatuses[s.id] ?? 'Present',
+            status: draftStatuses[s.id],
           })),
         });
         createdRecords.push(...created);

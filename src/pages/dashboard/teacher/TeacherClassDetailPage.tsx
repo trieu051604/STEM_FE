@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
-import { ArrowLeft, BookOpen, User, Calendar, MapPin, Clock, Users, CheckCircle, FileText, Cpu, Loader2, FlaskConical, ClipboardCheck, ChevronDown, Plus, Settings, X } from 'lucide-react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { ArrowLeft, BookOpen, User, Calendar, MapPin, Clock, Users, CheckCircle, FileText, Cpu, Loader2, FlaskConical, ClipboardCheck, ChevronDown, Plus, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { WeeklyScheduleGrid } from '@/components/WeeklyScheduleGrid';
 import { teacherApi, TeacherClassDetail } from '@/services/teacherStudentApi';
@@ -121,8 +121,12 @@ export default function TeacherClassDetailPage() {
 
 // Overview Tab - Shows Modules and Lessons
 function OverviewTab({ classDetail }: { classDetail: TeacherClassDetail }) {
+  const queryClient = useQueryClient();
   const [expandedModuleId, setExpandedModuleId] = useState<number | null>(null);
   const [selectedLessonId, setSelectedLessonId] = useState<number | null>(null);
+  const [isAssigningLab, setIsAssigningLab] = useState(false);
+  const [labIdToAssign, setLabIdToAssign] = useState('');
+  const [assignLabError, setAssignLabError] = useState<string | null>(null);
 
   // Fetch curriculum data with lessons
   const { data: curriculumData, isLoading, error } = useQuery({
@@ -143,6 +147,122 @@ function OverviewTab({ classDetail }: { classDetail: TeacherClassDetail }) {
       return lessonsApi.getById(selectedLessonId);
     },
     enabled: !!selectedLessonId,
+  });
+
+  // Toàn bộ buổi dạy (Schedule) của lớp này — Lesson không tự lưu "lab của
+  // mình", việc gán lab -> bài học đi qua Schedule.lessonId (mỗi buổi dạy đã
+  // trỏ sẵn về 1 bài học). Lấy cả danh sách (không chỉ buổi dạy của bài đang
+  // xem) để suy ra TÊN bài học mà 1 lab đang bị chiếm chỗ, phục vụ cảnh báo
+  // "lab đã được gán ở bài khác".
+  const { data: classSchedules } = useQuery({
+    queryKey: ['teacher-class-schedules', classDetail.id],
+    queryFn: async () => {
+      const { schedulesApi } = await import('@/services/dashboardApi');
+      return schedulesApi.getByClass(classDetail.id);
+    },
+    enabled: !!selectedLessonId,
+  });
+
+  const lessonSchedule = selectedLessonId
+    ? classSchedules?.find((s) => s.lessonId === selectedLessonId) ?? null
+    : null;
+
+  // Labs của lớp này — dùng để: (1) tìm lab nào đang gắn sẵn với buổi dạy của
+  // bài học đang xem (qua lab.classes[].scheduleId), (2) làm danh sách chọn
+  // khi gán/đổi lab.
+  const { data: classLabs } = useQuery({
+    queryKey: ['teacher-class-labs', classDetail.id],
+    queryFn: async () => {
+      const { labsApi } = await import('@/services/dashboardApi');
+      const result = await labsApi.getAll({ classId: classDetail.id, pageSize: 100 });
+      return result.items;
+    },
+    enabled: !!selectedLessonId,
+  });
+
+  const currentLab = lessonSchedule
+    ? classLabs?.find((lab) =>
+        lab.classes.some((c) => c.id === classDetail.id && c.scheduleId === lessonSchedule.id)
+      ) ?? null
+    : null;
+
+  // Mỗi lab chỉ được gán cho đúng 1 bài học — nếu lab đang được chọn đã bị
+  // chiếm bởi 1 buổi dạy khác (ở lớp này hoặc lớp khác), KHÔNG tự âm thầm gỡ
+  // chỗ cũ; báo cho giáo viên biết để họ tự quyết định (qua bài học đang giữ
+  // lab đó), thay vì tự động hoán đổi.
+  const getLabConflict = (lab: NonNullable<typeof classLabs>[number]): string | null => {
+    const heldAssignment = lab.classes.find((c) => c.scheduleId);
+    if (!heldAssignment || !heldAssignment.scheduleId) return null;
+    if (lessonSchedule && heldAssignment.scheduleId === lessonSchedule.id) return null;
+
+    if (heldAssignment.id === classDetail.id) {
+      const schedule = classSchedules?.find((s) => s.id === heldAssignment.scheduleId);
+      return schedule?.lessonTitle
+        ? `đã gán cho bài "${schedule.lessonTitle}"`
+        : 'đã gán cho một bài học khác';
+    }
+    return 'đã gán cho một bài học ở lớp khác';
+  };
+
+  const assignLabMutation = useMutation({
+    mutationFn: async (labId: string | null) => {
+      if (!lessonSchedule) return;
+      const { labsApi } = await import('@/services/dashboardApi');
+
+      // Gỡ lab đang gắn cho CHÍNH bài học này (nếu có) trước — đây là thao
+      // tác "Đổi lab" giáo viên chủ động làm cho bài học đang xem, khác với
+      // việc tự động gỡ lab khỏi MỘT BÀI HỌC KHÁC (bị chặn ở getLabConflict).
+      if (currentLab && currentLab.id !== labId) {
+        await labsApi.update(currentLab.id, {
+          title: currentLab.title,
+          description: currentLab.description,
+          category: currentLab.category as any,
+          thumbnailUrl: currentLab.thumbnailUrl,
+          simulationMode: currentLab.simulationMode as any,
+          boardType: currentLab.boardType as any,
+          starterCode: currentLab.starterCode,
+          circuitConfig: currentLab.circuitConfig,
+          allowedComponentTypes: currentLab.allowedComponentTypes,
+          wokwiProjectId: currentLab.wokwiProjectId,
+          wokwiProjectUrl: currentLab.wokwiProjectUrl,
+          classIds: currentLab.classIds,
+          status: currentLab.status as any,
+          linkedAssignmentId: currentLab.linkedAssignmentId,
+          scheduleId: null,
+        });
+      }
+
+      if (labId) {
+        const lab = classLabs?.find((l) => l.id === labId);
+        if (!lab) return;
+        await labsApi.update(lab.id, {
+          title: lab.title,
+          description: lab.description,
+          category: lab.category as any,
+          thumbnailUrl: lab.thumbnailUrl,
+          simulationMode: lab.simulationMode as any,
+          boardType: lab.boardType as any,
+          starterCode: lab.starterCode,
+          circuitConfig: lab.circuitConfig,
+          allowedComponentTypes: lab.allowedComponentTypes,
+          wokwiProjectId: lab.wokwiProjectId,
+          wokwiProjectUrl: lab.wokwiProjectUrl,
+          // Chỉ 1 lớp — mỗi lab chỉ được gán cho đúng 1 bài học tại một thời
+          // điểm, nên không giữ lại các lớp khác lab này từng gán trước đó
+          // (tránh vô tình áp scheduleId của bài học này lên buổi dạy của
+          // một lớp/bài học không liên quan).
+          classIds: [classDetail.id],
+          status: lab.status as any,
+          linkedAssignmentId: lab.linkedAssignmentId,
+          scheduleId: lessonSchedule.id,
+        });
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['teacher-class-labs', classDetail.id] });
+      setIsAssigningLab(false);
+      setLabIdToAssign('');
+    },
   });
 
   if (isLoading) {
@@ -173,17 +293,18 @@ function OverviewTab({ classDetail }: { classDetail: TeacherClassDetail }) {
         <div className="bg-card rounded-xl border border-border p-6">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-lg font-semibold">Giáo trình khóa học</h3>
-            <Link to={`/dashboard/admin/courses/${classDetail.courseId}/curriculum`}>
-              <Button size="sm" variant="outline">
-                <Settings className="w-4 h-4 mr-2" />
-                Quản lý giáo trình
-              </Button>
-            </Link>
           </div>
           
           <div className="space-y-3">
             {modules.length > 0 ? (
-              modules.map((module) => (
+              [...modules]
+                .sort((a, b) => {
+                  const orderA = a.displayOrder ?? 0;
+                  const orderB = b.displayOrder ?? 0;
+                  if (orderA !== orderB) return orderA - orderB;
+                  return a.title.localeCompare(b.title, undefined, { numeric: true, sensitivity: 'base' });
+                })
+                .map((module, mIdx) => (
                 <div key={module.id} className="border border-border rounded-lg overflow-hidden">
                   {/* Module Header */}
                   <div
@@ -191,7 +312,9 @@ function OverviewTab({ classDetail }: { classDetail: TeacherClassDetail }) {
                     onClick={() => setExpandedModuleId(expandedModuleId === module.id ? null : module.id)}
                   >
                     <div className="w-10 h-10 rounded-lg bg-indigo-100 dark:bg-indigo-900/30 flex items-center justify-center shrink-0">
-                      <span className="text-sm font-bold text-indigo-600 dark:text-indigo-400">{module.displayOrder}</span>
+                      <span className="text-sm font-bold text-indigo-600 dark:text-indigo-400">
+                        {module.displayOrder || (mIdx + 1)}
+                      </span>
                     </div>
                     <div className="flex-1">
                       <p className="font-medium">{module.title}</p>
@@ -208,10 +331,19 @@ function OverviewTab({ classDetail }: { classDetail: TeacherClassDetail }) {
                     <div className="border-t border-border bg-muted/20">
                       {module.lessons?.length > 0 ? (
                         <div className="p-4 space-y-2">
-                          {module.lessons.map((lesson) => (
+                          {[...(module.lessons || [])]
+                            .sort((a, b) => {
+                              const orderA = a.displayOrder ?? 0;
+                              const orderB = b.displayOrder ?? 0;
+                              if (orderA !== orderB) return orderA - orderB;
+                              return a.title.localeCompare(b.title, undefined, { numeric: true, sensitivity: 'base' });
+                            })
+                            .map((lesson, lIdx) => (
                             <div key={lesson.id} className="flex items-center gap-3 p-3 bg-card rounded-lg">
                               <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
-                                <span className="text-xs font-medium text-primary">{lesson.displayOrder}</span>
+                                <span className="text-xs font-medium text-primary">
+                                  {lesson.displayOrder || (lIdx + 1)}
+                                </span>
                               </div>
                               <div className="flex-1">
                                 <p className="text-sm font-medium">{lesson.title}</p>
@@ -223,7 +355,9 @@ function OverviewTab({ classDetail }: { classDetail: TeacherClassDetail }) {
                                     </span>
                                   )}
                                   {lesson.lessonType && (
-                                    <span className="px-2 py-0.5 bg-muted rounded-full">{lesson.lessonType}</span>
+                                    <span className="px-2 py-0.5 bg-muted rounded-full">
+                                      {lesson.lessonType === 'theory' ? 'Lý thuyết' : lesson.lessonType === 'lab' ? 'Thực hành' : lesson.lessonType}
+                                    </span>
                                   )}
                                   {lesson.hasVirtualLab && (
                                     <span className="flex items-center gap-1 text-purple-600">
@@ -233,7 +367,16 @@ function OverviewTab({ classDetail }: { classDetail: TeacherClassDetail }) {
                                   )}
                                 </div>
                               </div>
-                              <Button size="sm" variant="outline" onClick={() => setSelectedLessonId(lesson.id)}>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => {
+                                  setSelectedLessonId(lesson.id);
+                                  setIsAssigningLab(false);
+                                  setLabIdToAssign('');
+                                  setAssignLabError(null);
+                                }}
+                              >
                                 Xem
                               </Button>
                             </div>
@@ -318,7 +461,12 @@ function OverviewTab({ classDetail }: { classDetail: TeacherClassDetail }) {
           <div className="flex items-center justify-between p-4 border-b border-border">
             <h2 className="text-lg font-semibold">{lessonDetail?.title || 'Đang tải...'}</h2>
             <button
-              onClick={() => setSelectedLessonId(null)}
+              onClick={() => {
+                setSelectedLessonId(null);
+                setIsAssigningLab(false);
+                setLabIdToAssign('');
+                setAssignLabError(null);
+              }}
               className="p-2 hover:bg-muted rounded-lg transition-colors"
             >
               <X className="w-5 h-5" />
@@ -379,18 +527,114 @@ function OverviewTab({ classDetail }: { classDetail: TeacherClassDetail }) {
                   </div>
                 )}
 
-                {/* Virtual Lab Link */}
-                {lessonDetail.hasVirtualLab && (
-                  <div className="mt-6 p-4 bg-purple-50 dark:bg-purple-900/20 rounded-lg">
+                {/* Virtual Lab Assignment — gán qua buổi dạy (Schedule) đã trỏ tới
+                    bài học này, vì Lesson không lưu lab của riêng nó. */}
+                <div className="mt-6 p-4 bg-purple-50 dark:bg-purple-900/20 rounded-lg space-y-3">
+                  <div className="flex items-center justify-between gap-3">
                     <div className="flex items-center gap-2 text-purple-700 dark:text-purple-300">
                       <FlaskConical className="w-5 h-5" />
-                      <span className="font-medium">Bài thực hành Lab</span>
+                      <span className="font-medium">Bài thực hành Lab ảo</span>
                     </div>
-                    <p className="text-sm text-purple-600 dark:text-purple-400 mt-1">
-                      Bài học này có phòng lab ảo.
-                    </p>
+                    {!isAssigningLab && lessonSchedule && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setLabIdToAssign(currentLab?.id || '');
+                          setIsAssigningLab(true);
+                        }}
+                        className="text-xs font-semibold text-purple-700 dark:text-purple-300 hover:underline shrink-0"
+                      >
+                        {currentLab ? 'Đổi lab' : '+ Gán lab'}
+                      </button>
+                    )}
                   </div>
-                )}
+
+                  {!isAssigningLab && !lessonSchedule && (
+                    <p className="text-sm text-purple-600 dark:text-purple-400">
+                      Bài học này chưa có buổi dạy trong Lịch dạy hàng tuần, nên chưa thể gán lab. Hãy tạo lịch dạy cho bài học này trước.
+                    </p>
+                  )}
+
+                  {!isAssigningLab && lessonSchedule && (
+                    <p className="text-sm text-purple-600 dark:text-purple-400">
+                      {currentLab ? `Đã gán: ${currentLab.title}` : 'Bài học này chưa có phòng lab ảo.'}
+                    </p>
+                  )}
+
+                  {isAssigningLab && (
+                    <div className="space-y-2">
+                      <select
+                        value={labIdToAssign}
+                        onChange={(e) => {
+                          setLabIdToAssign(e.target.value);
+                          setAssignLabError(null);
+                        }}
+                        className="w-full px-3 py-2 text-sm rounded-lg border border-border bg-background focus:outline-none focus:ring-2 focus:ring-primary/20"
+                      >
+                        <option value="">Chọn phòng lab ảo...</option>
+                        {(classLabs || []).map((lab) => {
+                          const conflict = getLabConflict(lab);
+                          return (
+                            <option key={lab.id} value={lab.id}>
+                              {lab.title}
+                              {conflict ? ` (${conflict})` : ''}
+                            </option>
+                          );
+                        })}
+                      </select>
+                      {classLabs && classLabs.length === 0 && (
+                        <p className="text-xs text-muted-foreground">
+                          Lớp này chưa có phòng lab ảo nào. Tạo lab mới ở mục "Phòng lab ảo".
+                        </p>
+                      )}
+                      {assignLabError && (
+                        <p className="text-xs text-destructive">{assignLabError}</p>
+                      )}
+                      <div className="flex items-center gap-2">
+                        <Button
+                          size="sm"
+                          disabled={!labIdToAssign || assignLabMutation.isPending}
+                          onClick={() => {
+                            const lab = classLabs?.find((l) => l.id === labIdToAssign);
+                            const conflict = lab ? getLabConflict(lab) : null;
+                            if (conflict) {
+                              setAssignLabError(
+                                `Lab "${lab?.title}" ${conflict}. Vui lòng bỏ gán ở bài học đó trước khi gán cho bài học này.`
+                              );
+                              return;
+                            }
+                            setAssignLabError(null);
+                            assignLabMutation.mutate(labIdToAssign);
+                          }}
+                        >
+                          Lưu
+                        </Button>
+                        {currentLab && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            disabled={assignLabMutation.isPending}
+                            onClick={() => assignLabMutation.mutate(null)}
+                          >
+                            Bỏ gán
+                          </Button>
+                        )}
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          disabled={assignLabMutation.isPending}
+                          onClick={() => {
+                            setIsAssigningLab(false);
+                            setLabIdToAssign('');
+                            setAssignLabError(null);
+                          }}
+                        >
+                          Hủy
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                </div>
               </>
             ) : (
               <div className="flex items-center justify-center py-12">

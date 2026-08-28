@@ -280,6 +280,9 @@ export function SchoolsPage({ defaultTab = 'list' }: SchoolsPageProps) {
       setSchools((prev) =>
         prev.map((s) => (s.id === selectedSchool.id ? { ...s, ...formData } : s))
       );
+      setAllSchools((prev) =>
+        prev.map((s) => (s.id === selectedSchool.id ? { ...s, ...formData } : s))
+      );
       showToast(`Đã cập nhật thông tin trường "${formData.name}" thành công!`, 'success');
       setIsEditOpen(false);
     } catch (err: any) {
@@ -305,6 +308,11 @@ export function SchoolsPage({ defaultTab = 'list' }: SchoolsPageProps) {
       const newStatus = result.status as 1 | 2;
 
       setSchools((prev) =>
+        prev.map((s) =>
+          s.id === selectedSchool.id ? { ...s, status: newStatus } : s
+        )
+      );
+      setAllSchools((prev) =>
         prev.map((s) =>
           s.id === selectedSchool.id ? { ...s, status: newStatus } : s
         )
@@ -337,7 +345,6 @@ export function SchoolsPage({ defaultTab = 'list' }: SchoolsPageProps) {
       statusFilter === 'all' ||
       (statusFilter === 'approved' && isStatusApproved(school.status)) ||
       (statusFilter === 'locked' && isStatusRejected(school.status)) ||
-      (statusFilter === 'rejected' && isStatusRejected(school.status)) ||
       (statusFilter === 'pending' && isStatusPending(school.status));
 
     return matchesSearch && matchesStatus;
@@ -350,9 +357,9 @@ export function SchoolsPage({ defaultTab = 'list' }: SchoolsPageProps) {
   );
 
   // Statistics
-  const totalSchoolsCount = totalSchools || schools.length;
-  const activeSchoolsCount = schools.filter((s) => isStatusApproved(s.status)).length;
-  const lockedSchoolsCount = schools.filter((s) => isStatusRejected(s.status)).length;
+  const totalSchoolsCount = allSchools.length;
+  const activeSchoolsCount = allSchools.filter((s) => isStatusApproved(s.status)).length;
+  const lockedSchoolsCount = allSchools.filter((s) => isStatusRejected(s.status)).length;
   const pendingRequestsCount = pendingRequests.length;
 
   return (
@@ -562,7 +569,6 @@ export function SchoolsPage({ defaultTab = 'list' }: SchoolsPageProps) {
                   <option value="all">Tất cả trạng thái</option>
                   <option value="approved">Đang hoạt động</option>
                   <option value="locked">Đã khóa</option>
-                  <option value="rejected">Bị từ chối</option>
                   <option value="pending">Chờ duyệt</option>
                 </select>
               </div>

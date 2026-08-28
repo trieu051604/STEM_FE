@@ -2,12 +2,13 @@ import React from 'react';
 import Navbar from '@/components/ui/Navbar';
 import HeroSection from '@/components/ui/HeroSection';
 import FeatureShowcase from '@/components/ui/FeatureShowcase';
+import LabRoomSection from '@/components/ui/LabRoomSection';
 import B2bSection from '@/components/ui/B2bSection';
 import Footer from '@/components/ui/Footer';
 
 export function LandingPage() {
   return (
-    <div className="bg-slate-950 text-slate-50 font-sans min-h-screen flex flex-col selection:bg-blue-500/30 overflow-x-hidden">
+    <div className="bg-background text-foreground font-sans min-h-screen flex flex-col selection:bg-brand-500/30 overflow-x-hidden transition-colors duration-300">
       {/* 1. Sticky Navigation Header */}
       <Navbar />
       
@@ -18,12 +19,15 @@ export function LandingPage() {
         
         {/* 3. Feature Showcase Section (B2C & Quiz Banner & Bento Grid) */}
         <FeatureShowcase />
-        
-        {/* 4. B2B / Enterprise Section (Z-pattern & Social Proof) */}
+
+        {/* 4. Virtual Lab Room Section (Phòng Lab ảo) */}
+        <LabRoomSection />
+
+        {/* 5. B2B / Enterprise Section (Z-pattern & Social Proof) */}
         <B2bSection />
       </main>
       
-      {/* 5. Minimal footer */}
+      {/* 6. Minimal footer */}
       <Footer />
     </div>
   );

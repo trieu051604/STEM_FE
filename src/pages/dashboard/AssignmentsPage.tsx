@@ -60,7 +60,6 @@ const filterOptions: Array<{ id: AssignmentFilter; label: string }> = [
   { id: 'all', label: 'Tất cả' },
   { id: 'quiz', label: 'Quiz' },
   { id: 'text_report', label: 'Báo cáo' },
-  { id: 'practical_simulation', label: 'Thực hành mô phỏng' },
   { id: 'submitted', label: 'Có bài nộp' },
 ];
 

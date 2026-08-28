@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useToast } from '@/components/ToastProvider';
 import { Button } from '@/components/ui/button';
@@ -30,6 +30,8 @@ export const PaymentsPage = () => {
   const [selectedPackage, setSelectedPackage] = useState<PaymentPackage | null>(null);
   const [purchasing, setPurchasing] = useState(false);
   const [activeTab, setActiveTab] = useState<'packages' | 'history'>('packages');
+  const [showSuccessBanner, setShowSuccessBanner] = useState(false);
+  const [showCancelledBanner, setShowCancelledBanner] = useState(false);
   
   // Check for PayOS callback
   const successParam = searchParams.get('success');
@@ -59,6 +61,57 @@ export const PaymentsPage = () => {
     queryKey: ['token-transactions'],
     queryFn: () => paymentsApi.getTransactions(1, 20),
   });
+
+  useEffect(() => {
+    const handleCallback = async () => {
+      if (successParam === 'true' && transactionIdParam) {
+        setShowSuccessBanner(true);
+        try {
+          await paymentsApi.paymentCallback({
+            transactionId: transactionIdParam,
+            status: 'COMPLETED',
+            gatewayTransactionId: searchParams.get('id') || undefined
+          });
+          
+          refetchBalance();
+          refetchPayments();
+          refetchTransactions();
+          
+          // Clear query params to prevent double triggers on refresh
+          const newSearchParams = new URLSearchParams(searchParams);
+          newSearchParams.delete('success');
+          newSearchParams.delete('transactionId');
+          newSearchParams.delete('code');
+          newSearchParams.delete('id');
+          newSearchParams.delete('cancel');
+          newSearchParams.delete('status');
+          setSearchParams(newSearchParams, { replace: true });
+        } catch (error) {
+          console.error('Callback failed:', error);
+        }
+      } else if (cancelledParam === 'true' && transactionIdParam) {
+        setShowCancelledBanner(true);
+        try {
+          await paymentsApi.paymentCallback({
+            transactionId: transactionIdParam,
+            status: 'CANCELLED'
+          });
+          
+          refetchPayments();
+          
+          // Clear query params
+          const newSearchParams = new URLSearchParams(searchParams);
+          newSearchParams.delete('cancelled');
+          newSearchParams.delete('transactionId');
+          setSearchParams(newSearchParams, { replace: true });
+        } catch (error) {
+          console.error('Cancellation callback failed:', error);
+        }
+      }
+    };
+    
+    handleCallback();
+  }, [successParam, cancelledParam, transactionIdParam, searchParams, setSearchParams, refetchBalance, refetchPayments, refetchTransactions]);
 
   const handlePurchase = async () => {
     if (!selectedPackage) return;
@@ -122,7 +175,7 @@ export const PaymentsPage = () => {
   return (
     <div className="space-y-6">
       {/* PayOS Callback Notifications */}
-      {successParam === 'true' && (
+      {showSuccessBanner && (
         <div className="bg-green-50 border border-green-200 rounded-xl p-4 flex items-center gap-3">
           <CheckCircle className="w-6 h-6 text-green-600" />
           <div>
@@ -131,7 +184,7 @@ export const PaymentsPage = () => {
           </div>
         </div>
       )}
-      {cancelledParam === 'true' && (
+      {showCancelledBanner && (
         <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4 flex items-center gap-3">
           <AlertCircle className="w-6 h-6 text-yellow-600" />
           <div>

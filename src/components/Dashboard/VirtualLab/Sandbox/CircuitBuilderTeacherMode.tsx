@@ -2,9 +2,7 @@ import { useMemo, useState } from 'react';
 import {
   Cable,
   CheckCircle2,
-  CircuitBoard,
   Cpu,
-  Gauge,
   PlusCircle,
   RefreshCw,
   Search,
@@ -12,7 +10,6 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { CircuitCanvas } from './CircuitCanvas';
-import { RobotKitBomPanel } from './RobotKitBomPanel';
 import { ComponentPalettePopup } from './ComponentPalettePopup';
 import {
   getComponentReference,
@@ -30,16 +27,15 @@ interface BoardOption {
   value: LabBoardType;
   label: string;
   pinGroups: string[];
-  simulatable: boolean;
 }
 
+// Arduino Uno đã bị bỏ khỏi lựa chọn board — toàn bộ lab mẫu/hệ thống này
+// chỉ dùng ESP32 DevKit V1.
 const BOARD_OPTIONS: BoardOption[] = [
-  { value: 'arduino_uno', label: 'Arduino Uno', pinGroups: ['D0-D13', 'A0-A5', '5V', '3.3V', 'GND'], simulatable: true },
   {
     value: 'esp32_devkit_v1',
     label: 'ESP32 DevKit V1',
     pinGroups: ['D2-D35', 'RX0/TX0', 'RX2/TX2', '3V3', 'VIN', 'GND'],
-    simulatable: false,
   },
 ];
 
@@ -73,13 +69,6 @@ const WIRE_COLOR_HEX: Record<string, string> = {
   green: '#22c55e',
   blue: '#2563eb',
 };
-
-const QUICK_REFERENCES = [
-  { title: 'LED cơ bản', value: 'D13 -> LED A | LED C -> GND' },
-  { title: 'LED có điện trở', value: 'D13 -> R1 | R2 -> LED A | LED C -> GND' },
-  { title: 'Nút nhấn INPUT_PULLUP', value: 'D2 -> 1.l | 2.r -> GND' },
-  { title: 'Biến trở analog', value: '5V -> VCC | SIG -> A0 | GND -> GND' },
-];
 
 function getParts(value: LabCircuitConfig): LabCircuitComponent[] {
   return Array.isArray(value.parts) ? value.parts : [];
@@ -167,9 +156,8 @@ export const CircuitBuilderTeacherMode = ({
   }, [supportedComponents, paletteSearch]);
   const wireItems = getWireConnectionItems(value.connections);
   const wireConnections = wireItems.map((item) => item.connection);
-  const selectedBoard: LabBoardType = value.board === 'esp32_devkit_v1' ? 'esp32_devkit_v1' : 'arduino_uno';
+  const selectedBoard: LabBoardType = 'esp32_devkit_v1';
   const activeBoardOption = BOARD_OPTIONS.find((option) => option.value === selectedBoard) ?? BOARD_OPTIONS[0];
-  const boardLabel = activeBoardOption.label;
 
   const handleBoardChange = (nextBoard: LabBoardType) => {
     if (nextBoard === selectedBoard) return;
@@ -186,7 +174,7 @@ export const CircuitBuilderTeacherMode = ({
   const updateParts = (nextParts: LabCircuitComponent[]) => {
     onChange({
       ...value,
-      board: value.board ?? 'arduino_uno',
+      board: value.board ?? 'esp32_devkit_v1',
       parts: nextParts,
       connections: value.connections ?? [],
     });
@@ -208,7 +196,7 @@ export const CircuitBuilderTeacherMode = ({
 
     onChange({
       ...value,
-      board: value.board ?? 'arduino_uno',
+      board: value.board ?? 'esp32_devkit_v1',
       parts: parts.filter((part) => part.id !== id),
       connections: currentConnections.filter((connection) => !connectionBelongsToPart(connection, id)),
     });
@@ -226,7 +214,7 @@ export const CircuitBuilderTeacherMode = ({
 
     onChange({
       ...value,
-      board: value.board ?? 'arduino_uno',
+      board: value.board ?? 'esp32_devkit_v1',
       connections: [...currentConnections, newConnection],
     });
   };
@@ -237,7 +225,7 @@ export const CircuitBuilderTeacherMode = ({
 
     onChange({
       ...value,
-      board: value.board ?? 'arduino_uno',
+      board: value.board ?? 'esp32_devkit_v1',
       connections: currentConnections,
     });
   };
@@ -255,7 +243,7 @@ export const CircuitBuilderTeacherMode = ({
 
     onChange({
       ...value,
-      board: value.board ?? 'arduino_uno',
+      board: value.board ?? 'esp32_devkit_v1',
       connections: currentConnections,
     });
   };
@@ -269,43 +257,13 @@ export const CircuitBuilderTeacherMode = ({
 
     onChange({
       ...value,
-      board: value.board ?? 'arduino_uno',
+      board: value.board ?? 'esp32_devkit_v1',
       connections: currentConnections,
     });
   };
 
   return (
     <div className="space-y-4">
-      <div className="rounded-xl border border-border bg-card p-4 shadow-sm">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-          <div className="min-w-0">
-            <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-indigo-400">
-              <CircuitBoard className="h-4 w-4" />
-              Sandbox chuẩn Wokwi
-            </div>
-            <h4 className="mt-1 text-lg font-bold text-foreground">Thiết kế mạch đáp án</h4>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Chọn board cho mạch, linh kiện rời lấy theo registry backend.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-3 gap-2 text-center sm:min-w-[360px]">
-            <div className="rounded-lg border border-border bg-muted/50 px-3 py-2">
-              <div className="text-[11px] font-semibold uppercase text-muted-foreground">Board</div>
-              <div className="mt-1 truncate text-sm font-bold text-foreground">{boardLabel}</div>
-            </div>
-            <div className="rounded-lg border border-border bg-muted/50 px-3 py-2">
-              <div className="text-[11px] font-semibold uppercase text-muted-foreground">Linh kiện</div>
-              <div className="mt-1 text-sm font-bold text-foreground">{parts.length}</div>
-            </div>
-            <div className="rounded-lg border border-border bg-muted/50 px-3 py-2">
-              <div className="text-[11px] font-semibold uppercase text-muted-foreground">Dây nối</div>
-              <div className="mt-1 text-sm font-bold text-foreground">{wireItems.length}</div>
-            </div>
-          </div>
-        </div>
-      </div>
-
       <div className="grid gap-4 xl:grid-cols-[260px_minmax(0,1fr)_280px]">
         <aside className="space-y-4">
           <section className="rounded-xl border border-border bg-card p-3 shadow-sm">
@@ -346,11 +304,6 @@ export const CircuitBuilderTeacherMode = ({
                   </span>
                 ))}
               </div>
-              {!activeBoardOption.simulatable && (
-                <p className="mt-2 text-[11px] font-medium text-amber-500">
-                  Board này mới hỗ trợ hiển thị &amp; nối dây trên canvas — biên dịch/chạy code thật hiện chỉ dùng được với Arduino Uno.
-                </p>
-              )}
             </div>
           </section>
 
@@ -394,7 +347,7 @@ export const CircuitBuilderTeacherMode = ({
               </div>
             )}
 
-            <div className="mt-3 max-h-[520px] space-y-2 overflow-y-auto pr-1">
+            <div className="mt-3 max-h-[300px] space-y-2 overflow-y-auto pr-1">
               {isLoading && (
                 <div className="flex items-center gap-2 rounded-lg border border-border bg-muted/50 px-3 py-3 text-sm font-semibold text-muted-foreground">
                   <RefreshCw className="h-4 w-4 animate-spin" />
@@ -484,30 +437,7 @@ export const CircuitBuilderTeacherMode = ({
         </aside>
 
         <section className="min-w-0 overflow-hidden rounded-xl border border-border bg-card shadow-sm">
-          <div className="flex flex-col gap-3 border-b border-border px-4 py-3 lg:flex-row lg:items-center lg:justify-between">
-            <div>
-              <h5 className="text-sm font-bold text-foreground">Canvas mạch</h5>
-              <p className="text-xs text-muted-foreground">Pin thật theo Wokwi Elements, dây nối dạng elbow.</p>
-            </div>
-
-            <div className="flex flex-wrap gap-2">
-              {WIRE_PALETTE.map((item) => (
-                <span
-                  key={item.color}
-                  className="inline-flex items-center gap-1.5 rounded-md border border-border bg-muted/50 px-2 py-1 text-[11px] font-semibold text-muted-foreground"
-                  title={item.note}
-                >
-                  <span
-                    className="h-2.5 w-2.5 rounded-full border border-white shadow-sm"
-                    style={{ backgroundColor: WIRE_COLOR_HEX[item.color] }}
-                  />
-                  {item.label}
-                </span>
-              ))}
-            </div>
-          </div>
-
-          <div className="h-[560px] bg-[#222]">
+          <div className="h-[440px] bg-[#222]">
             <CircuitCanvas
               engine={null}
               boardType={selectedBoard}
@@ -660,24 +590,6 @@ export const CircuitBuilderTeacherMode = ({
               })}
             </div>
           </section>
-
-          <section className="rounded-xl border border-border bg-card p-3 shadow-sm">
-            <div className="flex items-center gap-2">
-              <Gauge className="h-4 w-4 text-muted-foreground" />
-              <h5 className="text-sm font-bold text-foreground">Quick reference</h5>
-            </div>
-
-            <div className="mt-3 space-y-2">
-              {QUICK_REFERENCES.map((item) => (
-                <div key={item.title} className="rounded-lg border border-border bg-muted/50 px-3 py-2">
-                  <div className="text-xs font-bold text-foreground">{item.title}</div>
-                  <div className="mt-1 font-mono text-[11px] leading-4 text-muted-foreground">{item.value}</div>
-                </div>
-              ))}
-            </div>
-          </section>
-
-          <RobotKitBomPanel parts={parts} />
         </aside>
       </div>
     </div>

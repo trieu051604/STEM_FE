@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Icon } from '@/components/ui/Icon';
+import { schoolsApi } from '@/services/dashboardApi';
 
 const B2B_ADVANTAGES = [
   {
@@ -22,7 +23,7 @@ const B2B_ADVANTAGES = [
   }
 ];
 
-const TRUST_LOGOS = [
+const TRUST_LOGOS_FALLBACK = [
   { name: 'Trường THPT Chuyên Lê Hồng Phong', icon: 'School' },
   { name: 'Trường THPT Chuyên Hà Nội - Amsterdam', icon: 'GraduationCap' },
   { name: 'Học viện Sáng tạo STEM Việt Nam', icon: 'Library' },
@@ -30,8 +31,36 @@ const TRUST_LOGOS = [
 ];
 
 export function B2bSection() {
+  const [schools, setSchools] = useState<{ name: string; icon: string }[]>([]);
+  const [totalCount, setTotalCount] = useState<number>(0);
+
+  useEffect(() => {
+    const fetchSchools = async () => {
+      try {
+        const response = await schoolsApi.getAll();
+        const approvedSchools = (Array.isArray(response) ? response : (response?.items || []))
+          .filter((s: any) => s.status === 1); // 1 = Approved
+        
+        if (approvedSchools.length > 0) {
+          setSchools(approvedSchools.map((s: any) => ({
+            name: s.name,
+            icon: 'School'
+          })));
+          setTotalCount(approvedSchools.length);
+        } else {
+          setSchools(TRUST_LOGOS_FALLBACK);
+          setTotalCount(4);
+        }
+      } catch (error) {
+        console.error('Error loading schools for Landing Page:', error);
+        setSchools(TRUST_LOGOS_FALLBACK);
+        setTotalCount(4);
+      }
+    };
+    fetchSchools();
+  }, []);
   return (
-    <section id="b2b" className="py-24 bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 transition-colors duration-300 border-t border-b border-slate-200 dark:border-slate-900">
+    <section id="b2b" className="py-24 bg-muted/30 text-foreground transition-colors duration-300 border-t border-b border-border">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         
         {/* Main Section Grid (Z-Pattern) */}
@@ -43,13 +72,13 @@ export function B2bSection() {
               <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-brand-100 dark:bg-brand-900/30 text-brand-700 dark:text-brand-400 text-xs font-bold uppercase tracking-wider">
                 Dành cho Trường học & Tổ chức Giáo dục
               </div>
-              <h2 className="text-4xl md:text-5xl font-black tracking-tight text-slate-950 dark:text-white leading-tight">
+              <h2 className="text-4xl md:text-5xl font-black tracking-tight text-foreground leading-tight">
                 Giải pháp toàn diện cho <br />
-                <span className="text-transparent bg-clip-text bg-gradient-to-r from-brand-600 to-brand-600 dark:from-brand-400 dark:to-brand-400">
+                <span className="text-transparent bg-clip-text bg-gradient-to-r from-brand-500 to-brand-600">
                   Nhà trường thời đại số
                 </span>
               </h2>
-              <p className="text-lg text-slate-650 dark:text-slate-400 leading-relaxed font-medium">
+              <p className="text-lg text-muted-foreground leading-relaxed font-medium">
                 StemFlow cung cấp hệ quản trị học tập (LMS) được thiết kế chuyên biệt cho môn Công nghệ và STEM. Giúp nhà trường tối ưu hóa chi phí và nâng cao chất lượng thực hành lập trình phần cứng.
               </p>
             </div>
@@ -62,8 +91,8 @@ export function B2bSection() {
                     <Icon name={adv.icon} size={20} />
                   </div>
                   <div>
-                    <h3 className="text-lg font-bold text-slate-950 dark:text-white mb-1">{adv.title}</h3>
-                    <p className="text-sm text-slate-650 dark:text-slate-400 leading-relaxed font-medium">{adv.desc}</p>
+                    <h3 className="text-lg font-bold text-foreground mb-1">{adv.title}</h3>
+                    <p className="text-sm text-muted-foreground leading-relaxed font-medium">{adv.desc}</p>
                   </div>
                 </div>
               ))}
@@ -73,7 +102,7 @@ export function B2bSection() {
             <div className="pt-2">
               <a 
                 href="mailto:contact@stemflow.vn" 
-                className="inline-flex items-center gap-2 bg-slate-900 hover:bg-slate-800 dark:bg-brand-600 dark:hover:bg-brand-500 text-white px-6 py-3.5 rounded-xl font-bold transition-all shadow-md active:scale-95 duration-100"
+                className="inline-flex items-center gap-2 bg-brand-600 hover:bg-brand-500 text-white px-6 py-3.5 rounded-xl font-bold transition-all shadow-md active:scale-95 duration-100"
               >
                 <Icon name="Mail" size={18} />
                 Liên hệ đăng ký trải nghiệm School Kit
@@ -87,15 +116,15 @@ export function B2bSection() {
             <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-80 h-80 bg-indigo-500/10 dark:bg-brand-600/10 rounded-full blur-[100px] pointer-events-none"></div>
             
             {/* The Dashboard Mockup */}
-            <div className="relative bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-850 rounded-2xl overflow-hidden shadow-2xl flex flex-col h-[420px]">
+            <div className="relative bg-card border border-border rounded-2xl overflow-hidden shadow-2xl flex flex-col h-[420px]">
               
               {/* Fake dashboard header */}
-              <div className="bg-slate-50 dark:bg-slate-950/80 px-5 py-4 border-b border-slate-200 dark:border-slate-850 flex items-center justify-between">
+              <div className="bg-muted/80 px-5 py-4 border-b border-border flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <div className="w-2.5 h-2.5 rounded-full bg-emerald-500"></div>
                   <div>
-                    <h4 className="text-xs font-bold text-slate-900 dark:text-white">Lớp 11A1 - Dự án Hệ thống IoT</h4>
-                    <p className="text-[10px] text-slate-500">32 học sinh • Lập trình ESP32</p>
+                    <h4 className="text-xs font-bold text-foreground">Lớp 11A1 - Dự án Hệ thống IoT</h4>
+                    <p className="text-[10px] text-muted-foreground">32 học sinh • Lập trình ESP32</p>
                   </div>
                 </div>
                 
@@ -109,14 +138,14 @@ export function B2bSection() {
               <div className="flex-1 p-4 overflow-y-auto space-y-3 font-sans select-none">
                 
                 {/* Student 1 */}
-                <div className="border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 p-3.5 rounded-xl flex items-center justify-between gap-4">
+                <div className="border border-border bg-background/55 p-3.5 rounded-xl flex items-center justify-between gap-4">
                   <div className="flex items-center gap-3 min-w-0">
                     <div className="w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 font-bold flex items-center justify-center text-xs">
                       HA
                     </div>
                     <div className="min-w-0">
-                      <div className="text-xs font-bold text-slate-900 dark:text-white truncate">Hoàng Minh Anh</div>
-                      <div className="text-[10px] text-slate-500 font-mono">Bài 04: Soil moisture pump setup</div>
+                      <div className="text-xs font-bold text-foreground truncate">Hoàng Minh Anh</div>
+                      <div className="text-[10px] text-muted-foreground font-mono">Bài 04: Soil moisture pump setup</div>
                     </div>
                   </div>
                   <div className="flex items-center gap-3 flex-shrink-0">
@@ -128,14 +157,14 @@ export function B2bSection() {
                 </div>
 
                 {/* Student 2 */}
-                <div className="border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 p-3.5 rounded-xl flex items-center justify-between gap-4">
+                <div className="border border-border bg-background/55 p-3.5 rounded-xl flex items-center justify-between gap-4">
                   <div className="flex items-center gap-3 min-w-0">
                     <div className="w-8 h-8 rounded-full bg-purple-100 dark:bg-purple-900 text-purple-700 dark:text-purple-300 font-bold flex items-center justify-center text-xs">
                       TD
                     </div>
                     <div className="min-w-0">
-                      <div className="text-xs font-bold text-slate-900 dark:text-white truncate">Trần Tiến Dũng</div>
-                      <div className="text-[10px] text-slate-500 font-mono">Bài 04: Soil moisture pump setup</div>
+                      <div className="text-xs font-bold text-foreground truncate">Trần Tiến Dũng</div>
+                      <div className="text-[10px] text-muted-foreground font-mono">Bài 04: Soil moisture pump setup</div>
                     </div>
                   </div>
                   <div className="flex items-center gap-3 flex-shrink-0">
@@ -147,14 +176,14 @@ export function B2bSection() {
                 </div>
 
                 {/* Student 3 */}
-                <div className="border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 p-3.5 rounded-xl flex items-center justify-between gap-4">
+                <div className="border border-border bg-background/55 p-3.5 rounded-xl flex items-center justify-between gap-4">
                   <div className="flex items-center gap-3 min-w-0">
                     <div className="w-8 h-8 rounded-full bg-emerald-100 dark:bg-emerald-900 text-emerald-700 dark:text-emerald-300 font-bold flex items-center justify-center text-xs">
                       ML
                     </div>
                     <div className="min-w-0">
-                      <div className="text-xs font-bold text-slate-900 dark:text-white truncate">Mai Phương Linh</div>
-                      <div className="text-[10px] text-slate-500 font-mono">Bài 04: Soil moisture pump setup</div>
+                      <div className="text-xs font-bold text-foreground truncate">Mai Phương Linh</div>
+                      <div className="text-[10px] text-muted-foreground font-mono">Bài 04: Soil moisture pump setup</div>
                     </div>
                   </div>
                   <div className="flex items-center gap-3 flex-shrink-0">
@@ -168,17 +197,17 @@ export function B2bSection() {
               </div>
 
               {/* Classroom Stats Footer */}
-              <div className="bg-slate-55 dark:bg-slate-950 border-t border-slate-200 dark:border-slate-850 p-4 grid grid-cols-3 gap-2 text-center text-xs font-sans">
-                <div className="border-r border-slate-200 dark:border-slate-800">
-                  <div className="text-slate-500 text-[10px]">Tỷ lệ hoàn thành</div>
-                  <div className="font-extrabold text-slate-900 dark:text-white text-base">94.2%</div>
+              <div className="bg-muted/80 border-t border-border p-4 grid grid-cols-3 gap-2 text-center text-xs font-sans">
+                <div className="border-r border-border">
+                  <div className="text-muted-foreground text-[10px]">Tỷ lệ hoàn thành</div>
+                  <div className="font-extrabold text-foreground text-base">94.2%</div>
                 </div>
-                <div className="border-r border-slate-200 dark:border-slate-800">
-                  <div className="text-slate-500 text-[10px]">Điểm trung bình</div>
+                <div className="border-r border-border">
+                  <div className="text-muted-foreground text-[10px]">Điểm trung bình</div>
                   <div className="font-extrabold text-blue-600 dark:text-blue-400 text-base">8.6/10</div>
                 </div>
                 <div>
-                  <div className="text-slate-500 text-[10px]">Yêu cầu trợ giúp</div>
+                  <div className="text-muted-foreground text-[10px]">Yêu cầu trợ giúp</div>
                   <div className="font-extrabold text-rose-500 text-base">1 bài</div>
                 </div>
               </div>
@@ -189,18 +218,21 @@ export function B2bSection() {
         </div>
 
         {/* Social Proof Strip */}
-        <div className="border-t border-slate-200 dark:border-slate-850 pt-16 text-center">
-          <p className="text-sm font-semibold tracking-wider text-slate-550 dark:text-slate-400 uppercase mb-8">
-            Tin dùng bởi các trường THPT và tổ chức giáo dục hàng đầu tại Việt Nam
+        <div className="border-t border-border pt-16 text-center">
+          <p className="text-sm font-semibold tracking-wider text-muted-foreground uppercase mb-8">
+            Tin dùng bởi các trường THPT và tổ chức giáo dục hàng đầu tại Việt Nam ({totalCount > 0 ? `${totalCount}+` : 'Nhiều'} trường)
           </p>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-8 items-center justify-center">
-            {TRUST_LOGOS.map((logo, index) => (
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-8 items-center justify-center max-w-4xl mx-auto">
+            {schools.slice(0, 8).map((logo, index) => (
               <div 
                 key={index}
-                className="flex items-center justify-center gap-2.5 text-slate-650 dark:text-slate-350 hover:text-brand-500 dark:hover:text-brand-400 transition-colors group cursor-default"
+                className="flex items-center justify-center gap-2.5 text-muted-foreground hover:text-brand-500 dark:hover:text-brand-400 transition-all duration-200 group cursor-default p-3 bg-card border border-border/50 rounded-xl shadow-sm hover:shadow-md hover:border-brand-500/30"
               >
-                <Icon name={logo.icon} className="transition-transform group-hover:scale-110 duration-200" size={20} />
-                <span className="text-sm font-bold tracking-tight text-left leading-tight max-w-[160px] truncate-2-lines">
+                <Icon name={logo.icon} className="transition-transform group-hover:scale-110 duration-200 text-brand-500 shrink-0" size={18} />
+                <span 
+                  className="text-xs font-bold tracking-tight text-left leading-tight text-foreground truncate max-w-[140px]"
+                  title={logo.name}
+                >
                   {logo.name}
                 </span>
               </div>

@@ -66,11 +66,21 @@ function ToastContainer({ toasts, onDismiss }: { toasts: Toast[]; onDismiss: (id
 export const ClassesPage = () => {
   const queryClient = useQueryClient();
   const [searchTerm, setSearchTerm] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(ITEMS_PER_PAGE);
   const [toasts, setToasts] = useState<Toast[]>([]);
   const [createError, setCreateError] = useState<string | null>(null);
   const [updateError, setUpdateError] = useState<string | null>(null);
+
+  // Debounce search term (400ms) & reset page to 1
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(searchTerm);
+      setCurrentPage(1);
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
 
   // Toast notification
   const showToast = (message: string, type: ToastType = 'success') => {
@@ -100,11 +110,11 @@ export const ClassesPage = () => {
 
   // Fetch classes
   const { data: classesData, isLoading, refetch, error: fetchError } = useQuery({
-    queryKey: ['classes', currentPage, pageSize, searchTerm, courseFilter],
+    queryKey: ['classes', currentPage, pageSize, debouncedSearch, courseFilter],
     queryFn: () => classesApi.getAll({
       pageNumber: currentPage,
       pageSize: pageSize,
-      searchTerm: searchTerm,
+      searchTerm: debouncedSearch,
       courseId: courseFilter ? Number(courseFilter) : undefined,
     }),
   });

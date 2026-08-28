@@ -157,7 +157,7 @@ function getInitialFormData(
       (initialLab.simulationMode === 'custom_sandbox'
         ? 'custom_sandbox'
         : 'wokwi_iframe') as LabSimulationMode,
-    starterCode: initialLab.starterCode || defaultStarterCode,
+    starterCode: initialLab.starterCode ?? defaultStarterCode,
     circuitConfig: initialLab.circuitConfig ?? defaultCircuitConfig,
   };
 }

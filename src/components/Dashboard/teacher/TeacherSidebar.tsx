@@ -5,12 +5,14 @@ import { getSidebarItems } from '../SidebarItems';
 import { useAuthStore } from '@/stores/authStore';
 import { useSidebarStore } from '@/stores/sidebarStore';
 import { PanelLeftClose, PanelLeftOpen, User, X } from 'lucide-react';
+import { useUnreadNotificationsCount } from '@/hooks/useUnreadNotificationsCount';
 
 export const TeacherSidebar = ({ isDesktop }: { isDesktop: boolean }) => {
   const location = useLocation();
   const { user } = useAuthStore();
   const { sidebarOpen, setSidebarOpen, sidebarCollapsed, toggleSidebar } = useSidebarStore();
-  
+  const unreadNotificationsCount = useUnreadNotificationsCount();
+
   const sidebarItems = getSidebarItems('teacher');
   
   const isSidebarVisible = isDesktop ? !sidebarCollapsed : sidebarOpen;
@@ -78,7 +80,15 @@ export const TeacherSidebar = ({ isDesktop }: { isDesktop: boolean }) => {
                   {isActive && (
                     <div className="absolute left-0 top-0 bottom-0 w-1 bg-[#0f4c5c] rounded-r-md"></div>
                   )}
-                  <Icon name={item.icon} className="w-5 h-5 shrink-0" />
+                  <span className="relative shrink-0">
+                    <Icon name={item.icon} className="w-5 h-5 shrink-0" />
+                    {item.icon === 'Bell' && unreadNotificationsCount > 0 && (
+                      <span className="absolute -top-1 -right-1 flex h-2.5 w-2.5">
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-500 opacity-75" />
+                        <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-red-500" />
+                      </span>
+                    )}
+                  </span>
                   <span className="truncate">{item.label}</span>
                 </Link>
               </li>

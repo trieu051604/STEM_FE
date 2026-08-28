@@ -197,7 +197,7 @@ export const LabSandboxPage = () => {
         ? labResponse.circuitConfig.parts.map((p: any) => ({ ...p, pinMapping: {} }))
         : defaultComponents;
       const starterConnections = labResponse.circuitConfig?.connections || [];
-      let resolvedCode = labResponse.starterCode || defaultStarterCode;
+      let resolvedCode = labResponse.starterCode ?? defaultStarterCode;
       let resolvedComponents = starterComponents;
       let resolvedConnections = starterConnections;
       let resolvedSensorScenario: SensorScenarioConfig = labResponse.circuitConfig?.sensorScenario ?? { sensors: {} };

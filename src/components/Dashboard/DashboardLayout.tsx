@@ -19,6 +19,7 @@ import {
   PanelLeftOpen,
 } from 'lucide-react';
 import { useSidebarStore } from '@/stores/sidebarStore';
+import { useUnreadNotificationsCount } from '@/hooks/useUnreadNotificationsCount';
 
 export const StandardDashboardLayout = () => {
   const location = useLocation();
@@ -32,6 +33,7 @@ export const StandardDashboardLayout = () => {
 
   const sidebarItems = getSidebarItems(user?.role || 'student');
   const isMasterAdmin = user?.role === 'master_admin';
+  const unreadNotificationsCount = useUnreadNotificationsCount();
 
   const roleLabels: Record<string, string> = {
     master_admin: 'Quản trị hệ thống',
@@ -132,7 +134,15 @@ export const StandardDashboardLayout = () => {
                     {isActive && (
                       <div className="absolute left-0 top-0 bottom-0 w-1 bg-[#0f4c5c] rounded-r-md"></div>
                     )}
-                    <Icon name={item.icon} className="w-5 h-5 shrink-0" />
+                    <span className="relative shrink-0">
+                      <Icon name={item.icon} className="w-5 h-5 shrink-0" />
+                      {item.icon === 'Bell' && unreadNotificationsCount > 0 && (
+                        <span className="absolute -top-1 -right-1 flex h-2.5 w-2.5">
+                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-500 opacity-75" />
+                          <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-red-500" />
+                        </span>
+                      )}
+                    </span>
                     <span className="truncate">{item.label}</span>
                   </Link>
                 </li>

@@ -533,8 +533,14 @@ function normalizeSchedule(source: Record<string, unknown>): ScheduleResponse {
     className: (pick<string>(source, 'className', 'ClassName')) ?? '',
     lessonId: toNumberValue(pick(source, 'lessonId', 'LessonId')),
     lessonTitle: (pick<string>(source, 'lessonTitle', 'LessonTitle')) ?? undefined,
-    startTime: (pick<string>(source, 'startTime', 'StartTime')) ?? '',
-    endTime: (pick<string>(source, 'endTime', 'EndTime')) ?? '',
+    // The only caller, schedulesApi.getByClass, hits GET /Schedules/class/{id}
+    // which returns ScheduleCalendarResponse (fields Start/End on the C#
+    // side, "start"/"end" on the wire) — not the StartTime/EndTime shape this
+    // interface's name implies. Reading "startTime"/"StartTime" here always
+    // missed, so `new Date('')` produced "Invalid Date" on every schedule
+    // option in the "Gắn vào buổi dạy" dropdown.
+    startTime: (pick<string>(source, 'start', 'Start')) ?? '',
+    endTime: (pick<string>(source, 'end', 'End')) ?? '',
     createdAt: (pick<string>(source, 'createdAt', 'CreatedAt')) ?? '',
     updatedAt: (pick<string>(source, 'updatedAt', 'UpdatedAt')) ?? '',
   };

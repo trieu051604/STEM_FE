@@ -171,7 +171,7 @@ export const CourseDetailPage = ({ courseId, onBack }: { courseId: number; onBac
   // Create lesson mutation
   const createLessonMutation = useMutation({
     mutationFn: async ({ moduleId, data }: { moduleId: number; data: LessonFormData }) => {
-      return lessonsApi.create({ moduleId, ...data });
+      return lessonsApi.create({ moduleId, courseId, ...data });
     },
     onSuccess: (_, { moduleId }) => {
       queryClient.invalidateQueries({ queryKey: ['lessons', moduleId] });
@@ -244,7 +244,7 @@ export const CourseDetailPage = ({ courseId, onBack }: { courseId: number; onBac
 
       {/* Course Stats */}
       {course && (
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
           <div className="bg-card rounded-xl border border-border p-4">
             <div className="flex items-center gap-2 text-muted-foreground mb-1">
               <BookOpen className="w-4 h-4" />
@@ -267,13 +267,6 @@ export const CourseDetailPage = ({ courseId, onBack }: { courseId: number; onBac
               <span className="text-sm">Syllabus</span>
             </div>
             <p className="text-sm font-medium">{course.syllabusTitle || '—'}</p>
-          </div>
-          <div className="bg-card rounded-xl border border-border p-4">
-            <div className="flex items-center gap-2 text-muted-foreground mb-1">
-              <XCircle className="w-4 h-4" />
-              <span className="text-sm">Trường</span>
-            </div>
-            <p className="text-sm font-medium">{course.schoolName || 'Tất cả'}</p>
           </div>
         </div>
       )}
@@ -454,7 +447,7 @@ export const CourseDetailPage = ({ courseId, onBack }: { courseId: number; onBac
                   </p>
                   <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 p-4 rounded-lg text-sm leading-relaxed">
                     <ul className="list-disc pl-5 space-y-1">
-                      {selectedModule.input.split('\n').filter(Boolean).map((item, idx) => (
+                      {selectedModule.input.split('\n').filter(Boolean).map((item: string, idx: number) => (
                         <li key={idx}>{item.trim()}</li>
                       ))}
                     </ul>
@@ -470,7 +463,7 @@ export const CourseDetailPage = ({ courseId, onBack }: { courseId: number; onBac
                   </p>
                   <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 p-4 rounded-lg text-sm leading-relaxed">
                     <ul className="list-disc pl-5 space-y-1">
-                      {selectedModule.output.split('\n').filter(Boolean).map((item, idx) => (
+                      {selectedModule.output.split('\n').filter(Boolean).map((item: string, idx: number) => (
                         <li key={idx}>{item.trim()}</li>
                       ))}
                     </ul>
@@ -617,7 +610,7 @@ export const CourseDetailPage = ({ courseId, onBack }: { courseId: number; onBac
                   </p>
                   <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 p-4 rounded-lg text-sm leading-relaxed">
                     <ul className="list-disc pl-5 space-y-1">
-                      {selectedLesson.input.split('\n').filter(Boolean).map((item, idx) => (
+                      {selectedLesson.input.split('\n').filter(Boolean).map((item: string, idx: number) => (
                         <li key={idx}>{item.trim()}</li>
                       ))}
                     </ul>
@@ -633,7 +626,7 @@ export const CourseDetailPage = ({ courseId, onBack }: { courseId: number; onBac
                   </p>
                   <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 p-4 rounded-lg text-sm leading-relaxed">
                     <ul className="list-disc pl-5 space-y-1">
-                      {selectedLesson.output.split('\n').filter(Boolean).map((item, idx) => (
+                      {selectedLesson.output.split('\n').filter(Boolean).map((item: string, idx: number) => (
                         <li key={idx}>{item.trim()}</li>
                       ))}
                     </ul>

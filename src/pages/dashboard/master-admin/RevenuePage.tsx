@@ -9,7 +9,7 @@ import {
   Loader2,
 } from 'lucide-react';
 import { revenueApi, RevenueStatsResponse } from '@/services/revenueApi';
-import { useAuthStore } from '@/stores/authStore';
+import { useUIStore } from '@/stores/uiStore';
 
 const formatCurrency = (amount: number) => {
   return new Intl.NumberFormat('vi-VN', {
@@ -24,7 +24,8 @@ const formatNumber = (num: number) => {
 };
 
 export default function RevenuePage() {
-  const { isDarkMode } = useAuthStore();
+  const { theme } = useUIStore();
+  const isDarkMode = theme === 'dark';
   const [stats, setStats] = useState<RevenueStatsResponse['data'] | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);

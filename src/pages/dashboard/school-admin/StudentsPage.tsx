@@ -617,9 +617,9 @@ export const StudentsPage = () => {
                 <div className="bg-accent/50 rounded-lg p-3">
                   <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
                     <BookOpen className="w-4 h-4" />
-                    Bài tập đã nộp
+                    Chứng chỉ đạt được
                   </div>
-                  <p className="text-2xl font-bold">{selectedStudent.totalSubmissions || 0}</p>
+                  <p className="text-2xl font-bold">{selectedStudent.certificatesEarned || 0}</p>
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-4 pt-2">

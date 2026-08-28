@@ -629,7 +629,7 @@ function normalizeAttendanceRecord(source: Record<string, unknown>): AttendanceR
     studentName: (pick<string>(source, 'studentName', 'StudentName')) ?? '',
     studentEmail: (pick<string>(source, 'studentEmail', 'StudentEmail')) ?? '',
     attendanceDate: (pick<string>(source, 'attendanceDate', 'AttendanceDate')) ?? '',
-    status: (pick<string>(source, 'status', 'Status') as AttendanceStatus | undefined) ?? 'Present',
+    status: pick<string>(source, 'status', 'Status') as AttendanceStatus,
     note: pick<string>(source, 'note', 'Note'),
     markedById: toNumberValue(pick(source, 'markedById', 'MarkedById')),
     markedByName: (pick<string>(source, 'markedByName', 'MarkedByName')) ?? '',
@@ -653,13 +653,22 @@ export const attendanceApi = {
     const response = await api.get('/Attendance', { params: queryParams });
     const data = unwrapApiData<Record<string, unknown>>(response.data) ?? {};
     const items = pick<unknown[]>(data, 'items', 'Items') ?? [];
+    // Only records with a real status represent an actual attendance mark.
+    // A record without one (e.g. a placeholder row for a session that hasn't
+    // happened yet) must NOT be defaulted to 'Present' — it means the student
+    // has not been marked, and callers rely on its absence from this array to
+    // render that state correctly.
+    const markedItems = items.filter((item) => {
+      const raw = pick<string>(item as Record<string, unknown>, 'status', 'Status');
+      return raw !== undefined && raw !== null && String(raw).trim() !== '';
+    });
 
     return {
       totalCount: toNumberValue(pick(data, 'totalCount', 'TotalCount')),
       pageNumber: toNumberValue(pick(data, 'pageNumber', 'PageNumber')),
       pageSize: toNumberValue(pick(data, 'pageSize', 'PageSize')),
       totalPages: toNumberValue(pick(data, 'totalPages', 'TotalPages')),
-      items: items.map((item) => normalizeAttendanceRecord(item as Record<string, unknown>)),
+      items: markedItems.map((item) => normalizeAttendanceRecord(item as Record<string, unknown>)),
     };
   },
   createAttendance: async (
@@ -1210,6 +1219,10 @@ export interface LabClassEntity {
   courseTitle: string;
   schoolId: number;
   teacherId: number;
+  // Buổi dạy (Schedule) cụ thể mà lab được gán cho lớp này, nếu có — dùng để
+  // suy ra lab này đang phục vụ bài học nào qua Schedule.lessonId, vì Lab
+  // không tự lưu lessonId của nó.
+  scheduleId?: number;
 }
 
 export interface LabStatsEntity {
@@ -1601,6 +1614,7 @@ function normalizeLabClass(value: unknown): LabClassEntity {
     courseTitle: toStringValue(pick(source, 'courseTitle', 'CourseTitle')),
     schoolId: toNumberValue(pick(source, 'schoolId', 'SchoolId')),
     teacherId: toNumberValue(pick(source, 'teacherId', 'TeacherId')),
+    scheduleId: toNumberValue(pick(source, 'scheduleId', 'ScheduleId')) || undefined,
   };
 }
 

@@ -3,7 +3,6 @@ import { AlertCircle, BookOpen, ChevronDown, Plus, PlusCircle, RefreshCw } from 
 import { useAuthStore } from '@/stores/authStore';
 import { useToast } from '@/components/ToastProvider';
 import { assignmentsApi, classesApi, labsApi, usersApi } from '@/services/dashboardApi';
-import { lessonsApi } from '@/services/curriculumApi';
 import { schedulesApi } from '@/services/dashboardApi';
 import type {
   AssignmentEntity,
@@ -197,7 +196,6 @@ export const VirtualLabPage = () => {
   const [formError, setFormError] = useState<string | null>(null);
   const [managedClasses, setManagedClasses] = useState<ManagedClassOption[]>([]);
   const [assignmentOptions, setAssignmentOptions] = useState<LabAssignmentOption[]>([]);
-  const [lessonOptions, setLessonOptions] = useState<LabLessonOption[]>([]);
   const [scheduleOptions, setScheduleOptions] = useState<LabLessonOption[]>([]);
   const [componentOptions, setComponentOptions] = useState<ComponentGlueRegistryEntity[]>([]);
   const [isMetaLoading, setIsMetaLoading] = useState(false);

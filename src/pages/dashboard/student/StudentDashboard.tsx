@@ -105,7 +105,7 @@ export function StudentDashboard() {
   };
 
   // Active tab for assignment types
-  const [activeTab, setActiveTab] = useState<'quiz' | 'text_report' | 'practical_simulation'>('quiz');
+  const [activeTab, setActiveTab] = useState<'quiz' | 'text_report'>('quiz');
 
   // Get assignments by type
   const quizAssignments = useMemo(() => {
@@ -117,12 +117,6 @@ export function StudentDashboard() {
   const reportAssignments = useMemo(() => {
     return assignmentsWithOverdue
       .filter(a => a.assignmentType === 'text_report')
-      .slice(0, 5);
-  }, [assignmentsWithOverdue]);
-
-  const simulationAssignments = useMemo(() => {
-    return assignmentsWithOverdue
-      .filter(a => a.assignmentType === 'practical_simulation')
       .slice(0, 5);
   }, [assignmentsWithOverdue]);
 
@@ -186,7 +180,7 @@ export function StudentDashboard() {
       )}
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
+      <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
         <StatCard
           icon={<BookOpen className="w-5 h-5" />}
           iconBg="bg-blue-100 dark:bg-blue-900/30"
@@ -194,15 +188,6 @@ export function StudentDashboard() {
           value={stats.enrolledClasses}
           label="Lớp học"
           isLoading={classesLoading}
-        />
-        <StatCard
-          icon={<Clock className="w-5 h-5" />}
-          iconBg={stats.pendingAssignments > 0 ? "bg-amber-100 dark:bg-amber-900/30" : "bg-gray-100 dark:bg-gray-800"}
-          iconColor={stats.pendingAssignments > 0 ? "text-amber-600 dark:text-amber-400" : "text-gray-600 dark:text-gray-400"}
-          value={stats.pendingAssignments}
-          label="Cần nộp"
-          highlight={stats.pendingAssignments > 0}
-          isLoading={assignmentsLoading}
         />
         <StatCard
           icon={<FileText className="w-5 h-5" />}
@@ -218,14 +203,6 @@ export function StudentDashboard() {
           iconColor="text-green-600 dark:text-green-400"
           value={stats.gradedAssignments}
           label="Đã chấm"
-          isLoading={assignmentsLoading}
-        />
-        <StatCard
-          icon={<Award className="w-5 h-5" />}
-          iconBg="bg-purple-100 dark:bg-purple-900/30"
-          iconColor="text-purple-600 dark:text-purple-400"
-          value={stats.averageScore ? `${stats.averageScore.toFixed(0)}%` : '-'}
-          label="Điểm TB"
           isLoading={assignmentsLoading}
         />
       </div>
@@ -350,28 +327,6 @@ export function StudentDashboard() {
               </span>
             </span>
           </button>
-          <button
-            onClick={() => setActiveTab('practical_simulation')}
-            className={cn(
-              "relative px-4 py-2.5 rounded-xl text-sm font-semibold transition-all duration-300",
-              activeTab === 'practical_simulation' 
-                ? "bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-lg shadow-purple-500/30" 
-                : "bg-muted/50 text-muted-foreground hover:bg-muted hover:text-foreground border border-transparent"
-            )}
-          >
-            <span className="flex items-center gap-2">
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" />
-              </svg>
-              Mô phỏng
-              <span className={cn(
-                "ml-1 px-1.5 py-0.5 rounded-full text-xs",
-                activeTab === 'practical_simulation' ? "bg-white/20" : "bg-muted"
-              )}>
-                {simulationAssignments.length}
-              </span>
-            </span>
-          </button>
         </div>
 
         {/* Tab Content */}
@@ -395,15 +350,6 @@ export function StudentDashboard() {
                 <EmptyState type="text_report" />
               ) : (
                 reportAssignments.map((assignment) => (
-                  <AssignmentRow key={assignment.id} assignment={assignment} />
-                ))
-              )
-            )}
-            {activeTab === 'practical_simulation' && (
-              simulationAssignments.length === 0 ? (
-                <EmptyState type="practical_simulation" />
-              ) : (
-                simulationAssignments.map((assignment) => (
                   <AssignmentRow key={assignment.id} assignment={assignment} />
                 ))
               )
@@ -597,11 +543,10 @@ function AssignmentRow({ assignment }: { assignment: StudentAssignment }) {
 export default StudentDashboard;
 
 // Empty State Component
-function EmptyState({ type }: { type: 'quiz' | 'text_report' | 'practical_simulation' }) {
+function EmptyState({ type }: { type: 'quiz' | 'text_report' }) {
   const config = {
     quiz: { emoji: '📝', title: 'Không có bài Quiz nào', subtitle: 'Bài Quiz sẽ xuất hiện khi được giao' },
     text_report: { emoji: '📄', title: 'Không có bài Báo cáo nào', subtitle: 'Bài Báo cáo sẽ xuất hiện khi được giao' },
-    practical_simulation: { emoji: '🧪', title: 'Không có bài Mô phỏng nào', subtitle: 'Bài Mô phỏng sẽ xuất hiện khi được giao' },
   };
 
   const { emoji, title, subtitle } = config[type];

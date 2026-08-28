@@ -192,9 +192,17 @@ export const SyllabusPage = () => {
       header: 'Tên Chương trình',
       render: (s) => (
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
-            <BookOpen className="w-5 h-5 text-primary" />
-          </div>
+          {s.thumbnailUrl ? (
+            <img
+              src={s.thumbnailUrl}
+              alt={s.title}
+              className="w-10 h-10 rounded-lg object-cover shrink-0"
+            />
+          ) : (
+            <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+              <BookOpen className="w-5 h-5 text-primary" />
+            </div>
+          )}
           <div>
             <p className="font-medium">{s.title}</p>
             <p className="text-xs text-muted-foreground line-clamp-1 max-w-[200px]">
@@ -425,9 +433,17 @@ export const SyllabusPage = () => {
         {selectedSyllabus && (
           <div className="space-y-4">
             <div className="flex items-center gap-4 pb-4 border-b border-border">
-              <div className="w-16 h-16 rounded-xl bg-primary/10 flex items-center justify-center">
-                <BookOpen className="w-8 h-8 text-primary" />
-              </div>
+              {selectedSyllabus.thumbnailUrl ? (
+                <img
+                  src={selectedSyllabus.thumbnailUrl}
+                  alt={selectedSyllabus.title}
+                  className="w-16 h-16 rounded-xl object-cover shrink-0"
+                />
+              ) : (
+                <div className="w-16 h-16 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+                  <BookOpen className="w-8 h-8 text-primary" />
+                </div>
+              )}
               <div>
                 <h3 className="text-lg font-semibold">{selectedSyllabus.title}</h3>
                 <span className={`px-2 py-0.5 rounded-full text-sm font-medium ${statusColors[selectedSyllabus.status]}`}>

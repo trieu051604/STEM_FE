@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { FileText, Cpu, CheckSquare, Sparkles } from 'lucide-react';
+import { FileText, CheckSquare, Sparkles } from 'lucide-react';
 import { AssignmentEntity } from '@/services/dashboardApi';
 import { cn } from '@/lib/utils';
 
@@ -29,16 +29,6 @@ const types = [
     glowClass: 'group-hover:shadow-orange-500/30',
     featureDot: 'bg-orange-500',
   },
-  {
-    id: 'practical_simulation' as const,
-    title: 'Thực hành',
-    description: 'Sandbox linh kiện',
-    features: ['Auto-check + chấm tay', 'Tích hợp mạch điện tử', 'Kịch bản kiểm thử linh hoạt'],
-    icon: <Cpu className="w-10 h-10" />,
-    gradient: 'from-purple-500 to-pink-500',
-    glowClass: 'group-hover:shadow-purple-500/30',
-    featureDot: 'bg-purple-500',
-  },
 ];
 
 export const AssignmentTypeSelector: React.FC<AssignmentTypeSelectorProps> = ({ onSelect }) => {
@@ -53,7 +43,7 @@ export const AssignmentTypeSelector: React.FC<AssignmentTypeSelectorProps> = ({ 
         <p className="text-muted-foreground max-w-md mx-auto">Mỗi loại bài tập mang đến trải nghiệm học tập riêng biệt với công cụ phù hợp.</p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {types.map((type, index) => (
           <motion.div
             key={type.id}

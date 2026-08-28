@@ -16,44 +16,44 @@ const MOCK_CODE_LINES = [
 
 export function HeroSection() {
   return (
-    <section className="relative pt-24 pb-32 overflow-hidden bg-slate-950 border-b border-slate-900">
-      
+    <section className="relative pt-24 pb-32 overflow-hidden bg-white dark:bg-slate-950 border-b border-slate-200 dark:border-slate-900 transition-colors duration-300">
+
       {/* CSS Dot Grid Background */}
-      <div className="absolute inset-0 z-0 bg-[radial-gradient(#334155_1px,transparent_1px)] [background-size:24px_24px] opacity-35"></div>
-      
+      <div className="absolute inset-0 z-0 bg-[radial-gradient(#94a3b8_1px,transparent_1px)] [background-size:24px_24px] opacity-[0.08] dark:opacity-35"></div>
+
       {/* Glowing Ambient Blurs */}
       <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-brand-600/10 rounded-full blur-[120px] pointer-events-none"></div>
       <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-emerald-500/5 rounded-full blur-[120px] pointer-events-none"></div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
         <div className="grid lg:grid-cols-2 gap-12 items-center">
-          
+
           {/* Left Side Copy */}
           <div className="space-y-6">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-slate-900 border border-slate-800 text-blue-400 text-xs font-mono">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-brand-50 dark:bg-slate-900 border border-brand-200 dark:border-slate-800 text-brand-600 dark:text-blue-400 text-xs font-mono">
               <span className="w-2.5 h-2.5 rounded-full bg-brand-500 animate-pulse"></span>
               v2.0 Simulation Engine
             </div>
-            <h1 className="text-5xl md:text-6xl font-extrabold text-white leading-[1.1] tracking-tight">
+            <h1 className="text-5xl md:text-6xl font-extrabold text-slate-950 dark:text-white leading-[1.1] tracking-tight">
               Biến ý tưởng thành hiện thực. <br />
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-brand-400 to-brand-500">
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-brand-600 to-brand-700 dark:from-brand-400 dark:to-brand-500">
                 Không lo cháy nổ.
               </span>
             </h1>
-            <p className="text-lg text-slate-400 leading-relaxed max-w-lg">
+            <p className="text-lg text-slate-600 dark:text-slate-400 leading-relaxed max-w-lg">
               Hệ sinh thái thực hành STEM trực tuyến kết hợp lập trình và mô phỏng phần cứng. Viết code, nối dây và chạy thử mạch điện tử y như thật ngay trên trình duyệt.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 pt-2">
-              <Link 
-                to="/register" 
+              <Link
+                to="/register"
                 className="inline-flex justify-center items-center gap-2 bg-brand-600 hover:bg-brand-500 text-white px-8 py-3.5 rounded-xl font-semibold shadow-[0_0_20px_rgba(99,102,241,0.4)] transition-all active:scale-[0.98]"
               >
                 Mở Lab Miễn phí
                 <Icon name="ArrowRight" size={18} />
               </Link>
-              <a 
-                href="#b2b" 
-                className="inline-flex justify-center items-center gap-2 bg-transparent hover:bg-slate-900 text-slate-350 border border-slate-800 px-8 py-3.5 rounded-xl font-semibold transition-all"
+              <a
+                href="#b2b"
+                className="inline-flex justify-center items-center gap-2 bg-transparent hover:bg-slate-100 dark:hover:bg-slate-900 text-slate-700 dark:text-slate-350 border border-slate-300 dark:border-slate-800 px-8 py-3.5 rounded-xl font-semibold transition-all"
               >
                 Dành cho Nhà trường
               </a>

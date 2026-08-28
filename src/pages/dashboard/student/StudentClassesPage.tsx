@@ -122,21 +122,7 @@ export default function StudentClassesPage() {
 
               <div>
                 <h3 className="text-lg font-semibold">{cls.name}</h3>
-                <p className="text-sm text-muted-foreground">{cls.courseName}</p>
-              </div>
-
-              {/* Progress Bar */}
-              <div className="space-y-2">
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Tiến độ</span>
-                  <span className="font-medium">{cls.progress}%</span>
-                </div>
-                <div className="w-full bg-muted rounded-full h-2">
-                  <div
-                    className="bg-primary rounded-full h-2 transition-all"
-                    style={{ width: `${cls.progress}%` }}
-                  />
-                </div>
+                <p className="text-sm text-muted-foreground">{cls.classCode || cls.courseName}</p>
               </div>
 
               <div className="space-y-2 text-sm">

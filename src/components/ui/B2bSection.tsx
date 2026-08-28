@@ -1,4 +1,5 @@
 import React from 'react';
+import { Link } from 'react-router-dom';
 import { Icon } from '@/components/ui/Icon';
 
 const B2B_ADVANTAGES = [
@@ -71,13 +72,13 @@ export function B2bSection() {
 
             {/* CTA Button */}
             <div className="pt-2">
-              <a 
-                href="mailto:contact@stemflow.vn" 
+              <Link
+                to="/register"
                 className="inline-flex items-center gap-2 bg-slate-900 hover:bg-slate-800 dark:bg-brand-600 dark:hover:bg-brand-500 text-white px-6 py-3.5 rounded-xl font-bold transition-all shadow-md active:scale-95 duration-100"
               >
                 <Icon name="Mail" size={18} />
                 Liên hệ đăng ký trải nghiệm School Kit
-              </a>
+              </Link>
             </div>
           </div>
 

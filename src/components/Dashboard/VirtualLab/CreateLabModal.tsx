@@ -18,8 +18,10 @@ import type {
   ValidateWokwiProjectResponse,
 } from '@/services/dashboardApi';
 
-function toLabBoardType(board: unknown): LabBoardType {
-  return board === 'esp32_devkit_v1' ? 'esp32_devkit_v1' : 'arduino_uno';
+// ESP32 DevKit V1 là board duy nhất còn được chọn ở Sandbox nội bộ — Arduino
+// Uno đã bị bỏ khỏi lựa chọn (xem BOARD_OPTIONS trong CircuitBuilderTeacherMode).
+function toLabBoardType(_board: unknown): LabBoardType {
+  return 'esp32_devkit_v1';
 }
 
 export interface LabClassOption {
@@ -56,7 +58,6 @@ interface CreateLabModalProps {
   onValidateWokwi: (value: string) => Promise<ValidateWokwiProjectResponse>;
   classOptions: LabClassOption[];
   assignmentOptions: LabAssignmentOption[];
-  lessonOptions?: LabLessonOption[];
   componentOptions?: ComponentGlueRegistryEntity[];
   isComponentsLoading?: boolean;
   componentsError?: string | null;
@@ -78,7 +79,7 @@ interface CreateLabModalProps {
 }
 
 const defaultCircuitConfig: LabCircuitConfig = {
-  board: 'arduino_uno',
+  board: 'esp32_devkit_v1',
   parts: [],
   connections: [],
 };
@@ -132,6 +133,14 @@ function getInitialFormData(
 
   if (!initialLab) return { ...defaultFormData };
 
+  // Lab không có 1 field scheduleId của riêng nó — mỗi lớp trong
+  // initialLab.classes có thể mang 1 scheduleId khác nhau (LabClassAssignment
+  // là quan hệ theo từng lớp). Form ở đây chỉ có 1 ô chọn dùng chung, nên lấy
+  // scheduleId đầu tiên tìm thấy để không hiện "Bỏ qua" một cách sai lệch —
+  // nếu không, lưu lại từ modal này (kể cả chỉ sửa field khác) sẽ vô tình xóa
+  // mất liên kết buổi dạy đang có.
+  const existingScheduleId = initialLab.classes.find((c) => c.scheduleId)?.scheduleId;
+
   return {
     title: initialLab.title,
     category: initialLab.category as LabCategory,
@@ -143,7 +152,7 @@ function getInitialFormData(
     linkedAssignmentId: initialLab.linkedAssignmentId
       ? String(initialLab.linkedAssignmentId)
       : '',
-    scheduleId: '',
+    scheduleId: existingScheduleId ? String(existingScheduleId) : '',
     simulationMode:
       (initialLab.simulationMode === 'custom_sandbox'
         ? 'custom_sandbox'
@@ -160,7 +169,6 @@ export const CreateLabModal = ({
   onValidateWokwi,
   classOptions,
   assignmentOptions,
-  lessonOptions = [],
   scheduleOptions = [], // Danh sách buổi dạy (schedules)
   componentOptions = [],
   isComponentsLoading,
@@ -549,7 +557,7 @@ export const CreateLabModal = ({
               <p className="text-xs text-muted-foreground">
                 {scheduleOptions.length === 0
                   ? 'Các lớp đã chọn chưa có buổi dạy nào trong thời khóa biểu.'
-                  : 'Tùy chọn - gán lab vào một buổi dạy cụ thể.'}
+                  : 'Tùy chọn - gán lab vào một buổi dạy cụ thể. Buổi dạy đã gắn sẵn với 1 bài học trong giáo trình, nên đây cũng là cách gán lab theo bài học.'}
               </p>
             </div>
 

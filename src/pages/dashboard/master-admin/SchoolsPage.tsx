@@ -337,7 +337,6 @@ export function SchoolsPage({ defaultTab = 'list' }: SchoolsPageProps) {
       statusFilter === 'all' ||
       (statusFilter === 'approved' && isStatusApproved(school.status)) ||
       (statusFilter === 'locked' && isStatusRejected(school.status)) ||
-      (statusFilter === 'rejected' && isStatusRejected(school.status)) ||
       (statusFilter === 'pending' && isStatusPending(school.status));
 
     return matchesSearch && matchesStatus;
@@ -562,7 +561,6 @@ export function SchoolsPage({ defaultTab = 'list' }: SchoolsPageProps) {
                   <option value="all">Tất cả trạng thái</option>
                   <option value="approved">Đang hoạt động</option>
                   <option value="locked">Đã khóa</option>
-                  <option value="rejected">Bị từ chối</option>
                   <option value="pending">Chờ duyệt</option>
                 </select>
               </div>

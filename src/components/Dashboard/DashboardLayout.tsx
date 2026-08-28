@@ -287,30 +287,6 @@ export const StandardDashboardLayout = () => {
         <main className="flex-1 p-4 lg:p-6 bg-background">
           <Outlet />
         </main>
-
-        <footer className="bg-card border-t border-border px-4 lg:px-6 py-4">
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-2">
-            <div className="flex items-center gap-2">
-              <div className="w-6 h-6 rounded bg-primary flex items-center justify-center">
-                <span className="text-primary-foreground font-bold text-xs">ST</span>
-              </div>
-              <span className="text-sm text-foreground">
-                © 2026 StemFlow. Nền tảng STEM thực hành.
-              </span>
-            </div>
-            <div className="flex items-center gap-4 text-sm text-foreground">
-              <Link to="/help" className="hover:text-foreground/70 transition-colors">
-                Trợ giúp
-              </Link>
-              <Link to="/terms" className="hover:text-foreground/70 transition-colors">
-                Điều khoản
-              </Link>
-              <Link to="/privacy" className="hover:text-foreground/70 transition-colors">
-                Bảo mật
-              </Link>
-            </div>
-          </div>
-        </footer>
       </div>
     </div>
   );

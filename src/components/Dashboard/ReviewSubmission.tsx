@@ -493,10 +493,13 @@ export function ReviewSimulationSubmission({ submission }: ReviewSimulationSubmi
         )}
       </div>
 
-      {/* Auto Grade Result */}
-      {submission.autoGradeResultJson && (
-        <AutoGradeResult autoGradeResultJson={submission.autoGradeResultJson} />
-      )}
+      {/* Auto Grade Result — TẠM KHOÁ ở phía học sinh: kết quả chấm tự động
+          hiện không đáng tin cậy để hiện cho học sinh (vd tier "compile" luôn
+          fail ở môi trường thiếu Docker, không phản ánh đúng chất lượng bài
+          làm) và học sinh không nên coi đây là điểm chính thức trước khi
+          giáo viên chấm. Điểm cuối (submission.score) vẫn hiện bình thường
+          ở trên. Giáo viên vẫn xem được autoGradeResultJson ở màn hình chấm
+          điểm (TeacherGradeSubmissionPage) nếu cần tham khảo. */}
 
       {/* Code Submitted */}
       {code && (

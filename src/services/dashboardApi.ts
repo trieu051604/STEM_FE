@@ -2328,7 +2328,11 @@ function normalizeVirtualLabSubmission(value: unknown): VirtualLabSubmissionResu
   };
 }
 
-export type SubmissionStatus = 'draft' | 'submitted' | 'graded';
+// 'not_submitted' không tương ứng row Submission thật nào — chỉ là entry suy
+// ra từ roster lớp (học sinh đã enroll nhưng chưa nộp), xem BE
+// GetSubmissionsHandler.BuildNotSubmittedEntriesAsync. Những entry này luôn
+// có id=0.
+export type SubmissionStatus = 'draft' | 'submitted' | 'graded' | 'not_submitted';
 
 export interface SubmissionEntity {
   id: number;
@@ -2522,6 +2526,7 @@ function normalizeSubmissionStatus(value: unknown): SubmissionStatus {
   const normalized = typeof value === 'string' ? value.toLowerCase() : '';
   if (normalized === 'graded') return 'graded';
   if (normalized === 'draft') return 'draft';
+  if (normalized === 'not_submitted') return 'not_submitted';
   return 'submitted';
 }
 
@@ -2687,6 +2692,31 @@ export const gradingApi = {
   deleteComment: async (submissionId: number, commentId: number): Promise<void> => {
     await api.delete(`/Grading/submissions/${submissionId}/comments/${commentId}`);
   },
+
+  // Tạo/tái sử dụng project "chấm điểm" riêng (seed đúng code+diagram+board
+  // từ Submission.ContentJson) để giáo viên Chạy mô phỏng thật ngay trong màn
+  // hình chấm điểm — KHÔNG đụng project sống của học sinh. Trả về SessionId
+  // dùng cho virtualLabHub.joinSession + virtualLabProjectsApi.start/stop.
+  prepareRun: async (submissionId: number): Promise<string> => {
+    const response = await api.post(`/Grading/submissions/${submissionId}/prepare-run`);
+    const data = toRecord(unwrapApiData<unknown>(response.data)) ?? {};
+    return toStringValue(pick(data, 'sessionId', 'SessionId'));
+  },
+
+  // Chiều giáo viên chủ động yêu cầu nộp lại (khác resubmitRequestsApi.create
+  // — đó là chiều học sinh xin phép). Tạo thẳng 1 ResubmitRequest đã Approved
+  // — RequestResubmitByTeacherHandler.cs — nên học sinh có thể nộp lại ngay,
+  // không cần chờ duyệt thêm lần nữa.
+  requestResubmit: async (
+    submissionId: number,
+    payload?: { note?: string; extraAttempts?: number }
+  ): Promise<ResubmitRequestEntity> => {
+    const response = await api.post(`/Grading/submissions/${submissionId}/request-resubmit`, {
+      note: payload?.note,
+      extraAttempts: payload?.extraAttempts,
+    });
+    return normalizeResubmitRequest(unwrapApiData<unknown>(response.data));
+  },
 };
 
 export type ResubmitRequestStatus = 'pending' | 'approved' | 'rejected';
@@ -2766,6 +2796,85 @@ export const resubmitRequestsApi = {
 // POST api/submissions/virtual-lab — BE tự resolve studentId từ JWT (không còn
 // tin StudentId client gửi, xem 5.3b), tự re-compile server-side (không đọc
 // CompileResult client gửi, xem 5.3) — không cần gửi CompileResult/StudentId.
+export interface LabSubmissionPayload {
+  sessionId: string;
+  circuitConfig: LabCircuitConfig;
+  sourceCode: string;
+}
+
+export interface LabSubmissionStudentRow {
+  studentId: number;
+  studentName: string;
+  studentEmail: string;
+  status: 'not_started' | 'in_progress' | 'submitted' | 'graded';
+  submissionId: number | null;
+  submittedAt: string | null;
+  score: number | null;
+  attemptNumber: number | null;
+}
+
+export interface LabSubmissionListResult {
+  labId: string;
+  labTitle: string;
+  classId: number;
+  classCode: string;
+  totalStudents: number;
+  submittedCount: number;
+  notSubmittedCount: number;
+  students: LabSubmissionStudentRow[];
+}
+
+function normalizeLabSubmissionStudentRow(value: unknown): LabSubmissionStudentRow {
+  const source = toRecord(value) ?? {};
+  return {
+    studentId: toNumberValue(pick(source, 'studentId', 'StudentId')),
+    studentName: toStringValue(pick(source, 'studentName', 'StudentName')),
+    studentEmail: toStringValue(pick(source, 'studentEmail', 'StudentEmail')),
+    status: toStringValue(pick(source, 'status', 'Status'), 'not_started') as LabSubmissionStudentRow['status'],
+    submissionId: toNullableNumber(pick(source, 'submissionId', 'SubmissionId')),
+    submittedAt: (pick(source, 'submittedAt', 'SubmittedAt') as string | null | undefined) ?? null,
+    score: toNullableNumber(pick(source, 'score', 'Score')),
+    attemptNumber: toNullableNumber(pick(source, 'attemptNumber', 'AttemptNumber')),
+  };
+}
+
+function normalizeLabSubmissionListResult(payload: unknown): LabSubmissionListResult {
+  const data = toRecord(unwrapApiData<unknown>(payload)) ?? {};
+  return {
+    labId: toStringValue(pick(data, 'labId', 'LabId')),
+    labTitle: toStringValue(pick(data, 'labTitle', 'LabTitle')),
+    classId: toNumberValue(pick(data, 'classId', 'ClassId')),
+    classCode: toStringValue(pick(data, 'classCode', 'ClassCode')),
+    totalStudents: toNumberValue(pick(data, 'totalStudents', 'TotalStudents')),
+    submittedCount: toNumberValue(pick(data, 'submittedCount', 'SubmittedCount')),
+    notSubmittedCount: toNumberValue(pick(data, 'notSubmittedCount', 'NotSubmittedCount')),
+    students: toUnknownArray(pick(data, 'students', 'Students')).map(normalizeLabSubmissionStudentRow),
+  };
+}
+
+// Lab-centric submission API — Assignment là chi tiết triển khai nội bộ
+// (backend tự tạo/tái sử dụng "hidden assignment" cho từng cặp Lab+Lớp), FE
+// không cần biết/truyền AssignmentId. Xem LabSubmissionsController.cs.
+export const labSubmissionsApi = {
+  getSubmissions: async (labId: string, classId: number): Promise<LabSubmissionListResult> => {
+    const response = await api.get(`/labs/${labId}/submissions`, { params: { classId } });
+    return normalizeLabSubmissionListResult(response.data);
+  },
+  submit: async (labId: string, payload: LabSubmissionPayload): Promise<VirtualLabSubmissionResult> => {
+    const response = await api.post(`/labs/${labId}/submit`, {
+      sessionId: payload.sessionId,
+      diagramJson: JSON.stringify({
+        parts: payload.circuitConfig.parts ?? [],
+        connections: payload.circuitConfig.connections ?? [],
+        ...(payload.circuitConfig.sensorScenario ? { sensorScenario: payload.circuitConfig.sensorScenario } : {}),
+        ...(payload.circuitConfig.mechanicalLinks?.length ? { mechanicalLinks: payload.circuitConfig.mechanicalLinks } : {}),
+      }),
+      sourceCode: payload.sourceCode,
+    });
+    return normalizeVirtualLabSubmission(response.data);
+  },
+};
+
 export const submissionsApi = {
   submitVirtualLab: async (
     payload: VirtualLabSubmissionPayload

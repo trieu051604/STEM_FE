@@ -11,6 +11,16 @@ interface CodeEditorPanelProps {
   isRunning: boolean;
   isCompiling: boolean;
   compileError: string | null;
+  // Ẩn nút Chạy/Dừng riêng của panel này — dùng khi nơi gọi (vd bài nộp lúc
+  // chấm điểm) đã có 1 nút Chạy mô phỏng DUY NHẤT ở ngoài, tránh hiện 2 nút
+  // trùng chức năng cùng lúc.
+  hideRunControls?: boolean;
+  // Xem code bài đã nộp — không cho gõ sửa, nhưng VẪN phải cuộn/chọn/copy
+  // được bình thường (khác hẳn chặn bằng CSS pointer-events-none ở nơi gọi
+  // cũ — cách đó chặn luôn cả scroll wheel, khiến không xem hết được code
+  // dài — đây là cách đúng: Monaco tự readOnly, mọi tương tác xem vẫn hoạt
+  // động).
+  readOnly?: boolean;
 }
 
 export const CodeEditorPanel = ({
@@ -20,7 +30,9 @@ export const CodeEditorPanel = ({
   onStop,
   isRunning,
   isCompiling,
-  compileError
+  compileError,
+  hideRunControls,
+  readOnly,
 }: CodeEditorPanelProps) => {
   return (
     <div className="flex flex-col h-full bg-slate-900 rounded-2xl overflow-hidden border border-slate-800 shadow-lg">
@@ -33,7 +45,7 @@ export const CodeEditorPanel = ({
         </div>
         
         <div className="flex items-center gap-2">
-          {isRunning ? (
+          {!hideRunControls && (isRunning ? (
             <Button 
               onClick={onStop} 
               size="sm" 
@@ -56,7 +68,7 @@ export const CodeEditorPanel = ({
               )}
               {isCompiling ? 'Đang biên dịch...' : 'Chạy mô phỏng'}
             </Button>
-          )}
+          ))}
         </div>
       </div>
       
@@ -74,6 +86,7 @@ export const CodeEditorPanel = ({
             wordWrap: 'on',
             scrollBeyondLastLine: false,
             smoothScrolling: true,
+            readOnly: Boolean(readOnly),
           }}
         />
       </div>

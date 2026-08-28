@@ -1,5 +1,5 @@
 import { Icon } from '@/components/ui/Icon';
-import { Edit2, Trash2, AlertTriangle } from 'lucide-react';
+import { Edit2, Trash2, AlertTriangle, ClipboardList } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import type { LabEntity } from '@/services/dashboardApi';
 
@@ -8,12 +8,13 @@ interface LabCardProps {
   canManage?: boolean;
   onEdit?: (lab: LabEntity) => void;
   onDelete?: (lab: LabEntity) => void;
+  onViewSubmissions?: (lab: LabEntity) => void;
 }
 
 const fallbackImage =
   'https://m.media-amazon.com/images/I/612eALAbpgL.jpg';
 
-export const LabCard = ({ lab, canManage, onEdit, onDelete }: LabCardProps) => {
+export const LabCard = ({ lab, canManage, onEdit, onDelete, onViewSubmissions }: LabCardProps) => {
   const navigate = useNavigate();
   const studentCount = lab.stats?.studentCount ?? 0;
   const visibleClasses = lab.classes.slice(0, 2);
@@ -89,6 +90,17 @@ export const LabCard = ({ lab, canManage, onEdit, onDelete }: LabCardProps) => {
           >
             Xem Lab
           </button>
+          {canManage && lab.classes.length > 0 && (
+            <button
+              type="button"
+              onClick={() => onViewSubmissions?.(lab)}
+              className="w-10 h-10 rounded-lg border border-border flex items-center justify-center text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
+              aria-label="Bài nộp"
+              title="Bài nộp"
+            >
+              <ClipboardList className="w-4 h-4" />
+            </button>
+          )}
           {canManage && (
             <>
               <button

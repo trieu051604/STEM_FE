@@ -26,6 +26,7 @@ import {
   FileText,
   Plus,
   RefreshCw,
+  RotateCcw,
   School,
   Search,
   Trash2,
@@ -302,6 +303,7 @@ export const AssignmentsPage = () => {
   const [detailError, setDetailError] = useState<string | null>(null);
   const [submissions, setSubmissions] = useState<SubmissionEntity[]>([]);
   const [isSubmissionsLoading, setIsSubmissionsLoading] = useState(false);
+  const [requestingResubmitId, setRequestingResubmitId] = useState<number | null>(null);
   const [simulationBaseDiagram, setSimulationBaseDiagram] = useState<unknown>(null);
   const [simulationCircuitText, setSimulationCircuitText] = useState('');
   const [simulationValidateResult, setSimulationValidateResult] =
@@ -611,6 +613,22 @@ export const AssignmentsPage = () => {
     setSimulationCircuitText('');
     setSimulationValidateResult(null);
     setSimulationValidateError(null);
+  };
+
+  const handleRequestResubmit = async (submission: SubmissionEntity) => {
+    if (!window.confirm(`Yêu cầu ${submission.studentName || 'học sinh này'} nộp lại bài?`)) {
+      return;
+    }
+
+    setRequestingResubmitId(submission.id);
+    try {
+      await gradingApi.requestResubmit(submission.id);
+      showToast('Đã gửi yêu cầu nộp lại cho học sinh.', 'success');
+    } catch (err) {
+      showToast(getErrorMessage(err, 'Không gửi được yêu cầu nộp lại.'), 'error');
+    } finally {
+      setRequestingResubmitId(null);
+    }
   };
 
   const handleValidateSimulation = async () => {
@@ -1353,7 +1371,9 @@ export const AssignmentsPage = () => {
                               <div>
                                 <p className="font-medium text-foreground">{submission.studentName}</p>
                                 <p className="text-xs text-muted-foreground">
-                                  Nộp {formatDistanceToNow(new Date(submission.createdAt), { addSuffix: true, locale: vi })}
+                                  {submission.status === 'not_submitted'
+                                    ? 'Chưa nộp bài'
+                                    : `Nộp ${formatDistanceToNow(new Date(submission.createdAt), { addSuffix: true, locale: vi })}`}
                                 </p>
                               </div>
                             </div>
@@ -1371,6 +1391,11 @@ export const AssignmentsPage = () => {
                               {submission.status === 'submitted' && (
                                 <span className="px-3 py-1 rounded-full text-xs font-medium bg-amber-500/10 text-amber-400 border border-amber-500/20">
                                   Chờ chấm
+                                </span>
+                              )}
+                              {submission.status === 'not_submitted' && (
+                                <span className="px-3 py-1 rounded-full text-xs font-medium bg-muted text-muted-foreground border border-border">
+                                  Chưa nộp
                                 </span>
                               )}
                               {submission.fileUrl && (
@@ -1404,6 +1429,19 @@ export const AssignmentsPage = () => {
                                   className="gap-2"
                                 >
                                   {submission.status === 'graded' ? 'Đã chấm' : 'Xem'}
+                                </Button>
+                              )}
+                              {submission.id > 0 && (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => handleRequestResubmit(submission)}
+                                  disabled={requestingResubmitId === submission.id}
+                                  className="gap-2 text-muted-foreground hover:text-foreground"
+                                  title="Yêu cầu học sinh nộp lại"
+                                >
+                                  <RotateCcw className={`w-4 h-4 ${requestingResubmitId === submission.id ? 'animate-spin' : ''}`} />
+                                  Yêu cầu nộp lại
                                 </Button>
                               )}
                             </div>

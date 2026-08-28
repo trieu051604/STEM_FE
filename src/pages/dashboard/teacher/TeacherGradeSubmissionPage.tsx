@@ -5,8 +5,9 @@ import { ArrowLeft, FileText, Download, Save, AlertCircle, CheckCircle, Loader2 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { gradingApi, assignmentsApi } from '@/services/dashboardApi';
+import { gradingApi, assignmentsApi, parseVirtualLabSubmissionSnapshot } from '@/services/dashboardApi';
 import { ReviewQuizSubmission, ReviewQuizFromResults } from '@/components/Dashboard/ReviewSubmission';
+import { LabSubmissionRunner } from '@/components/Dashboard/VirtualLab/LabSubmissionRunner';
 import { format, parseISO } from 'date-fns';
 import { vi } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
@@ -96,6 +97,23 @@ export default function TeacherGradeSubmissionPage() {
 
   const content = submission.contentJson ? JSON.parse(submission.contentJson) : {};
 
+  // Snapshot Lab ảo TẠI THỜI ĐIỂM NỘP BÀI — parseVirtualLabSubmissionSnapshot
+  // đọc thẳng Submission.ContentJson, không đụng tới VirtualLabProject đang
+  // sống (học sinh có sửa tiếp sau khi nộp cũng không ảnh hưởng gì ở đây).
+  const virtualLabSnapshot =
+    submission.assignmentType === 'practical_simulation'
+      ? parseVirtualLabSubmissionSnapshot(submission.contentJson)
+      : null;
+  const virtualLabDiagram = virtualLabSnapshot?.diagramJson
+    ? (() => {
+        try {
+          return JSON.parse(virtualLabSnapshot.diagramJson!);
+        } catch {
+          return null;
+        }
+      })()
+    : null;
+
   const isGraded = submission.status === 'graded';
 
   return (
@@ -150,6 +168,31 @@ export default function TeacherGradeSubmissionPage() {
               <div className="prose prose-sm dark:prose-invert max-w-none">
                 <p className="whitespace-pre-wrap text-muted-foreground">{content.textContent}</p>
               </div>
+            </div>
+          )}
+
+          {/* Virtual Lab snapshot — bắt buộc phải xem được để chấm điểm */}
+          {submission.assignmentType === 'practical_simulation' && (
+            <div className="bg-card rounded-xl border border-border p-6 space-y-4">
+              <div>
+                <h2 className="font-semibold">Bài nộp Lab ảo</h2>
+                <p className="text-xs text-muted-foreground">
+                  Snapshot tại thời điểm nộp bài — không phải workspace hiện tại của học sinh.
+                </p>
+              </div>
+
+              {!virtualLabSnapshot ? (
+                <p className="text-sm text-muted-foreground">Không đọc được dữ liệu bài nộp này.</p>
+              ) : (
+                <LabSubmissionRunner
+                  submissionId={submissionId}
+                  boardType={virtualLabDiagram?.board ?? 'esp32'}
+                  code={virtualLabSnapshot.sourceCode}
+                  components={virtualLabDiagram?.parts ?? []}
+                  connections={virtualLabDiagram?.connections ?? []}
+                  mechanicalLinks={virtualLabDiagram?.mechanicalLinks ?? []}
+                />
+              )}
             </div>
           )}
 

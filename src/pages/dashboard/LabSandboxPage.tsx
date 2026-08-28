@@ -1,13 +1,13 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { AlertCircle, ArrowLeft, CheckCircle2, Loader2, RefreshCw, Send, XCircle } from 'lucide-react';
+import { AlertCircle, ArrowLeft, Loader2, RefreshCw, Send, XCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuthStore } from '@/stores/authStore';
-import { labsApi, virtualLabProjectsApi, diagramsApi, submissionsApi, assignmentsApi, gradingApi, resubmitRequestsApi } from '@/services/dashboardApi';
+import { labsApi, virtualLabProjectsApi, diagramsApi, labSubmissionsApi, assignmentsApi, gradingApi, resubmitRequestsApi } from '@/services/dashboardApi';
 import type { ResubmitRequestEntity } from '@/services/dashboardApi';
 import { Textarea } from '@/components/ui/textarea';
 import { virtualLabHub } from '@/services/virtualLabHub';
-import type { LabCircuitComponent, LabEntity, DiagramValidationResult, SimulationEventEntity, AutoGradeResultEntity, ComponentGlueRegistryEntity, SensorScenarioConfig, MechanicalLink } from '@/services/dashboardApi';
+import type { LabCircuitComponent, LabEntity, DiagramValidationResult, SimulationEventEntity, ComponentGlueRegistryEntity, SensorScenarioConfig, MechanicalLink } from '@/services/dashboardApi';
 import { CodeEditorPanel } from '@/components/Dashboard/VirtualLab/Sandbox/CodeEditorPanel';
 import { CircuitCanvas, type PartVisualState } from '@/components/Dashboard/VirtualLab/Sandbox/CircuitCanvas';
 import { SerialMonitorPanel } from '@/components/Dashboard/VirtualLab/Sandbox/SerialMonitorPanel';
@@ -126,7 +126,6 @@ export const LabSandboxPage = () => {
   const [lastSimulationEvents, setLastSimulationEvents] = useState<SimulationEventEntity[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
-  const [autoCheck, setAutoCheck] = useState<AutoGradeResultEntity | null>(null);
   const [guidance, setGuidance] = useState<{ message: string, teacherName?: string, timestamp: number } | null>(null);
   const [isAiPanelOpen, setIsAiPanelOpen] = useState(false);
   const [canUndoAiChange, setCanUndoAiChange] = useState(false);
@@ -647,7 +646,6 @@ export const LabSandboxPage = () => {
     setCompileError(null);
     setSubmitMessage(null);
     setSubmitError(null);
-    setAutoCheck(null);
     setSerialOutput('');
     clearReplayTimers();
     setPartStates({});
@@ -847,28 +845,29 @@ export const LabSandboxPage = () => {
   };
 
   const handleSubmit = async () => {
-    if (!projectId || !linkedAssignmentId) return;
+    if (!projectId || !id) return;
 
     handleStop();
     setSubmitMessage(null);
     setSubmitError(null);
-    setAutoCheck(null);
     setIsSubmitting(true);
 
     try {
-      const result = await submissionsApi.submitVirtualLab({
-        assignmentId: linkedAssignmentId,
+      // Lab-centric submit — không cần linkedAssignmentId nữa (Assignment là
+      // chi tiết ẩn, backend tự tạo/tái sử dụng khi cần — xem
+      // LabSubmissionsController.cs). Giáo viên không còn phải tự gán bài
+      // đánh giá cho lab thì học sinh mới nộp được.
+      // Chấm tự động (autoCheck/autoScore) chỉ dành cho giáo viên tham khảo
+      // lúc chấm điểm (xem AutoGradeResultJson trong Submission Detail) —
+      // KHÔNG hiển thị cho học sinh, tránh học sinh coi kết quả tự động như
+      // điểm chính thức trước khi giáo viên thật sự chấm.
+      const result = await labSubmissionsApi.submit(id, {
         sessionId: projectId,
         circuitConfig: { parts: sandboxComponents, connections: sandboxConnections, sensorScenario, mechanicalLinks },
         sourceCode: code,
-        simulationEvents: lastSimulationEvents,
       });
 
-      setAutoCheck(result.autoCheck);
-      setSubmitMessage(
-        `Đã nộp bài — đạt ${result.autoCheck.passedChecks}/${result.autoCheck.totalChecks} tiêu chí` +
-          (result.autoScore != null ? `, điểm tự động: ${result.autoScore}.` : '.')
-      );
+      setSubmitMessage('Đã nộp bài thành công. Giáo viên sẽ xem và chấm điểm bài của bạn.');
       setSubmissionAttempts((prev) => (prev ? { ...prev, count: prev.count + 1 } : prev));
       reloadResubmitRequests();
       if (projectId) {
@@ -1152,7 +1151,7 @@ export const LabSandboxPage = () => {
           >
             Kịch bản cảm biến
           </Button>
-          {linkedAssignmentId ? (
+          {user?.role === 'student' && (
           <div className="flex flex-col items-end gap-1">
             <Button
               type="button"
@@ -1229,11 +1228,7 @@ export const LabSandboxPage = () => {
               </div>
             )}
           </div>
-        ) : (
-          <p className="text-xs text-muted-foreground max-w-[220px] text-right">
-            Lab này chưa gắn bài đánh giá — không thể nộp bài.
-          </p>
-        )}
+          )}
         </div>
       </div>
 
@@ -1246,27 +1241,6 @@ export const LabSandboxPage = () => {
       {submitError && (
         <div className="rounded-xl border border-destructive/20 bg-destructive/10 px-4 py-3 text-sm font-medium text-destructive">
           {submitError}
-        </div>
-      )}
-
-      {autoCheck && (
-        <div className="rounded-xl border border-border bg-card p-4 shrink-0 space-y-2">
-          <p className="text-sm font-bold text-foreground">
-            Kết quả chấm tự động — {autoCheck.passedChecks}/{autoCheck.totalChecks} tiêu chí
-          </p>
-          {autoCheck.checks.map((check) => (
-            <div key={check.name} className="flex items-start gap-2 text-sm">
-              {check.passed ? (
-                <CheckCircle2 className="w-4 h-4 mt-0.5 shrink-0 text-emerald-400" />
-              ) : (
-                <XCircle className="w-4 h-4 mt-0.5 shrink-0 text-destructive" />
-              )}
-              <div>
-                <span className="font-semibold capitalize">{check.name}</span>
-                <span className="text-muted-foreground"> — {check.message}</span>
-              </div>
-            </div>
-          ))}
         </div>
       )}
 

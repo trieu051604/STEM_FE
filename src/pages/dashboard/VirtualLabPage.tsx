@@ -17,6 +17,7 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '
 import { LabStatsHeader } from '@/components/Dashboard/VirtualLab/LabStatsHeader';
 import type { LabStats } from '@/components/Dashboard/VirtualLab/LabStatsHeader';
 import { LabCard } from '@/components/Dashboard/VirtualLab/LabCard';
+import { LabSubmissionsModal } from '@/components/Dashboard/VirtualLab/LabSubmissionsModal';
 import {
   CreateLabModal,
   type CreateLabTemplateData,
@@ -146,14 +147,20 @@ function isWokwiUrl(value: string) {
 
 // /api/labs (LIVE) trả sẵn `stats` (studentCount/startedCount/completedCount/
 // averageDurationSeconds) nhúng trong từng lab của response GET /api/labs — không cần gọi
-// thêm /labs/{id}/stats cho từng lab (N+1). `classes` (đối số 2) chỉ dùng làm phương án dự
-// phòng nếu 1 lab nào đó thiếu stats.studentCount thật.
-function buildStats(labs: LabEntity[]): LabStats {
+// thêm /labs/{id}/stats cho từng lab (N+1).
+function buildStats(labs: LabEntity[], managedClasses: ManagedClassOption[]): LabStats {
   const activeLabs = labs.filter((lab) => lab.status === 'published').length;
-  const totalStudents = labs.reduce(
-    (total, lab) => total + (lab.stats?.studentCount ?? 0),
-    0
-  );
+
+  // Đếm học sinh DUY NHẤT theo lớp được gán cho các lab này, không cộng dồn
+  // stats.studentCount của từng lab — 1 lớp thường được gán cho nhiều lab
+  // (VD: lớp 10 HS gán cho 3 lab), cộng thẳng sẽ ra 30 thay vì 10.
+  const assignedClassIds = new Set<number>();
+  labs.forEach((lab) => {
+    (lab.classIds ?? []).forEach((id) => assignedClassIds.add(id));
+  });
+  const totalStudents = managedClasses
+    .filter((classItem) => assignedClassIds.has(classItem.id))
+    .reduce((total, classItem) => total + (classItem.studentCount ?? 0), 0);
   const startedCount = labs.reduce(
     (total, lab) => total + (lab.stats?.startedCount ?? 0),
     0
@@ -195,6 +202,7 @@ export const VirtualLabPage = () => {
   const [isSaving, setIsSaving] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [managedClasses, setManagedClasses] = useState<ManagedClassOption[]>([]);
+  const [submissionsModalLab, setSubmissionsModalLab] = useState<LabEntity | null>(null);
   const [assignmentOptions, setAssignmentOptions] = useState<LabAssignmentOption[]>([]);
   const [scheduleOptions, setScheduleOptions] = useState<LabLessonOption[]>([]);
   const [componentOptions, setComponentOptions] = useState<ComponentGlueRegistryEntity[]>([]);
@@ -265,8 +273,8 @@ export const VirtualLabPage = () => {
   const visibleLabs = teacherFilteredLabs;
 
   const aggregateStats = useMemo(
-    () => buildStats(teacherFilteredLabs),
-    [teacherFilteredLabs]
+    () => buildStats(teacherFilteredLabs, managedClasses),
+    [teacherFilteredLabs, managedClasses]
   );
 
   const fetchMetadata = useCallback(async () => {
@@ -577,6 +585,7 @@ export const VirtualLabPage = () => {
               canManage={canManageLabs}
               onEdit={openEditModal}
               onDelete={handleDeleteLab}
+              onViewSubmissions={setSubmissionsModalLab}
             />
           ))}
 
@@ -634,6 +643,13 @@ export const VirtualLabPage = () => {
         onClose={() => setIsTemplatePickerOpen(false)}
         onSelect={handleSelectTemplate}
       />
+
+      {submissionsModalLab && (
+        <LabSubmissionsModal
+          lab={submissionsModalLab}
+          onClose={() => setSubmissionsModalLab(null)}
+        />
+      )}
 
       <Dialog open={!!deletingLab} onOpenChange={(open) => !open && setDeletingLab(null)}>
         <DialogContent>

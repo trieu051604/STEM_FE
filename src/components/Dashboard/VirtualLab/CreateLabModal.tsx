@@ -369,7 +369,7 @@ export const CreateLabModal = ({
           </button>
         </DialogHeader>
 
-        <DialogContent className="flex-1 max-h-none space-y-8">
+        <DialogContent className="flex-1 max-h-none space-y-4">
           {isWokwiMode ? (
             <div className="bg-blue-500/10 border border-blue-500/20 rounded-xl p-5 space-y-3">
               <h3 className="font-semibold text-blue-300">Tạo mạch mô phỏng trên Wokwi</h3>
@@ -444,7 +444,7 @@ export const CreateLabModal = ({
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-sm font-medium text-foreground">Ảnh thumbnail URL</label>
+              <label className="text-sm font-medium text-foreground">URL ảnh</label>
               <Input
                 type="url"
                 value={formData.thumbnailUrl}
@@ -511,25 +511,6 @@ export const CreateLabModal = ({
               </p>
             </div>
 
-            <div className="space-y-1.5">
-              <label className="text-sm font-medium text-foreground">
-                Gắn bài đánh giá sau lab
-              </label>
-              <select
-                value={formData.linkedAssignmentId}
-                onChange={(event) =>
-                  setFormData({ ...formData, linkedAssignmentId: event.target.value })
-                }
-                className={nativeFieldClassName}
-              >
-                <option value="">Bỏ qua</option>
-                {filteredAssignments.map((assignment) => (
-                  <option key={assignment.id} value={assignment.id}>
-                    {assignment.label}
-                  </option>
-                ))}
-              </select>
-            </div>
 
             <div className="space-y-1.5">
               <label className="text-sm font-medium text-foreground">

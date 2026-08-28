@@ -214,79 +214,92 @@ function OverviewTab({ classDetail }: { classDetail: StudentClassDetail }) {
           <h3 className="text-lg font-semibold mb-4">Bài học</h3>
           <div className="space-y-3">
             {modulesWithLessons.length > 0 ? (
-              modulesWithLessons.map((module) => {
-                const lessonCount = getModuleLessonsCount(module);
-                const completed = isModuleCompleted(module);
-                return (
-                  <div key={module.id} className="border border-border rounded-lg overflow-hidden">
-                    {/* Module Header */}
-                    <div
-                      className="flex items-center gap-4 p-4 cursor-pointer hover:bg-muted/30 transition-colors"
-                      onClick={() => setExpandedModuleId(expandedModuleId === module.id ? null : module.id)}
-                    >
-                      <div className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 ${
-                        completed
-                          ? 'bg-green-100 dark:bg-green-900/30'
-                          : 'bg-muted'
-                      }`}>
-                        {completed ? (
-                          <CheckCircle className="w-5 h-5 text-green-600 dark:text-green-400" />
-                        ) : (
-                          <BookOpen className="w-5 h-5 text-muted-foreground" />
-                        )}
-                      </div>
-                      <div className="flex-1">
-                        <p className="font-medium">{module.title}</p>
-                      </div>
-                      <ChevronDown className={`w-5 h-5 text-muted-foreground transition-transform ${expandedModuleId === module.id ? 'rotate-180' : ''}`} />
-                    </div>
+              [...modulesWithLessons]
+                .sort((a, b) => {
+                  const orderA = a.displayOrder ?? 0;
+                  const orderB = b.displayOrder ?? 0;
+                  if (orderA !== orderB) return orderA - orderB;
+                  return a.title.localeCompare(b.title, undefined, { numeric: true, sensitivity: 'base' });
+                })
+                .map((module, mIdx) => {
+                  const completed = isModuleCompleted(module);
+                  const sortedLessons = [...(module.lessons || [])].sort((a, b) => {
+                    const orderA = a.displayOrder ?? 0;
+                    const orderB = b.displayOrder ?? 0;
+                    if (orderA !== orderB) return orderA - orderB;
+                    return a.title.localeCompare(b.title, undefined, { numeric: true, sensitivity: 'base' });
+                  });
 
-                    {/* Lessons List (Expanded) */}
-                    {expandedModuleId === module.id && (
-                      <div className="border-t border-border bg-muted/20">
-                        {(module as any).lessons?.length > 0 ? (
-                          <div className="p-4 space-y-2">
-                            {(module as any).lessons.map((lesson: any) => (
-                              <div key={lesson.id} className="flex items-center gap-3 p-3 bg-card rounded-lg">
-                                <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
-                                  <span className="text-xs font-medium text-primary">{lesson.displayOrder}</span>
-                                </div>
-                                <div className="flex-1">
-                                  <p className="text-sm font-medium">{lesson.title}</p>
-                                  <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                                    {lesson.estimatedMinutes && (
-                                      <span className="flex items-center gap-1">
-                                        <Clock className="w-3 h-3" />
-                                        {lesson.estimatedMinutes} phút
-                                      </span>
-                                    )}
-                                    {lesson.lessonType && (
-                                      <span className="px-2 py-0.5 bg-muted rounded-full">{lesson.lessonType}</span>
-                                    )}
-                                    {lesson.hasVirtualLab && (
-                                      <span className="flex items-center gap-1 text-purple-600">
-                                        <FlaskConical className="w-3 h-3" />
-                                        Lab
-                                      </span>
-                                    )}
-                                  </div>
-                                </div>
-                                <Button size="sm" variant="outline" onClick={() => setSelectedLessonId(lesson.id)}>
-                                  Mở
-                                </Button>
-                              </div>
-                            ))}
-                          </div>
-                        ) : (
-                          <div className="p-4 text-center text-muted-foreground text-sm">
-                            Chưa có bài học nào trong chương này
-                          </div>
-                        )}
+                  return (
+                    <div key={module.id} className="border border-border rounded-lg overflow-hidden">
+                      <div
+                        className="flex items-center gap-4 p-4 cursor-pointer hover:bg-muted/30 transition-colors"
+                        onClick={() => setExpandedModuleId(expandedModuleId === module.id ? null : module.id)}
+                      >
+                        <div className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 ${
+                          completed ? 'bg-green-100 dark:bg-green-900/30' : 'bg-muted'
+                        }`}>
+                          {completed ? (
+                            <CheckCircle className="w-5 h-5 text-green-600 dark:text-green-400" />
+                          ) : (
+                            <BookOpen className="w-5 h-5 text-muted-foreground" />
+                          )}
+                        </div>
+                        <div className="flex-1">
+                          <p className="font-medium">{module.title}</p>
+                        </div>
+                        <ChevronDown className={`w-5 h-5 text-muted-foreground transition-transform ${expandedModuleId === module.id ? 'rotate-180' : ''}`} />
                       </div>
-                    )}
-                  </div>
-                );
-              })
+
+                      {expandedModuleId === module.id && (
+                        <div className="border-t border-border bg-muted/20">
+                          {sortedLessons.length > 0 ? (
+                            <div className="p-4 space-y-2">
+                              {sortedLessons.map((lesson: any, lIdx: number) => (
+                                <div key={lesson.id} className="flex items-center gap-3 p-3 bg-card rounded-lg">
+                                  <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                                    <span className="text-xs font-medium text-primary">
+                                      {lesson.displayOrder || (lIdx + 1)}
+                                    </span>
+                                  </div>
+                                  <div className="flex-1">
+                                    <p className="text-sm font-medium">{lesson.title}</p>
+                                    <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                                      {lesson.estimatedMinutes && (
+                                        <span className="flex items-center gap-1">
+                                          <Clock className="w-3 h-3" />
+                                          {lesson.estimatedMinutes} phút
+                                        </span>
+                                      )}
+                                      {lesson.lessonType && (
+                                         <span className="px-2 py-0.5 bg-muted rounded-full">
+                                           {lesson.lessonType === 'theory' ? 'Lý thuyết' : lesson.lessonType === 'lab' ? 'Thực hành' : lesson.lessonType}
+                                         </span>
+                                       )}
+                                      {lesson.hasVirtualLab && (
+                                        <span className="flex items-center gap-1 text-purple-600">
+                                          <FlaskConical className="w-3 h-3" />
+                                          Lab
+                                        </span>
+                                      )}
+                                    </div>
+                                  </div>
+                                  <Button size="sm" variant="outline" onClick={() => setSelectedLessonId(lesson.id)}>
+                                    Mở
+                                  </Button>
+                                </div>
+                              ))}
+                            </div>
+                          ) : (
+                            <div className="p-4 text-center text-muted-foreground text-sm">
+                              Chưa có bài học nào trong chương này
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })
             ) : (
               <p className="text-center text-muted-foreground py-8">
                 Chưa có bài học nào
@@ -296,7 +309,6 @@ function OverviewTab({ classDetail }: { classDetail: StudentClassDetail }) {
         </div>
       </div>
 
-      {/* Sidebar */}
       <div className="space-y-6">
         {/* Class Info */}
         <div className="bg-card rounded-xl border border-border p-6 space-y-4">
@@ -373,8 +385,10 @@ function OverviewTab({ classDetail }: { classDetail: StudentClassDetail }) {
                         </span>
                       )}
                       {lessonDetail.lessonType && (
-                        <span className="px-2 py-0.5 bg-muted rounded-full">{lessonDetail.lessonType}</span>
-                      )}
+                         <span className="px-2 py-0.5 bg-muted rounded-full">
+                           {lessonDetail.lessonType === 'theory' ? 'Lý thuyết' : lessonDetail.lessonType === 'lab' ? 'Thực hành' : lessonDetail.lessonType}
+                         </span>
+                       )}
                     </div>
                   </div>
 

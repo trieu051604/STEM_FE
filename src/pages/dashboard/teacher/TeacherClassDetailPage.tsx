@@ -297,7 +297,14 @@ function OverviewTab({ classDetail }: { classDetail: TeacherClassDetail }) {
           
           <div className="space-y-3">
             {modules.length > 0 ? (
-              modules.map((module) => (
+              [...modules]
+                .sort((a, b) => {
+                  const orderA = a.displayOrder ?? 0;
+                  const orderB = b.displayOrder ?? 0;
+                  if (orderA !== orderB) return orderA - orderB;
+                  return a.title.localeCompare(b.title, undefined, { numeric: true, sensitivity: 'base' });
+                })
+                .map((module, mIdx) => (
                 <div key={module.id} className="border border-border rounded-lg overflow-hidden">
                   {/* Module Header */}
                   <div
@@ -305,7 +312,9 @@ function OverviewTab({ classDetail }: { classDetail: TeacherClassDetail }) {
                     onClick={() => setExpandedModuleId(expandedModuleId === module.id ? null : module.id)}
                   >
                     <div className="w-10 h-10 rounded-lg bg-indigo-100 dark:bg-indigo-900/30 flex items-center justify-center shrink-0">
-                      <span className="text-sm font-bold text-indigo-600 dark:text-indigo-400">{module.displayOrder}</span>
+                      <span className="text-sm font-bold text-indigo-600 dark:text-indigo-400">
+                        {module.displayOrder || (mIdx + 1)}
+                      </span>
                     </div>
                     <div className="flex-1">
                       <p className="font-medium">{module.title}</p>
@@ -322,10 +331,19 @@ function OverviewTab({ classDetail }: { classDetail: TeacherClassDetail }) {
                     <div className="border-t border-border bg-muted/20">
                       {module.lessons?.length > 0 ? (
                         <div className="p-4 space-y-2">
-                          {module.lessons.map((lesson) => (
+                          {[...(module.lessons || [])]
+                            .sort((a, b) => {
+                              const orderA = a.displayOrder ?? 0;
+                              const orderB = b.displayOrder ?? 0;
+                              if (orderA !== orderB) return orderA - orderB;
+                              return a.title.localeCompare(b.title, undefined, { numeric: true, sensitivity: 'base' });
+                            })
+                            .map((lesson, lIdx) => (
                             <div key={lesson.id} className="flex items-center gap-3 p-3 bg-card rounded-lg">
                               <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
-                                <span className="text-xs font-medium text-primary">{lesson.displayOrder}</span>
+                                <span className="text-xs font-medium text-primary">
+                                  {lesson.displayOrder || (lIdx + 1)}
+                                </span>
                               </div>
                               <div className="flex-1">
                                 <p className="text-sm font-medium">{lesson.title}</p>
@@ -337,7 +355,9 @@ function OverviewTab({ classDetail }: { classDetail: TeacherClassDetail }) {
                                     </span>
                                   )}
                                   {lesson.lessonType && (
-                                    <span className="px-2 py-0.5 bg-muted rounded-full">{lesson.lessonType}</span>
+                                    <span className="px-2 py-0.5 bg-muted rounded-full">
+                                      {lesson.lessonType === 'theory' ? 'Lý thuyết' : lesson.lessonType === 'lab' ? 'Thực hành' : lesson.lessonType}
+                                    </span>
                                   )}
                                   {lesson.hasVirtualLab && (
                                     <span className="flex items-center gap-1 text-purple-600">

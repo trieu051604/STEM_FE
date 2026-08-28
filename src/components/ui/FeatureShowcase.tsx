@@ -91,7 +91,7 @@ export function FeatureShowcase() {
   const [customMoisture, setCustomMoisture] = useState(38);
 
   return (
-    <section id="paths" className="py-24 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 transition-colors duration-300 relative overflow-hidden">
+    <section id="paths" className="py-24 bg-background text-foreground transition-colors duration-300 relative overflow-hidden">
       
       {/* Dynamic Background Accents */}
       <div className="absolute top-1/2 left-0 w-96 h-96 bg-brand-50/30 dark:bg-brand-950/10 rounded-full blur-[120px] pointer-events-none"></div>
@@ -104,10 +104,10 @@ export function FeatureShowcase() {
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-brand-50 dark:bg-brand-950/50 border border-brand-200 dark:border-brand-900 text-brand-600 dark:text-brand-400 text-xs font-semibold mb-4 uppercase tracking-widest">
             Học thông qua trải nghiệm thực tế
           </div>
-          <h2 className="text-4xl md:text-5xl font-black tracking-tight text-slate-950 dark:text-white">
+          <h2 className="text-4xl md:text-5xl font-black tracking-tight text-foreground">
             Bạn muốn chế tạo gì hôm nay?
           </h2>
-          <p className="mt-4 text-lg text-slate-600 dark:text-slate-400 font-medium">
+          <p className="mt-4 text-lg text-muted-foreground font-medium">
             Chọn một lộ trình học tập để khám phá giao diện lập trình trực quan và hệ thống giả lập vô cùng mạnh mẽ.
           </p>
         </div>
@@ -123,7 +123,7 @@ export function FeatureShowcase() {
                 className={`group text-left p-6 rounded-2xl border-2 transition-all duration-300 flex flex-col justify-between h-64 relative overflow-hidden select-none outline-none ${
                   isSelected
                     ? `${path.color} shadow-lg shadow-brand-500/5`
-                    : 'border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 hover:bg-slate-100 dark:hover:bg-slate-800/80 hover:border-slate-350 dark:hover:border-slate-700'
+                    : 'border-border bg-card/50 hover:bg-muted/40 hover:border-border/80'
                 }`}
               >
                 {/* Accent Background Glow */}
@@ -135,8 +135,8 @@ export function FeatureShowcase() {
                   }`}>
                     <Icon name={path.icon} size={24} />
                   </div>
-                  <h3 className="text-xl font-bold tracking-tight mb-2 text-slate-950 dark:text-white">{path.title}</h3>
-                  <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">{path.desc}</p>
+                  <h3 className="text-xl font-bold tracking-tight mb-2 text-foreground">{path.title}</h3>
+                  <p className="text-sm text-muted-foreground leading-relaxed">{path.desc}</p>
                 </div>
 
                 <div className="flex items-center gap-1.5 text-sm font-bold mt-4">
@@ -149,11 +149,11 @@ export function FeatureShowcase() {
         </div>
 
         {/* Dynamic Simulator Micro-UI Workspace depending on select option */}
-        <div className="bg-slate-950 text-slate-300 border border-slate-800 rounded-3xl overflow-hidden shadow-2xl p-1 mb-24">
-          <div className="bg-slate-900/90 px-6 py-4 flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-850">
+        <div className="bg-card text-foreground border border-border rounded-3xl overflow-hidden shadow-2xl p-1 mb-24 transition-colors duration-300">
+          <div className="bg-muted/80 px-6 py-4 flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-border">
             <div className="flex items-center gap-2">
               <span className="w-3 h-3 rounded-full bg-blue-500 animate-pulse"></span>
-              <span className="text-sm font-mono text-slate-400">Không gian tương tác mẫu: <strong className="text-white">{selectedPath.demo.title}</strong></span>
+              <span className="text-sm font-mono text-muted-foreground">Không gian tương tác mẫu: <strong className="text-foreground">{selectedPath.demo.title}</strong></span>
             </div>
             {selectedPath.id === 'iot' && (
               <div className="flex items-center gap-3">
@@ -186,7 +186,7 @@ export function FeatureShowcase() {
           <div className="grid md:grid-cols-2 min-h-[300px]">
             
             {/* Simulation Code Pane */}
-            <div className="p-6 font-mono text-xs md:text-sm bg-slate-950/90 border-r border-slate-900 overflow-x-auto flex flex-col justify-between">
+            <div className="p-6 font-mono text-xs md:text-sm bg-slate-950/95 border-r border-border/40 overflow-x-auto flex flex-col justify-between text-slate-300">
               <div>
                 <div className="text-slate-600 mb-2 flex items-center justify-between border-b border-slate-900 pb-2">
                   <span>Trình soạn thảo Code</span>
@@ -205,13 +205,13 @@ export function FeatureShowcase() {
             </div>
 
             {/* Simulation Virtual Board Output Display */}
-            <div className="p-6 bg-slate-900/50 flex flex-col justify-between gap-6 relative overflow-hidden">
-              <div className="absolute inset-0 bg-[radial-gradient(#475569_1px,transparent_1px)] [background-size:16px_16px] opacity-10"></div>
+            <div className="p-6 bg-muted/20 flex flex-col justify-between gap-6 relative overflow-hidden">
+              <div className="absolute inset-0 bg-[radial-gradient(hsl(var(--border))_1px,transparent_1px)] [background-size:16px_16px] opacity-10"></div>
               
               <div>
-                <div className="text-slate-400 text-xs font-mono mb-4 flex items-center justify-between">
+                <div className="text-muted-foreground text-xs font-mono mb-4 flex items-center justify-between">
                   <span>Bảng hiển thị thông số mô phỏng</span>
-                  <span className="px-2 py-0.5 rounded-full bg-slate-800 text-[10px] text-emerald-400 font-bold animate-pulse">RUNNING</span>
+                  <span className="px-2 py-0.5 rounded-full bg-secondary text-[10px] text-emerald-400 font-bold animate-pulse">RUNNING</span>
                 </div>
                 
                 <div className="grid grid-cols-2 gap-4">
@@ -227,7 +227,7 @@ export function FeatureShowcase() {
                       dispVal = virtualLedActive ? 'Đang tránh chướng ngại vật' : 'Tạm dừng';
                     }
                     return (
-                      <div key={idx} className="bg-slate-950/80 border border-slate-850 p-3.5 rounded-xl">
+                      <div key={idx} className="bg-card border border-border p-3.5 rounded-xl">
                         <div className="text-xs text-slate-500 font-medium mb-1">{t.label}</div>
                         <div className={`text-sm font-bold ${
                           dispVal === 'ĐANG MỞ (ON)' || dispVal === 'Đang tránh chướng ngại vật' || dispVal === 'Đang di chuyển'
@@ -243,7 +243,7 @@ export function FeatureShowcase() {
               </div>
 
               {/* Graphic Mockup simulation status */}
-              <div className="border border-slate-800 bg-slate-950/50 p-4 rounded-2xl flex items-center justify-between">
+              <div className="border border-border bg-card/60 p-4 rounded-2xl flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <div className={`w-8 h-8 rounded-xl flex items-center justify-center ${
                     selectedPath.id === 'robotics' ? 'bg-brand-500/20 text-brand-400' : selectedPath.id === 'iot' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-purple-500/20 text-purple-400'
@@ -284,8 +284,8 @@ export function FeatureShowcase() {
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-900 text-emerald-600 dark:text-emerald-400 text-xs font-semibold mb-4 uppercase tracking-widest">
               Đặc quyền công nghệ vượt trội
             </div>
-            <h2 className="text-3xl md:text-4xl font-extrabold text-slate-950 dark:text-white">Tính năng bứt phá giới hạn</h2>
-            <p className="mt-3 text-slate-600 dark:text-slate-400 leading-relaxed font-medium">
+            <h2 className="text-3xl md:text-4xl font-extrabold text-foreground">Tính năng bứt phá giới hạn</h2>
+            <p className="mt-3 text-muted-foreground leading-relaxed font-medium">
               Không chỉ là giả lập. StemFlow mang đến bộ công cụ toàn diện giúp người học tiến bộ nhanh gấp 3 lần so với phương pháp truyền thống.
             </p>
           </div>
@@ -294,14 +294,14 @@ export function FeatureShowcase() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           
           {/* Feature 1: Custom Sandbox (Large) */}
-          <div className="md:col-span-2 bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-800 rounded-3xl p-8 flex flex-col justify-between relative overflow-hidden group hover:-translate-y-1 hover:shadow-xl transition-all duration-300">
+          <div className="md:col-span-2 bg-card border border-border rounded-3xl p-8 flex flex-col justify-between relative overflow-hidden group hover:-translate-y-1 hover:shadow-xl transition-all duration-300">
             <div className="absolute top-0 right-0 w-64 h-64 bg-brand-500/5 rounded-full blur-[80px] pointer-events-none"></div>
             <div className="relative z-10 max-w-lg">
               <div className="w-12 h-12 bg-brand-600 hover:bg-brand-500 text-white rounded-xl flex items-center justify-center mb-6 shadow-lg shadow-brand-600/35">
                 <Icon name="Box" size={20} />
               </div>
-              <h3 className="text-2xl font-bold text-slate-950 dark:text-white mb-3">Môi trường mô phỏng không giới hạn</h3>
-              <p className="text-slate-600 dark:text-slate-400 leading-relaxed mb-6 font-medium">
+              <h3 className="text-2xl font-bold text-foreground mb-3">Môi trường mô phỏng không giới hạn</h3>
+              <p className="text-muted-foreground leading-relaxed mb-6 font-medium">
                 Tự do kéo thả linh kiện, vẽ đường cáp kết nối và chạy thử code tức thì. Hỗ trợ hàng trăm loại cảm biến, động cơ Servo, màn hình hiển thị OLED, cảm biến độ ẩm đất và các bo mạch như Arduino Uno R3, ESP32 DevKit.
               </p>
               <span className="text-brand-600 dark:text-brand-400 font-bold inline-flex items-center gap-1 group-hover:gap-2 transition-all">
@@ -322,17 +322,17 @@ export function FeatureShowcase() {
           </div>
 
           {/* Feature 2: Smart Rubric */}
-          <div className="bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-800 rounded-3xl p-8 flex flex-col justify-between hover:-translate-y-1 hover:shadow-xl transition-all duration-300 group">
+          <div className="bg-card border border-border rounded-3xl p-8 flex flex-col justify-between hover:-translate-y-1 hover:shadow-xl transition-all duration-300 group">
             <div className="w-12 h-12 bg-pink-500/10 text-pink-600 dark:text-pink-400 rounded-xl flex items-center justify-center mb-6">
               <Icon name="CheckCircle2" size={20} />
             </div>
             <div>
-              <h3 className="text-xl font-bold text-slate-950 dark:text-white mb-2">Chấm điểm Rubric thông minh</h3>
-              <p className="text-slate-600 dark:text-slate-400 text-sm leading-relaxed mb-4">
+              <h3 className="text-xl font-bold text-foreground mb-2">Chấm điểm Rubric thông minh</h3>
+              <p className="text-muted-foreground text-sm leading-relaxed mb-4">
                 Hệ thống tự động phân tích mã nguồn và sơ đồ mạch để kiểm tra tính đúng đắn theo bộ tiêu chuẩn thiết lập sẵn, phản hồi lỗi sai ngay lập tức.
               </p>
             </div>
-            <div className="bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-850 p-3.5 rounded-xl font-mono text-[11px]">
+            <div className="bg-background border border-border p-3.5 rounded-xl font-mono text-[11px]">
               <div className="flex justify-between text-slate-500 mb-1">
                 <span>Kiểm tra cú pháp code</span>
                 <span className="text-emerald-500 font-bold">✓ PASS</span>
@@ -345,41 +345,41 @@ export function FeatureShowcase() {
           </div>
 
           {/* Feature 3: Cloud Storage */}
-          <div className="bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-800 rounded-3xl p-8 flex flex-col justify-between hover:-translate-y-1 hover:shadow-xl transition-all duration-300 group">
+          <div className="bg-card border border-border rounded-3xl p-8 flex flex-col justify-between hover:-translate-y-1 hover:shadow-xl transition-all duration-300 group">
             <div className="w-12 h-12 bg-amber-500/10 text-amber-600 dark:text-amber-400 rounded-xl flex items-center justify-center mb-6">
               <Icon name="Cloud" size={20} />
             </div>
             <div>
-              <h3 className="text-xl font-bold text-slate-950 dark:text-white mb-2">Đồng bộ Cloud & Chia sẻ 1-Click</h3>
-              <p className="text-slate-600 dark:text-slate-400 text-sm leading-relaxed mb-4">
+              <h3 className="text-xl font-bold text-foreground mb-2">Đồng bộ Cloud & Chia sẻ 1-Click</h3>
+              <p className="text-muted-foreground text-sm leading-relaxed mb-4">
                 Không cần cài đặt phần mềm phức tạp. Mọi dự án được đồng bộ hóa tức thì lên đám mây. Chia sẻ sản phẩm thực hành tới giáo viên chỉ với một đường link.
               </p>
             </div>
-            <div className="bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-850 py-2.5 px-4 rounded-xl flex items-center justify-between text-xs">
+            <div className="bg-background border border-border py-2.5 px-4 rounded-xl flex items-center justify-between text-xs">
               <span className="font-mono text-slate-500 truncate mr-2">stemflow.vn/project/x3f9...</span>
               <button className="bg-brand-600 text-white px-2.5 py-1 rounded-md text-[10px] font-bold active:scale-95 transition-all">COPY</button>
             </div>
           </div>
 
           {/* Feature 4: AI Copilot (Large) */}
-          <div className="md:col-span-2 bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-800 rounded-3xl p-8 flex flex-col md:flex-row items-center gap-8 hover:-translate-y-1 hover:shadow-xl transition-all duration-300 group overflow-hidden">
+          <div className="md:col-span-2 bg-card border border-border rounded-3xl p-8 flex flex-col md:flex-row items-center gap-8 hover:-translate-y-1 hover:shadow-xl transition-all duration-300 group overflow-hidden">
             <div className="flex-1">
               <div className="w-12 h-12 bg-purple-500/10 text-purple-600 dark:text-purple-400 rounded-xl flex items-center justify-center mb-6">
                 <Icon name="Terminal" size={20} />
               </div>
-              <h3 className="text-2xl font-bold text-slate-950 dark:text-white mb-3">Trợ lý AI gỡ lỗi thời gian thực</h3>
-              <p className="text-slate-600 dark:text-slate-400 leading-relaxed font-medium">
+              <h3 className="text-2xl font-bold text-foreground mb-3">Trợ lý AI gỡ lỗi thời gian thực</h3>
+              <p className="text-muted-foreground leading-relaxed font-medium">
                 Gặp lỗi biên dịch hoặc mạch điện không chạy? Trợ lý AI được tích hợp sẵn sẽ đọc hiểu lỗi sơ đồ phần cứng và mã C++, đưa ra giải thích tường tận và hướng dẫn cách sửa cụ thể.
               </p>
             </div>
             
-            <div className="flex-1 w-full bg-slate-950 rounded-2xl border border-slate-850 p-4 font-mono text-xs text-slate-400 relative">
+            <div className="flex-1 w-full bg-slate-950 rounded-2xl border border-border/20 p-4 font-mono text-xs text-slate-400 relative">
               <div className="text-rose-400 mb-2 flex items-center gap-1.5 border-b border-slate-900 pb-2">
                 <span className="w-2 h-2 rounded-full bg-rose-500 animate-pulse"></span>
                 <span>Error: &apos;SOIL_PIN&apos; was not declared</span>
               </div>
               <div className="space-y-3 mt-2">
-                <div className="bg-slate-900/50 p-2.5 rounded-lg border border-slate-900 text-slate-400">
+                <div className="bg-slate-900 p-2.5 rounded-lg border border-border/10 text-slate-400">
                   <div className="text-[10px] text-purple-400 font-bold mb-1">💡 AI gợi ý cách sửa:</div>
                   Bạn chưa định nghĩa chân nhận tín hiệu cho cảm biến độ ẩm. Thêm định nghĩa ở dòng đầu tiên:
                   <code className="block mt-1 text-emerald-400">#define SOIL_PIN 34</code>

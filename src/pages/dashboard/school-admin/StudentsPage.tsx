@@ -1,7 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
-import { Icon } from '@/components/ui/Icon';
 import { UserPlus, RefreshCw, Eye, Trash2, User, Mail, Phone, MapPin, BookOpen, GraduationCap, TrendingUp, Award, Clock, CheckCircle, Pencil, Calendar, Upload, Ban, Lock, Unlock, AlertCircle, CheckCircle2, XCircle } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
@@ -31,9 +30,19 @@ const ITEMS_PER_PAGE = 10;
 export const StudentsPage = () => {
   const queryClient = useQueryClient();
   const [searchTerm, setSearchTerm] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(ITEMS_PER_PAGE);
   const [toasts, setToasts] = useState<Toast[]>([]);
+
+  // Debounce search term (400ms) & reset page to 1
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(searchTerm);
+      setCurrentPage(1);
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
 
   // Toast notification
   const showToast = (message: string, type: ToastType = 'success') => {
@@ -58,11 +67,11 @@ export const StudentsPage = () => {
 
   // Fetch students
   const { data: studentsData, isLoading, isRefetching, refetch, error: studentsError } = useQuery({
-    queryKey: ['students', currentPage, pageSize, searchTerm],
+    queryKey: ['students', currentPage, pageSize, debouncedSearch],
     queryFn: () => studentsApi.getAll({
       pageNumber: currentPage,
       pageSize: pageSize,
-      search: searchTerm,
+      search: debouncedSearch,
     }),
     staleTime: 30000,
     refetchOnWindowFocus: false,
@@ -306,15 +315,14 @@ export const StudentsPage = () => {
               initial={{ opacity: 0, x: 20, scale: 0.95 }}
               animate={{ opacity: 1, x: 0, scale: 1 }}
               exit={{ opacity: 0, x: 20, scale: 0.95 }}
-              className={`flex items-center gap-3 px-4 py-3 rounded-lg shadow-lg border min-w-[300px] ${
-                toast.type === 'success'
-                  ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800'
-                  : toast.type === 'error'
+              className={`flex items-center gap-3 px-4 py-3 rounded-lg shadow-lg border min-w-[300px] ${toast.type === 'success'
+                ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800'
+                : toast.type === 'error'
                   ? 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800'
                   : toast.type === 'warning'
-                  ? 'bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-800'
-                  : 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800'
-              }`}
+                    ? 'bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-800'
+                    : 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800'
+                }`}
             >
               {toast.type === 'success' && <CheckCircle2 className="w-5 h-5 shrink-0 text-green-600 dark:text-green-400" />}
               {toast.type === 'error' && <XCircle className="w-5 h-5 shrink-0 text-red-600 dark:text-red-400" />}

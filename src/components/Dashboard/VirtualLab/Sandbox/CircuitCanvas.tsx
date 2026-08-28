@@ -1211,7 +1211,7 @@ export const CircuitCanvas = ({
       </div>
 
       <div
-        className="absolute inset-0 mt-12"
+        className="absolute inset-0"
         style={{
           // translate() ĐỨNG TRƯỚC scale() trong chuỗi transform CSS — theo
           // đúng thứ tự áp dụng transform (phải sang trái), scale() được áp

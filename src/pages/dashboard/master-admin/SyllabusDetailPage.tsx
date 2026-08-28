@@ -83,35 +83,51 @@ export const SyllabusDetailPage = () => {
                 </div>
 
                 <div className="space-y-3 pl-4 border-l-2 border-border">
-                  {course.modules.map((module) => (
-                    <div key={module.id}>
-                      <div className="flex items-center gap-2 text-sm font-medium mb-2">
-                        <Layers className="w-4 h-4 text-purple-500" />
-                        {module.title}
-                      </div>
-                      <div className="space-y-1.5 pl-4 border-l-2 border-border/60">
-                        {module.lessons.map((lesson) => (
-                          <div key={lesson.id} className="flex items-center justify-between gap-2 text-sm py-1">
-                            <div className="flex items-center gap-2">
-                              <FileText className="w-3.5 h-3.5 text-gray-400" />
-                              <span>{lesson.title}</span>
-                            </div>
-                            {lesson.hasVirtualLab && lesson.lab && (
-                              <Link to={`/dashboard/virtual-lab/${lesson.lab.id}`}>
-                                <Button size="sm" variant="outline" className="gap-1.5 h-7 text-xs">
-                                  <FlaskConical className="w-3.5 h-3.5" />
-                                  Mở Virtual Lab
-                                </Button>
-                              </Link>
+                  {[...course.modules]
+                    .sort((a, b) => {
+                      const orderA = a.displayOrder ?? 0;
+                      const orderB = b.displayOrder ?? 0;
+                      if (orderA !== orderB) return orderA - orderB;
+                      return a.title.localeCompare(b.title, undefined, { numeric: true, sensitivity: 'base' });
+                    })
+                    .map((module) => {
+                      const sortedLessons = [...(module.lessons || [])].sort((a, b) => {
+                        const orderA = a.displayOrder ?? 0;
+                        const orderB = b.displayOrder ?? 0;
+                        if (orderA !== orderB) return orderA - orderB;
+                        return a.title.localeCompare(b.title, undefined, { numeric: true, sensitivity: 'base' });
+                      });
+
+                      return (
+                        <div key={module.id}>
+                          <div className="flex items-center gap-2 text-sm font-medium mb-2">
+                            <Layers className="w-4 h-4 text-purple-500" />
+                            {module.title}
+                          </div>
+                          <div className="space-y-1.5 pl-4 border-l-2 border-border/60">
+                            {sortedLessons.map((lesson) => (
+                              <div key={lesson.id} className="flex items-center justify-between gap-2 text-sm py-1">
+                                <div className="flex items-center gap-2">
+                                  <FileText className="w-3.5 h-3.5 text-gray-400" />
+                                  <span>{lesson.title}</span>
+                                </div>
+                                {lesson.hasVirtualLab && lesson.lab && (
+                                  <Link to={`/dashboard/virtual-lab/${lesson.lab.id}`}>
+                                    <Button size="sm" variant="outline" className="gap-1.5 h-7 text-xs">
+                                      <FlaskConical className="w-3.5 h-3.5" />
+                                      Mở Virtual Lab
+                                    </Button>
+                                  </Link>
+                                )}
+                              </div>
+                            ))}
+                            {sortedLessons.length === 0 && (
+                              <p className="text-xs text-muted-foreground py-1">Chưa có Lesson nào.</p>
                             )}
                           </div>
-                        ))}
-                        {module.lessons.length === 0 && (
-                          <p className="text-xs text-muted-foreground py-1">Chưa có Lesson nào.</p>
-                        )}
-                      </div>
-                    </div>
-                  ))}
+                        </div>
+                      );
+                    })}
                   {course.modules.length === 0 && (
                     <p className="text-xs text-muted-foreground">Chưa có Module nào.</p>
                   )}

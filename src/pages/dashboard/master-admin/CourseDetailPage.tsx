@@ -292,11 +292,18 @@ export const CourseDetailPage = ({ courseId, onBack }: { courseId: number; onBac
         </div>
       ) : (
         <div className="space-y-3">
-          {modules.map((module, index) => (
-            <ModuleCard
-              key={module.id}
-              module={module}
-              index={index}
+          {[...modules]
+            .sort((a, b) => {
+              const orderA = a.displayOrder ?? 0;
+              const orderB = b.displayOrder ?? 0;
+              if (orderA !== orderB) return orderA - orderB;
+              return a.title.localeCompare(b.title, undefined, { numeric: true, sensitivity: 'base' });
+            })
+            .map((module, index) => (
+              <ModuleCard
+                key={module.id}
+                module={module}
+                index={index}
               expanded={expandedModules.has(module.id)}
               onToggle={() => toggleModule(module.id)}
               onEdit={() => {
@@ -441,12 +448,12 @@ export const CourseDetailPage = ({ courseId, onBack }: { courseId: number; onBac
             <div className="pt-3 space-y-4">
               {selectedModule.input && (
                 <div>
-                  <p className="text-sm text-blue-600 dark:text-blue-400 font-semibold mb-2 flex items-center gap-2">
-                    <span className="w-6 h-6 rounded bg-blue-100 dark:bg-blue-900 flex items-center justify-center text-xs font-bold">IN</span>
+                  <p className="text-sm text-foreground/80 font-semibold mb-2 flex items-center gap-2">
+                    <span className="w-6 h-6 rounded bg-muted flex items-center justify-center text-xs font-bold text-blue-500">IN</span>
                     Điều kiện tiên quyết
                   </p>
-                  <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 p-4 rounded-lg text-sm leading-relaxed">
-                    <ul className="list-disc pl-5 space-y-1">
+                  <div className="bg-muted/30 dark:bg-muted/10 border border-border/50 p-4 rounded-lg text-sm leading-relaxed">
+                    <ul className="list-disc pl-5 space-y-1 text-muted-foreground">
                       {selectedModule.input.split('\n').filter(Boolean).map((item: string, idx: number) => (
                         <li key={idx}>{item.trim()}</li>
                       ))}
@@ -457,12 +464,12 @@ export const CourseDetailPage = ({ courseId, onBack }: { courseId: number; onBac
               
               {selectedModule.output && (
                 <div>
-                  <p className="text-sm text-green-600 dark:text-green-400 font-semibold mb-2 flex items-center gap-2">
-                    <span className="w-6 h-6 rounded bg-green-100 dark:bg-green-900 flex items-center justify-center text-xs font-bold">OUT</span>
+                  <p className="text-sm text-foreground/80 font-semibold mb-2 flex items-center gap-2">
+                    <span className="w-6 h-6 rounded bg-muted flex items-center justify-center text-xs font-bold text-green-500">OUT</span>
                     Kết quả đạt được
                   </p>
-                  <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 p-4 rounded-lg text-sm leading-relaxed">
-                    <ul className="list-disc pl-5 space-y-1">
+                  <div className="bg-muted/30 dark:bg-muted/10 border border-border/50 p-4 rounded-lg text-sm leading-relaxed">
+                    <ul className="list-disc pl-5 space-y-1 text-muted-foreground">
                       {selectedModule.output.split('\n').filter(Boolean).map((item: string, idx: number) => (
                         <li key={idx}>{item.trim()}</li>
                       ))}
@@ -604,12 +611,12 @@ export const CourseDetailPage = ({ courseId, onBack }: { courseId: number; onBac
             <div className="space-y-4">
               {selectedLesson.input && (
                 <div>
-                  <p className="text-sm text-blue-600 dark:text-blue-400 font-semibold mb-2 flex items-center gap-2">
-                    <span className="w-6 h-6 rounded bg-blue-100 dark:bg-blue-900 flex items-center justify-center text-xs font-bold">IN</span>
+                  <p className="text-sm text-foreground/80 font-semibold mb-2 flex items-center gap-2">
+                    <span className="w-6 h-6 rounded bg-muted flex items-center justify-center text-xs font-bold text-blue-500">IN</span>
                     Điều kiện tiên quyết
                   </p>
-                  <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 p-4 rounded-lg text-sm leading-relaxed">
-                    <ul className="list-disc pl-5 space-y-1">
+                  <div className="bg-muted/30 dark:bg-muted/10 border border-border/50 p-4 rounded-lg text-sm leading-relaxed">
+                    <ul className="list-disc pl-5 space-y-1 text-muted-foreground">
                       {selectedLesson.input.split('\n').filter(Boolean).map((item: string, idx: number) => (
                         <li key={idx}>{item.trim()}</li>
                       ))}
@@ -620,12 +627,12 @@ export const CourseDetailPage = ({ courseId, onBack }: { courseId: number; onBac
               
               {selectedLesson.output && (
                 <div>
-                  <p className="text-sm text-green-600 dark:text-green-400 font-semibold mb-2 flex items-center gap-2">
-                    <span className="w-6 h-6 rounded bg-green-100 dark:bg-green-900 flex items-center justify-center text-xs font-bold">OUT</span>
+                  <p className="text-sm text-foreground/80 font-semibold mb-2 flex items-center gap-2">
+                    <span className="w-6 h-6 rounded bg-muted flex items-center justify-center text-xs font-bold text-green-500">OUT</span>
                     Kết quả đạt được
                   </p>
-                  <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 p-4 rounded-lg text-sm leading-relaxed">
-                    <ul className="list-disc pl-5 space-y-1">
+                  <div className="bg-muted/30 dark:bg-muted/10 border border-border/50 p-4 rounded-lg text-sm leading-relaxed">
+                    <ul className="list-disc pl-5 space-y-1 text-muted-foreground">
                       {selectedLesson.output.split('\n').filter(Boolean).map((item: string, idx: number) => (
                         <li key={idx}>{item.trim()}</li>
                       ))}

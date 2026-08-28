@@ -347,7 +347,7 @@ export const CircuitBuilderTeacherMode = ({
               </div>
             )}
 
-            <div className="mt-3 max-h-[520px] space-y-2 overflow-y-auto pr-1">
+            <div className="mt-3 max-h-[300px] space-y-2 overflow-y-auto pr-1">
               {isLoading && (
                 <div className="flex items-center gap-2 rounded-lg border border-border bg-muted/50 px-3 py-3 text-sm font-semibold text-muted-foreground">
                   <RefreshCw className="h-4 w-4 animate-spin" />
@@ -437,30 +437,7 @@ export const CircuitBuilderTeacherMode = ({
         </aside>
 
         <section className="min-w-0 overflow-hidden rounded-xl border border-border bg-card shadow-sm">
-          <div className="flex flex-col gap-3 border-b border-border px-4 py-3 lg:flex-row lg:items-center lg:justify-between">
-            <div>
-              <h5 className="text-sm font-bold text-foreground">Canvas mạch</h5>
-              <p className="text-xs text-muted-foreground">Pin thật theo Wokwi Elements, dây nối dạng elbow.</p>
-            </div>
-
-            <div className="flex flex-wrap gap-2">
-              {WIRE_PALETTE.map((item) => (
-                <span
-                  key={item.color}
-                  className="inline-flex items-center gap-1.5 rounded-md border border-border bg-muted/50 px-2 py-1 text-[11px] font-semibold text-muted-foreground"
-                  title={item.note}
-                >
-                  <span
-                    className="h-2.5 w-2.5 rounded-full border border-white shadow-sm"
-                    style={{ backgroundColor: WIRE_COLOR_HEX[item.color] }}
-                  />
-                  {item.label}
-                </span>
-              ))}
-            </div>
-          </div>
-
-          <div className="h-[560px] bg-[#222]">
+          <div className="h-[440px] bg-[#222]">
             <CircuitCanvas
               engine={null}
               boardType={selectedBoard}

@@ -8,7 +8,7 @@ import Footer from '@/components/ui/Footer';
 
 export function LandingPage() {
   return (
-    <div className="bg-slate-950 text-slate-50 font-sans min-h-screen flex flex-col selection:bg-blue-500/30 overflow-x-hidden">
+    <div className="bg-background text-foreground font-sans min-h-screen flex flex-col selection:bg-brand-500/30 overflow-x-hidden transition-colors duration-300">
       {/* 1. Sticky Navigation Header */}
       <Navbar />
       

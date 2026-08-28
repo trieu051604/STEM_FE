@@ -219,19 +219,6 @@ export const StudentsPage = () => {
       ),
     },
     {
-      key: 'averageScore',
-      header: 'Điểm TB',
-      render: (student) => {
-        const score = student.averageScore;
-        return (
-          <span className="flex items-center gap-1.5 text-sm">
-            <CheckCircle className="w-3.5 h-3.5 text-success" />
-            {score != null && score > 0 ? score.toFixed(1) : '—'}
-          </span>
-        );
-      },
-    },
-    {
       key: 'isActive',
       header: 'Trạng thái',
       render: (student) => (
@@ -344,7 +331,7 @@ export const StudentsPage = () => {
         <div>
           <h1 className="text-2xl font-bold">Quản lý học sinh</h1>
           <p className="text-muted-foreground">
-            Quản lý tài khoản và thông tin học sinh trong trường
+            Quản lý tài khoản và thông tin học sinh học Science trong trường
           </p>
         </div>
         <div className="flex gap-2">
@@ -389,8 +376,8 @@ export const StudentsPage = () => {
 
       {/* Stats Cards */}
       {isLoading ? (
-        <div className="grid grid-cols-2 sm:grid-cols-5 gap-4">
-          {[1, 2, 3, 4, 5].map((i) => (
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          {[1, 2, 3].map((i) => (
             <div key={i} className="bg-card rounded-xl border border-border p-4 animate-pulse">
               <div className="flex items-center gap-3">
                 <div className="w-12 h-12 rounded-lg bg-muted" />
@@ -403,7 +390,7 @@ export const StudentsPage = () => {
           ))}
         </div>
       ) : studentsData && !studentsError ? (
-        <div className="grid grid-cols-2 sm:grid-cols-5 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div className="bg-card rounded-xl border border-border p-4">
             <div className="flex items-center gap-3">
               <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center">
@@ -422,25 +409,9 @@ export const StudentsPage = () => {
               </div>
               <div>
                 <p className="text-2xl font-bold">
-                  {studentsData.items?.reduce((acc, s) => acc + (s.totalEnrolledClasses || 0), 0)}
+                  {studentsData.totalEnrolledClasses}
                 </p>
                 <p className="text-sm text-muted-foreground">Tổng lớp ĐK</p>
-              </div>
-            </div>
-          </div>
-          <div className="bg-card rounded-xl border border-border p-4">
-            <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-lg bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center">
-                <Clock className="w-6 h-6 text-amber-600 dark:text-amber-400" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold">
-                  {(() => {
-                    const count = studentsData.items?.filter(s => s.totalEnrolledClasses && s.totalEnrolledClasses > 0 && (!s.averageScore || s.averageScore === 0)).length || 0;
-                    return count;
-                  })()}
-                </p>
-                <p className="text-sm text-muted-foreground">Chưa có điểm</p>
               </div>
             </div>
           </div>
@@ -451,25 +422,9 @@ export const StudentsPage = () => {
               </div>
               <div>
                 <p className="text-2xl font-bold">
-                  {studentsData.items?.filter((s) => s.isActive).length || 0}
+                  {studentsData.totalActiveStudents}
                 </p>
                 <p className="text-sm text-muted-foreground">Đang học</p>
-              </div>
-            </div>
-          </div>
-          <div className="bg-card rounded-xl border border-border p-4">
-            <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-lg bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
-                <TrendingUp className="w-6 h-6 text-blue-600 dark:text-blue-400" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold">
-                  {(() => {
-                    const count = studentsData.items?.filter(s => (s.averageScore || 0) > 0).length || 0;
-                    return count;
-                  })()}
-                </p>
-                <p className="text-sm text-muted-foreground">Có điểm TB</p>
               </div>
             </div>
           </div>
@@ -661,10 +616,10 @@ export const StudentsPage = () => {
                 </div>
                 <div className="bg-accent/50 rounded-lg p-3">
                   <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
-                    <CheckCircle className="w-4 h-4" />
-                    Điểm TB
+                    <BookOpen className="w-4 h-4" />
+                    Chứng chỉ đạt được
                   </div>
-                  <p className="text-2xl font-bold">{selectedStudent.averageScore?.toFixed(1) || '—'}</p>
+                  <p className="text-2xl font-bold">{selectedStudent.certificatesEarned || 0}</p>
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-4 pt-2">

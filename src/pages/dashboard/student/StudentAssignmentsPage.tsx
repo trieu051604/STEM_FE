@@ -81,8 +81,8 @@ export default function StudentAssignmentsPage() {
 
   // Trạng thái thật = submission (nếu có) > overdue (quá hạn, chưa nộp) > pending.
   const getAssignmentWithOverdueStatus = (assignment: StudentAssignment): AssignmentWithSubmission => {
+    // Check if has submission first
     const submission = latestSubmissionByAssignment.get(assignment.id) ?? null;
-
     if (submission) {
       const realStatus = submission.score != null ? 'graded' : 'submitted';
       return {
@@ -91,6 +91,11 @@ export default function StudentAssignmentsPage() {
         score: submission.score ?? undefined,
         submission,
       };
+    }
+
+    // No submission — check overdue only if dueDate exists
+    if (!assignment.dueDate) {
+      return { ...assignment, status: 'pending' as const, score: undefined, submission: null };
     }
 
     const dueDate = parseISO(assignment.dueDate);
@@ -507,7 +512,7 @@ export default function StudentAssignmentsPage() {
 
                             if (assignment.submission) {
                               return (
-                                <Link to={`/dashboard/submissions/${assignment.submission.id}`}>
+                                <Link to={`/dashboard/student/assignments/${assignment.id}/submit?view=true`}>
                                   <Button variant="outline" size="sm" className="gap-2">
                                     <CheckCircle className="w-4 h-4" />
                                     <span className="hidden sm:inline">Xem kết quả</span>

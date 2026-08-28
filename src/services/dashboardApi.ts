@@ -350,6 +350,35 @@ export interface MyClassesParams {
   courseId?: number;
 }
 
+// Curriculum interfaces
+export interface ClassCurriculumResponse {
+  classId: number;
+  classCode: string;
+  className: string;
+  courseTitle: string;
+  modules: ModuleWithLessons[];
+}
+
+export interface ModuleWithLessons {
+  id: number;
+  title: string;
+  description: string;
+  displayOrder: number;
+  estimatedMinutes: number;
+  lessonCount: number;
+  lessons: LessonInCurriculum[];
+}
+
+export interface LessonInCurriculum {
+  id: number;
+  title: string;
+  displayOrder: number;
+  estimatedMinutes: number;
+  lessonType: string;
+  hasVirtualLab: boolean;
+  labId?: string;
+}
+
 function normalizeClassesResponse(payload: unknown): MyClassesResponse {
   const data = unwrapApiData<unknown>(payload);
 
@@ -414,15 +443,8 @@ export const classesApi = {
     return response.data.data;
   },
   getMyClasses: async (
-    userId: number,
     params?: MyClassesParams
   ): Promise<MyClassesResponse> => {
-    const numericUserId = Number(userId);
-
-    if (!Number.isFinite(numericUserId) || numericUserId <= 0) {
-      throw new Error('Missing user id for my classes request');
-    }
-
     const queryParams: Record<string, string | number> = {};
 
     if (params?.searchTerm) {
@@ -434,7 +456,7 @@ export const classesApi = {
     }
 
     const response = await api.get(
-      `/Classes/my-classes/${numericUserId}`,
+      '/Classes/my-classes',
       Object.keys(queryParams).length ? { params: queryParams } : undefined
     );
 
@@ -450,6 +472,11 @@ export const classesApi = {
   delete: async (id: number): Promise<void> => {
     await api.delete(`/classes/${id}`);
   },
+
+  getCurriculum: async (classId: number): Promise<ClassCurriculumResponse> => {
+    const response = await api.get(`/classes/${classId}/curriculum`);
+    return response.data.data;
+  },
 };
 
 // Schedules API
@@ -463,6 +490,19 @@ export interface ScheduleCalendarItem {
   classCode: string;
   className: string;
   color: string;
+}
+
+export interface ScheduleResponse {
+  id: number;
+  classId: number;
+  classCode: string;
+  className: string;
+  lessonId?: number;
+  lessonTitle?: string;
+  startTime: string;
+  endTime: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface GetMyScheduleParams {
@@ -485,6 +525,27 @@ function normalizeScheduleItem(source: Record<string, unknown>): ScheduleCalenda
   };
 }
 
+function normalizeSchedule(source: Record<string, unknown>): ScheduleResponse {
+  return {
+    id: toNumberValue(pick(source, 'id', 'Id')) ?? 0,
+    classId: toNumberValue(pick(source, 'classId', 'ClassId')) ?? 0,
+    classCode: (pick<string>(source, 'classCode', 'ClassCode')) ?? '',
+    className: (pick<string>(source, 'className', 'ClassName')) ?? '',
+    lessonId: toNumberValue(pick(source, 'lessonId', 'LessonId')),
+    lessonTitle: (pick<string>(source, 'lessonTitle', 'LessonTitle')) ?? undefined,
+    // The only caller, schedulesApi.getByClass, hits GET /Schedules/class/{id}
+    // which returns ScheduleCalendarResponse (fields Start/End on the C#
+    // side, "start"/"end" on the wire) — not the StartTime/EndTime shape this
+    // interface's name implies. Reading "startTime"/"StartTime" here always
+    // missed, so `new Date('')` produced "Invalid Date" on every schedule
+    // option in the "Gắn vào buổi dạy" dropdown.
+    startTime: (pick<string>(source, 'start', 'Start')) ?? '',
+    endTime: (pick<string>(source, 'end', 'End')) ?? '',
+    createdAt: (pick<string>(source, 'createdAt', 'CreatedAt')) ?? '',
+    updatedAt: (pick<string>(source, 'updatedAt', 'UpdatedAt')) ?? '',
+  };
+}
+
 export const schedulesApi = {
   getMySchedule: async (params?: GetMyScheduleParams): Promise<ScheduleCalendarItem[]> => {
     const queryParams: Record<string, string | number> = {};
@@ -500,6 +561,12 @@ export const schedulesApi = {
     const data = unwrapApiData<unknown>(response.data);
     const items = Array.isArray(data) ? data : [];
     return items.map((item) => normalizeScheduleItem(item as Record<string, unknown>));
+  },
+  getByClass: async (classId: number): Promise<ScheduleResponse[]> => {
+    const response = await api.get(`/Schedules/class/${classId}`);
+    const data = unwrapApiData<unknown>(response.data);
+    const items = Array.isArray(data) ? data : [];
+    return items.map((item) => normalizeSchedule(item as Record<string, unknown>));
   },
 };
 
@@ -872,6 +939,18 @@ function normalizeAssignment(value: unknown): AssignmentEntity {
     pick(source, 'assignment_type', 'assignmentType', 'AssignmentType')
   );
 
+  // Parse dueDate - handle multiple formats
+  let dueDate: string | null = null;
+  const rawDueDate = pick(source, 'dueDate', 'DueDate');
+  if (rawDueDate) {
+    if (typeof rawDueDate === 'string') {
+      dueDate = rawDueDate;
+    } else if (typeof rawDueDate === 'number') {
+      // Unix timestamp (milliseconds)
+      dueDate = new Date(rawDueDate).toISOString();
+    }
+  }
+
   return {
     id: toNumberValue(pick(source, 'id', 'Id')),
     classId: toNumberValue(pick(source, 'classId', 'ClassId')),
@@ -886,7 +965,7 @@ function normalizeAssignment(value: unknown): AssignmentEntity {
     description: toStringValue(pick(source, 'description', 'Description')),
     assignmentType,
     assignment_type: assignmentType,
-    dueDate: (pick(source, 'dueDate', 'DueDate') as string | null | undefined) ?? null,
+    dueDate,
     maxScore: toNumberValue(pick(source, 'maxScore', 'MaxScore'), 100),
     rubricId: toNullableNumber(pick(source, 'rubricId', 'RubricId')),
     rubricCriteria: normalizeRubricCriteria(pick(source, 'rubricCriteria', 'RubricCriteria')),
@@ -1100,11 +1179,27 @@ export interface SensorScenarioConfig {
   sensors: Record<string, SensorTimeline>;
 }
 
+// Explicit mechanical attachment (STANDARDIZE MOTOR / ROTATING COMPONENT
+// ANIMATION follow-up, 2026-08-24) — Robot Wheel/Propeller have no electrical
+// connection to anything (visual-only, not in the netlist), so there was no
+// data-driven way to know which DC Motor/Drone Motor a wheel/propeller
+// belongs to; the FE fell back to a nearest-canvas-distance heuristic. This
+// lets a diagram author declare the real relationship explicitly. Purely
+// additive to the diagram JSON blob (no DB/BE schema change — see
+// VirtualLabDiagramService.Analyze, which passes unknown top-level JSON
+// fields through untouched). Optional: diagrams without it keep using the
+// nearest-distance fallback.
+export interface MechanicalLink {
+  motorId: string;
+  targetId: string;
+}
+
 export interface LabCircuitConfig {
   board?: LabBoardType | string;
   parts?: LabCircuitComponent[];
   connections?: unknown[];
   sensorScenario?: SensorScenarioConfig;
+  mechanicalLinks?: MechanicalLink[];
   [key: string]: unknown;
 }
 
@@ -1187,6 +1282,7 @@ export interface CreateLabRequest {
   classIds: number[];
   status: LabStatus;
   linkedAssignmentId?: number | null;
+  scheduleId?: number | null; // Gán lab vào buổi dạy cụ thể
 }
 
 export type UpdateLabRequest = CreateLabRequest;
@@ -2142,6 +2238,11 @@ export const diagramsApi = {
         // trước (không key thừa) — BE TryParseScenario() coi thiếu key này là
         // "không có scenario", không phải lỗi.
         ...(data.circuitConfig.sensorScenario ? { sensorScenario: data.circuitConfig.sensorScenario } : {}),
+        // Mechanical attachment (Robot Wheel/Propeller -> Motor) — cùng
+        // pattern "chỉ ghi khi có dữ liệu" như sensorScenario ở trên. Thiếu
+        // key này KHÔNG phải lỗi — CircuitCanvas tự fallback về heuristic
+        // nearest-distance (xem motorVisual.ts).
+        ...(data.circuitConfig.mechanicalLinks?.length ? { mechanicalLinks: data.circuitConfig.mechanicalLinks } : {}),
       }),
       sourceCode: data.sourceCode,
       labId: data.labId,
@@ -2245,6 +2346,16 @@ export interface SubmissionDetailEntity extends SubmissionEntity {
   autoGradeResultJson: string | null;
   maxScore: number;
   rubricCriteria?: RubricCriterionEntity[];
+  quizDetail?: {
+    questions: {
+      id: string;
+      text: string;
+      type: string;
+      options?: { id: string; text: string }[];
+    }[];
+    timeLimitSeconds?: number | null;
+    shuffleQuestions: boolean;
+  };
 }
 
 export interface SubmissionSnapshot {
@@ -2297,6 +2408,33 @@ function normalizeSubmissionDetailEntity(value: unknown): SubmissionDetailEntity
     autoGradeResultJson: (pick(source, 'autoGradeResultJson', 'AutoGradeResultJson') as string | null | undefined) ?? null,
     maxScore: toNumberValue(pick(source, 'maxScore', 'MaxScore'), 100),
     rubricCriteria: normalizeRubricCriteriaToEntity(pick(source, 'rubricCriteria', 'RubricCriteria')),
+    quizDetail: normalizeQuizDetailForSubmission(pick(source, 'quizDetail', 'QuizDetail')),
+  };
+}
+
+function normalizeQuizDetailForSubmission(value: unknown): SubmissionDetailEntity['quizDetail'] | undefined {
+  const source = toRecord(value);
+  if (!source) return undefined;
+  const questions = toUnknownArray(pick(source, 'questions', 'Questions'));
+  return {
+    questions: questions.map(q => {
+      const qs = toRecord(q) ?? {};
+      const options = toUnknownArray(pick(qs, 'options', 'Options'));
+      return {
+        id: toStringValue(pick(qs, 'id', 'Id'), ''),
+        text: toStringValue(pick(qs, 'text', 'Text'), ''),
+        type: toStringValue(pick(qs, 'type', 'Type'), 'single_choice') as 'single_choice' | 'multiple_choice' | 'fill_blank',
+        options: options.map(o => {
+          const os = toRecord(o) ?? {};
+          return {
+            id: toStringValue(pick(os, 'id', 'Id'), ''),
+            text: toStringValue(pick(os, 'text', 'Text'), ''),
+          };
+        }),
+      };
+    }),
+    timeLimitSeconds: toNullableNumber(pick(source, 'timeLimitSeconds', 'TimeLimitSeconds')) ?? undefined,
+    shuffleQuestions: toBooleanValue(pick(source, 'shuffleQuestions', 'ShuffleQuestions')),
   };
 }
 
@@ -2615,9 +2753,20 @@ export const submissionsApi = {
     const response = await api.post('/submissions/virtual-lab', {
       assignmentId: payload.assignmentId,
       sessionId: payload.sessionId,
+      // Phase 9 fix (Final Project Readiness audit) — this used to only pick
+      // parts/connections, silently dropping sensorScenario/mechanicalLinks
+      // even though they were part of the actual diagram the student ran.
+      // The BE round-trips the whole diagramJson verbatim (VirtualLabDiagramService
+      // .Analyze -> GetRawText()) and sensorScenario/mechanicalLinks live
+      // inside diagramJson by design (see SensorScenarioDtos.cs comment — no
+      // dedicated column, no BE/DB change needed here), so the submitted
+      // snapshot now genuinely reflects what the student simulated, matching
+      // the same conditional-spread pattern already used in diagramsApi.save.
       diagramJson: JSON.stringify({
         parts: payload.circuitConfig.parts ?? [],
         connections: payload.circuitConfig.connections ?? [],
+        ...(payload.circuitConfig.sensorScenario ? { sensorScenario: payload.circuitConfig.sensorScenario } : {}),
+        ...(payload.circuitConfig.mechanicalLinks?.length ? { mechanicalLinks: payload.circuitConfig.mechanicalLinks } : {}),
       }),
       sourceCode: payload.sourceCode,
       simulationEvents: payload.simulationEvents,
@@ -2764,10 +2913,62 @@ export const schoolRequestsApi = {
 };
 
 // Notifications API
+export type NotificationType = 
+  | 'submission'    // Bài nộp
+  | 'grade'         // Chấm điểm
+  | 'class'         // Lớp học
+  | 'reminder'      // Nhắc nhở
+  | 'success'       // Thành công
+  | 'error'         // Lỗi
+  | 'warning'       // Cảnh báo
+  | 'info'          // Thông tin chung
+  | 'message'       // Tin nhắn/Bình luận
+  | 'school_request' // Yêu cầu từ trường
+  // Backend notification types
+  | 'System'
+  | 'GradeReport'
+  | 'AttendanceWarning'
+  | 'Assignment'
+  | 'Announcement'
+  | 'SubmissionComment'
+  | 'SubmissionReceived'
+  | 'ResubmitRequest'
+  | 'ResubmitRequestReviewed'
+  | 'AddedToClass'
+  | 'AssignmentAssigned'
+  | 'VirtualLabAssigned'
+  | 'LessonAvailable'
+  | 'ClassAnnouncement'
+  | 'AssignmentDueSoon'
+  | 'VirtualLabDueSoon'
+  | 'AssignmentSubmitted'
+  | 'AssignmentGraded'
+  | 'TeacherFeedback'
+  | 'ResubmissionApproved'
+  | 'ResubmissionRejected'
+  | 'VirtualLabCompleted'
+  | 'LabResultAvailable'
+  | 'ScheduleReminder'
+  | 'AssignmentDueToday'
+  | 'VirtualLabDueToday'
+  | 'ProgressAlert'
+  | 'ClassAssigned'
+  | 'ClassRemoved'
+  | 'NewClassAvailable'
+  | 'StudentProgressAlert'
+  | 'NewCourseAvailable'
+  | 'CourseUpdated'
+  | 'NewVirtualLabAvailable'
+  | 'TokenBalanceLow'
+  | 'SubscriptionExpiring'
+  | 'PaymentCompleted'
+  | 'PaymentFailed';
+
 export interface Notification {
   id: number;
   title: string;
   message: string;
+  type: NotificationType;
   isRead: boolean;
   createdAt: string;
 }
@@ -2781,12 +2982,25 @@ export interface NotificationsResponse {
 export const notificationsApi = {
   getAll: async (params?: { page?: number; pageSize?: number }): Promise<NotificationsResponse> => {
     const response = await api.get('/notifications', { params });
-    return response.data.data;
+    const raw = unwrapApiData<unknown>(response.data);
+    const list = Array.isArray(raw)
+      ? (raw as Array<{ id: number; title: string; content: string; isRead: boolean; createdAt: string }>)
+      : [];
+    const items: Notification[] = list.map((n) => ({
+      id: n.id,
+      title: n.title,
+      message: n.content,
+      type: 'info' as NotificationType,
+      isRead: n.isRead,
+      createdAt: n.createdAt,
+    }));
+    const unreadCount = items.filter((n) => !n.isRead).length;
+    return { items, total: items.length, unreadCount };
   },
   markAsRead: async (id: number): Promise<void> => {
-    await api.put(`/notifications/${id}/read`);
+    await api.patch(`/notifications/${id}/mark-as-read`);
   },
   markAllAsRead: async (): Promise<void> => {
-    await api.put('/notifications/read-all');
+    await api.patch('/notifications/mark-all-as-read');
   },
 };

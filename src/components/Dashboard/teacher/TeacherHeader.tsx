@@ -9,8 +9,6 @@ import {
   Menu,
   User,
   ChevronDown,
-  Bell,
-  Settings,
   ChevronLeft,
   Home,
   PanelLeftClose,
@@ -33,7 +31,7 @@ export const TeacherHeader = ({ isDesktop }: { isDesktop: boolean }) => {
   };
 
   return (
-    <header className="h-16 sticky top-0 z-30 bg-card/95 backdrop-blur border-b border-border flex items-center justify-between px-4 lg:px-6">
+    <header className="h-14 sticky top-0 z-30 bg-card/95 backdrop-blur border-b border-border flex items-center justify-between px-4 lg:px-6">
       <div className="flex items-center gap-3">
         <button
           onClick={() => setSidebarOpen(true)}
@@ -77,13 +75,6 @@ export const TeacherHeader = ({ isDesktop }: { isDesktop: boolean }) => {
         </button>
         <div className="flex items-center gap-3 text-muted-foreground">
           <ThemeToggle className="hover:text-foreground transition-colors p-1" />
-          <button className="hover:text-foreground transition-colors p-1 relative">
-            <Bell className="w-5 h-5" />
-            <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-indigo-500 rounded-full border border-background"></span>
-          </button>
-          <button className="hover:text-foreground transition-colors p-1">
-            <Settings className="w-5 h-5" />
-          </button>
         </div>
 
         <div className="relative">
@@ -91,7 +82,7 @@ export const TeacherHeader = ({ isDesktop }: { isDesktop: boolean }) => {
             onClick={() => setUserMenuOpen(!userMenuOpen)}
             className="flex items-center gap-2 p-2 rounded-lg transition-colors hover:bg-accent"
           >
-            <div className="w-8 h-8 rounded-full overflow-hidden shrink-0 bg-indigo-500/10 text-indigo-400">
+            <div className="w-8 h-8 rounded-full overflow-hidden shrink-0 bg-[#eefcf6] text-[#0f4c5c]">
               {user?.avatar ? (
                 <img
                   src={user.avatar}

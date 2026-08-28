@@ -92,8 +92,9 @@ export const TeachersPage = () => {
         address: data.address || '',
       });
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['teachers'] });
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['teachers'] });
+      await queryClient.refetchQueries({ queryKey: ['teachers'] });
       queryClient.invalidateQueries({ queryKey: ['users'] });
       setCreateModalOpen(false);
       setTeacherCreateError(null);
@@ -110,8 +111,9 @@ export const TeachersPage = () => {
   const updateTeacherMutation = useMutation({
     mutationFn: ({ id, data }: { id: number; data: Partial<TeacherProfile> }) => 
       teachersApi.update(id, data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['teachers'] });
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['teachers'] });
+      await queryClient.refetchQueries({ queryKey: ['teachers'] });
       setEditModalOpen(false);
       setSelectedTeacher(null);
       setTeacherUpdateError(null);
@@ -128,8 +130,9 @@ export const TeachersPage = () => {
   const toggleTeacherStatusMutation = useMutation({
     mutationFn: ({ id, isActive, fullName }: { id: number; isActive: boolean; fullName: string }) =>
       teachersApi.update(id, { isActive, fullName }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['teachers'] });
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['teachers'] });
+      await queryClient.refetchQueries({ queryKey: ['teachers'] });
       setSelectedTeacher(null);
       showToast('Cập nhật trạng thái tài khoản thành công!', 'success');
     },
@@ -283,9 +286,9 @@ export const TeachersPage = () => {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Quản lý giáo viên</h1>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Quản lý giáo viên Science</h1>
           <p className="text-gray-500 dark:text-gray-400">
-            Quản lý tài khoản và thông tin giáo viên trong trường
+            Quản lý tài khoản và thông tin giáo viên Science trong trường
           </p>
         </div>
         <Button onClick={() => setCreateModalOpen(true)}>

@@ -175,23 +175,27 @@ export const HC_SR04_PINS: Record<string, PinCoord> = {
 // khớp đúng width/height khai báo ở đó, vì card đó chính là bounding box thật
 // sẽ được đo qua offsetWidth/offsetHeight.
 
-// Card 180x100 — layout theo đúng thứ tự user yêu cầu: OUT1-4/VIN/GND hàng
-// trên (khối cực động cơ + nguồn), ENA/IN1-4/ENB/5V hàng dưới (khối logic
-// hướng về phía ESP32), mô phỏng cách chia 2 khối trên module L298N thật.
+// Card 140x140 — REAL COMPONENT VISUAL (componentIllustrations.tsx render
+// ảnh thật l298n.png, 535x536 gốc, object-fit: contain trong box 140x140).
+// Toạ độ đo trực tiếp trên ảnh gốc bằng lấy mẫu màu pixel (terminal xanh
+// dương cho OUT1-4/VIN/GND/5V, housing đen cho ENA/IN1-4/ENB), rồi quy đổi
+// theo scale 140/535 (x) và 140/536 (y). Đã verify bằng cách render đè
+// pin-dot lên đúng ảnh này — cả 13 điểm khớp chính xác từng terminal/pin
+// header thật. KHÔNG còn dùng box 180x100 cũ (dành cho SVG tự vẽ trước đây).
 export const L298N_PINS: Record<string, PinCoord> = {
-  'OUT1': { x: 15,  y: 8,  label: 'OUT1 (Motor A)' },
-  'OUT2': { x: 40,  y: 8,  label: 'OUT2 (Motor A)' },
-  'VIN':  { x: 90,  y: 8,  label: 'VIN' },
-  'GND':  { x: 115, y: 8,  label: 'GND' },
-  'OUT3': { x: 140, y: 8,  label: 'OUT3 (Motor B)' },
-  'OUT4': { x: 165, y: 8,  label: 'OUT4 (Motor B)' },
-  'ENA':  { x: 15,  y: 92, label: 'ENA' },
-  'IN1':  { x: 40,  y: 92, label: 'IN1' },
-  'IN2':  { x: 65,  y: 92, label: 'IN2' },
-  'IN3':  { x: 90,  y: 92, label: 'IN3' },
-  'IN4':  { x: 115, y: 92, label: 'IN4' },
-  'ENB':  { x: 140, y: 92, label: 'ENB' },
-  '5V':   { x: 165, y: 92, label: '5V' },
+  'OUT1': { x: 15,  y: 87,  label: 'OUT1 (Motor A)' },
+  'OUT2': { x: 15,  y: 101, label: 'OUT2 (Motor A)' },
+  'VIN':  { x: 32,  y: 125, label: 'VIN' },
+  'GND':  { x: 46,  y: 125, label: 'GND' },
+  'OUT3': { x: 125, y: 101, label: 'OUT3 (Motor B)' },
+  'OUT4': { x: 125, y: 87,  label: 'OUT4 (Motor B)' },
+  'ENA':  { x: 74,  y: 127, label: 'ENA' },
+  'IN1':  { x: 82,  y: 127, label: 'IN1' },
+  'IN2':  { x: 90,  y: 127, label: 'IN2' },
+  'IN3':  { x: 98,  y: 127, label: 'IN3' },
+  'IN4':  { x: 105, y: 127, label: 'IN4' },
+  'ENB':  { x: 113, y: 127, label: 'ENB' },
+  '5V':   { x: 60,  y: 125, label: '5V' },
 };
 
 // Card 60x50
@@ -439,10 +443,23 @@ export const RELAY_MODULE_PINS: Record<string, PinCoord> = {
   'NC':  { x: 80, y: 42, label: 'NC' },
 };
 
-// Card 60x50 — 2 cực, giống DC Motor.
+// Card 60x50 — 2 cực nguồn (giống DC Motor) + 1 chân IN điều khiển ON/OFF qua
+// digitalWrite (FanModel.cs — xem TASK "STANDARDIZE MOTOR / ROTATING
+// COMPONENT ANIMATION"; trước đây chỉ có 2 cực nguồn, không có cách nào cho
+// firmware bật/tắt quạt qua GPIO). Đặt ở giữa-trên, tránh đè lên 2 cực nguồn
+// ở 2 mép trái/phải.
 export const FAN_PINS: Record<string, PinCoord> = {
   '+': { x: 6,  y: 25, label: '+ (VCC)' },
   '-': { x: 54, y: 25, label: '- (GND)' },
+  'IN': { x: 30, y: 6, label: 'IN' },
+};
+
+// Card 50x50 — trước đây KHÔNG có pin nào (visual-only thuần cơ khí). Thêm 1
+// chân IN điều khiển ON/OFF qua digitalWrite (DroneMotorModel.cs), đặt gần
+// cụm dây dẫn đã vẽ sẵn trong SVG (drone-motor case, componentIllustrations.tsx)
+// ở đáy card.
+export const DRONE_MOTOR_PINS: Record<string, PinCoord> = {
+  'IN': { x: 25, y: 48, label: 'IN' },
 };
 
 // Card 60x50 — 2 cực.
@@ -566,6 +583,17 @@ export const LCD2004_PINS: Record<string, PinCoord> = {
   'SCL': { x: 4, y: 60.5, label: 'SCL' },
 };
 
+// PCA9685 (I2C 16-channel PWM/servo driver) — card 90x50, chỉ 4 chân
+// VCC/GND/SDA/SCL (KHÔNG có CH0-15) vì mapping servo->kênh PCA9685 được thực
+// hiện qua componentId string trong firmware (StemFlowPCA9685::setServoAngle),
+// không qua netlist diagram — xem VirtualLabDiagramService.SupportedPins["wokwi-pca9685"].
+export const PCA9685_PINS: Record<string, PinCoord> = {
+  'VCC': { x: 10, y: 25, label: 'VCC' },
+  'GND': { x: 35, y: 25, label: 'GND' },
+  'SDA': { x: 55, y: 25, label: 'SDA' },
+  'SCL': { x: 78, y: 25, label: 'SCL' },
+};
+
 export const LINE_TRACKING_5CH_PINS: Record<string, PinCoord> = {
   'VCC':  { x: 8,   y: 42, label: 'VCC' },
   'GND':  { x: 24,  y: 42, label: 'GND' },
@@ -648,6 +676,7 @@ export function getPinCoords(componentType: string): Record<string, PinCoord> {
   // nâng cấp lên wiring-validation sau), giống cách xử lý ILI9341_PINS.
   if (normalized === 'relay-module' || normalized === 'relay') return RELAY_MODULE_PINS;
   if (normalized === 'fan' || normalized === 'dc-fan') return FAN_PINS;
+  if (normalized === 'drone-motor') return DRONE_MOTOR_PINS;
   if (normalized === 'water-pump' || normalized === 'mini-pump') return WATER_PUMP_PINS;
   if (normalized === 'water-leak-sensor' || normalized === 'water_leak_sensor') return WATER_LEAK_SENSOR_PINS;
   if (normalized === 'rain-sensor' || normalized === 'rain_sensor') return RAIN_SENSOR_PINS;
@@ -666,5 +695,6 @@ export function getPinCoords(componentType: string): Record<string, PinCoord> {
   if (normalized === 'line-tracking-3ch' || normalized === 'line_tracking_3ch') return LINE_TRACKING_3CH_PINS;
   if (normalized === 'line-tracking-5ch' || normalized === 'line_tracking_5ch') return LINE_TRACKING_5CH_PINS;
   if (normalized === 'lcd2004') return LCD2004_PINS;
+  if (normalized === 'pca9685') return PCA9685_PINS;
   return {};
 }

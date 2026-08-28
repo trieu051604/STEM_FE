@@ -13,7 +13,8 @@ import {
   Coins
 } from 'lucide-react';
 import { paymentsApi, PaymentPackage } from '@/services/schoolAdminApi';
-import toast from 'react-hot-toast';
+import { api } from '@/services/api';
+import { useToast } from '@/components/ToastProvider';
 import {
   Dialog,
   DialogContent,
@@ -56,6 +57,7 @@ export const PackagesManagementPage = () => {
   const [showModal, setShowModal] = useState(false);
   const [editingPackage, setEditingPackage] = useState<PaymentPackage | null>(null);
   const [formData, setFormData] = useState<PackageFormData>(defaultFormData);
+  const { showToast } = useToast();
 
   const queryClient = useQueryClient();
 
@@ -89,6 +91,77 @@ export const PackagesManagementPage = () => {
     setFormData(defaultFormData);
   };
 
+  const createMutation = useMutation({
+    mutationFn: async (data: PackageFormData) => {
+      const response = await api.post('/payments/admin/packages', {
+        name: data.name,
+        description: data.description,
+        price: data.price,
+        tokenAmount: data.tokenAmount,
+        isActive: data.isActive,
+        isFeatured: data.isFeatured,
+        sortOrder: data.sortOrder
+      });
+      return response.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-payment-packages'] });
+      handleCloseModal();
+      showToast('Tạo gói thành công!');
+    },
+    onError: () => {
+      showToast('Lỗi khi tạo gói', 'error');
+    }
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: async ({ id, data }: { id: number; data: PackageFormData }) => {
+      const response = await api.put(`/payments/admin/packages/${id}`, {
+        name: data.name,
+        description: data.description,
+        price: data.price,
+        tokenAmount: data.tokenAmount,
+        isActive: data.isActive,
+        isFeatured: data.isFeatured,
+        sortOrder: data.sortOrder
+      });
+      return response.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-payment-packages'] });
+      handleCloseModal();
+      showToast('Cập nhật gói thành công!');
+    },
+    onError: () => {
+      showToast('Lỗi khi cập nhật gói', 'error');
+    }
+  });
+
+  const handleSubmit = () => {
+    if (editingPackage) {
+      updateMutation.mutate({ id: editingPackage.id, data: formData });
+    } else {
+      createMutation.mutate(formData);
+    }
+  };
+
+  const deleteMutation = useMutation({
+    mutationFn: async (id: number) => {
+      await api.delete(`/payments/admin/packages/${id}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-payment-packages'] });
+      showToast('Xóa gói thành công!');
+    },
+    onError: () => {
+      showToast('Lỗi khi xóa gói', 'error');
+    }
+  });
+
+  const handleDelete = (pkg: PaymentPackage) => {
+    deleteMutation.mutate(pkg.id);
+  };
+
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('vi-VN').format(amount) + ' đ';
   };
@@ -103,6 +176,10 @@ export const PackagesManagementPage = () => {
             Quản lý các gói token AI bán cho School Administrators
           </p>
         </div>
+        <Button onClick={() => handleOpenModal()}>
+          <Plus className="w-4 h-4 mr-2" />
+          Thêm gói
+        </Button>
       </div>
 
       {/* Stats */}
@@ -146,10 +223,10 @@ export const PackagesManagementPage = () => {
               <Coins className="w-5 h-5 text-purple-600" />
             </div>
             <div>
-              <p className="text-xs text-muted-foreground">Giá/token thấp nhất</p>
+              <p className="text-xs text-muted-foreground">Gói có giá thấp nhất</p>
               <p className="font-bold text-xl">
                 {packages && packages.length > 0 
-                  ? formatCurrency(Math.min(...packages.map(p => p.price / p.tokenAmount)))
+                  ? formatCurrency(Math.min(...packages.map(p => p.price)))
                   : '0 đ'}
               </p>
             </div>
@@ -212,13 +289,28 @@ export const PackagesManagementPage = () => {
                     )}
                   </TableCell>
                   <TableCell className="text-right">
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={() => handleOpenModal(pkg)}
-                    >
-                      <Edit className="w-4 h-4" />
-                    </Button>
+                    <div className="flex justify-end gap-1">
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => handleOpenModal(pkg)}
+                      >
+                        <Edit className="w-4 h-4" />
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                        onClick={() => handleDelete(pkg)}
+                        disabled={deleteMutation.isPending}
+                      >
+                        {deleteMutation.isPending ? (
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : (
+                          <Trash2 className="w-4 h-4" />
+                        )}
+                      </Button>
+                    </div>
                   </TableCell>
                 </TableRow>
               ))}
@@ -313,7 +405,13 @@ export const PackagesManagementPage = () => {
             <Button variant="outline" onClick={handleCloseModal}>
               Hủy
             </Button>
-            <Button onClick={handleCloseModal}>
+            <Button 
+              onClick={handleSubmit} 
+              disabled={createMutation.isPending || updateMutation.isPending}
+            >
+              {createMutation.isPending || updateMutation.isPending ? (
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              ) : null}
               {editingPackage ? 'Lưu thay đổi' : 'Tạo gói'}
             </Button>
           </DialogFooter>

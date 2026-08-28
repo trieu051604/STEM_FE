@@ -177,7 +177,7 @@ export const COMPONENT_REFERENCES: Record<string, ComponentReference> = {
   l298n: {
     label: 'L298N Motor Driver',
     summary: '13 chân: IN1-4, ENA/ENB, OUT1-4, VIN, GND, 5V',
-    role: 'Điều khiển chiều/tốc độ 2 động cơ DC từ tín hiệu GPIO — trạng thái forward/backward/stopped/brake được suy ra THẬT từ QEMU (đọc digitalWrite IN1-4), hiện ngay trên card.',
+    role: 'Điều khiển chiều/tốc độ 2 động cơ DC từ tín hiệu GPIO — trạng thái forward/backward/stopped/brake được suy ra THẬT từ QEMU (đọc digitalWrite IN1-4), hiện ngay trên card. Tên chân đã đối chiếu với components101.com (chuẩn breakout L298N phổ biến) — hình minh hoạ là sơ đồ khối chung, KHÔNG phải ảnh linh kiện thật (không có part L298N/relay module nào trong kho Fritzing chính thức đang dùng).',
     pins: ['IN1', 'IN2', 'IN3', 'IN4', 'ENA', 'ENB', 'OUT1', 'OUT2', 'OUT3', 'OUT4', 'VIN', 'GND', '5V'],
     sample: 'GPIO -> IN1..IN4, OUT1/2 -> Motor A, OUT3/4 -> Motor B, VIN -> Battery (+), GND -> chung',
     icon: CircuitBoard,
@@ -456,16 +456,16 @@ export const COMPONENT_REFERENCES: Record<string, ComponentReference> = {
     badge: 'Kiểm tra nối dây',
   },
 
-  // --- Fallback card — wiring-validation ---
+  // --- Fallback card — runtime-supported (RelayModel.cs, IN -> ON/OFF) ---
   relay_module: {
     label: 'Relay Module',
     summary: '6 chân: VCC, IN, GND, NO, COM, NC',
-    role: 'Đóng/ngắt tải điện áp cao qua tín hiệu điều khiển digital.',
+    role: 'Đóng/ngắt tải điện áp cao qua tín hiệu điều khiển digital. Tên chân đã đối chiếu với lastminuteengineers.com/circuitdigest.com (chuẩn module relay 1 kênh phổ biến) — hình minh hoạ là sơ đồ khối chung, KHÔNG phải ảnh linh kiện thật.',
     pins: ['VCC', 'IN', 'GND', 'NO', 'COM', 'NC'],
     sample: '5V -> VCC, GND -> GND, IN -> GPIO',
     icon: Settings2,
     iconClassName: 'bg-amber-50 text-amber-700',
-    badge: 'Kiểm tra nối dây',
+    badge: 'Mô phỏng được',
   },
   fan: {
     label: 'Fan / DC Fan',
@@ -507,9 +507,14 @@ export const COMPONENT_REFERENCES: Record<string, ComponentReference> = {
     iconClassName: 'bg-slate-100 text-slate-600',
     badge: 'Kiểm tra nối dây',
   },
+  // Pin SEMANTICS verified (VCC/GND/DO/AO, cross-vendor corroborated YL-69
+  // module convention) + dedicated wiring rule đã có, nhưng pin GEOMETRY
+  // (vị trí thật trên hình) CHƯA xác minh — chưa tìm được visual/CAD asset
+  // thật khớp đúng module này (xem component-compatibility.json
+  // wokwi-soil-moisture-sensor). Badge vẫn phải trung thực theo Phase 17.
   soil_moisture_sensor: {
     label: 'Soil Moisture Sensor',
-    summary: '4 chân: VCC, GND, DO, AO',
+    summary: '4 chân: VCC, GND, DO, AO — YL-69 + LM393, hình minh hoạ đã đối chiếu với module thật (2 đầu dò + board so sánh).',
     role: 'Đo độ ẩm đất qua 2 đầu dò.',
     pins: ['VCC', 'GND', 'DO', 'AO'],
     sample: '5V -> VCC, GND -> GND, AO -> GPIO analog',
@@ -761,15 +766,18 @@ export const COMPONENT_REFERENCES: Record<string, ComponentReference> = {
     iconClassName: 'bg-orange-50 text-orange-700',
     badge: 'Kiểm tra nối dây',
   },
+  // PIN_UNVERIFIED — xem robotKitComponents.ts (supportLevel: 'pin-unverified')
+  // và component-compatibility.json (wokwi-ph-sensor). VCC/GND/PO suy đoán
+  // theo tên gọi phổ biến, CHƯA có evidence xác minh.
   ph_sensor: {
     label: 'pH Sensor',
-    summary: '3 chân: VCC, GND, PO (analog)',
+    summary: '3 chân: VCC, GND, PO (analog) — CHƯA xác minh',
     role: 'Đo độ pH dung dịch qua đầu dò điện cực, trả tín hiệu analog.',
     pins: ['VCC', 'GND', 'PO'],
     sample: '5V -> VCC, GND -> GND, PO -> GPIO analog',
     icon: FlaskConical,
     iconClassName: 'bg-cyan-50 text-cyan-700',
-    badge: 'Kiểm tra nối dây',
+    badge: 'Chưa xác minh sơ đồ chân',
   },
   line_tracking_3ch: {
     label: 'Line Tracking Sensor (3 kênh)',

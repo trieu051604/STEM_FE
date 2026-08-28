@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Icon } from '@/components/ui/Icon';
-import { Plus, RefreshCw, Edit, Trash2, Eye, BookOpen, Users, TrendingUp, Loader2 } from 'lucide-react';
+import { Plus, RefreshCw, Edit, Trash2, Eye, BookOpen, Users, TrendingUp, Loader2, FlaskConical } from 'lucide-react';
 import {
   DataTable,
   ColumnDef,
@@ -16,6 +16,7 @@ import {
 } from './components/DataTable';
 import { CourseForm, CourseFormData } from './components/Forms';
 import { coursesApi, Course } from '@/services/schoolAdminApi';
+import { syllabiApi, Syllabus } from '@/services/curriculumApi';
 import { format } from 'date-fns';
 import { vi } from 'date-fns/locale';
 
@@ -74,10 +75,28 @@ export const CoursesPage = () => {
   const [createError, setCreateError] = useState<string | null>(null);
   const [updateError, setUpdateError] = useState<string | null>(null);
 
+  // Fetch available syllabi
+  const { data: syllabiData } = useQuery({
+    queryKey: ['syllabi-for-course'],
+    queryFn: async () => {
+      const syllabi = await syllabiApi.getAll({ status: 'published' });
+      return syllabi;
+    },
+  });
+
+  const syllabi = syllabiData?.map((s: Syllabus) => ({ id: s.id, title: s.title })) || [];
+
   const createCourseMutation = useMutation({
     mutationFn: async (data: CourseFormData) => {
       setCreateError(null);
-      return coursesApi.create({ title: data.title, description: data.description });
+      return coursesApi.create({
+        title: data.title,
+        description: data.description,
+        syllabusId: data.syllabusId,
+        estimatedHours: data.estimatedHours,
+        isRequired: data.isRequired,
+        isActive: data.isActive,
+      });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['courses'] });
@@ -104,7 +123,14 @@ export const CoursesPage = () => {
   const updateCourseMutation = useMutation({
     mutationFn: async ({ id, data }: { id: number; data: CourseFormData }) => {
       setUpdateError(null);
-      return coursesApi.update(id, { title: data.title, description: data.description });
+      return coursesApi.update(id, {
+        title: data.title,
+        description: data.description,
+        syllabusId: data.syllabusId,
+        estimatedHours: data.estimatedHours,
+        isRequired: data.isRequired,
+        isActive: data.isActive,
+      });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['courses'] });
@@ -165,15 +191,6 @@ export const CoursesPage = () => {
             )}
           </div>
         </div>
-      ),
-    },
-    {
-      key: 'schoolName',
-      header: 'Trường',
-      render: (course) => (
-        <span className="text-muted-foreground">
-          {course.schoolName || '—'}
-        </span>
       ),
     },
     {
@@ -264,15 +281,23 @@ export const CoursesPage = () => {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold">Quản lý khóa học</h1>
+          <h1 className="text-2xl font-bold">Quản lý môn Science</h1>
           <p className="text-muted-foreground">
-            Tạo và quản lý các khóa học STEM cho trường của bạn
+            Tạo và quản lý các môn học Science cho trường của bạn
           </p>
         </div>
         <Button onClick={() => setCreateModalOpen(true)}>
           <Plus className="w-4 h-4" />
-          Thêm khóa học
+          Thêm môn học
         </Button>
+      </div>
+
+      {/* Science Banner */}
+      <div className="bg-primary/5 border border-primary/20 rounded-xl p-4 flex items-center gap-3">
+        <FlaskConical className="w-5 h-5 text-primary shrink-0" />
+        <p className="text-sm">
+          Các môn Science được giảng dạy theo chương trình STEM. Chọn từ danh sách Syllabus được cấp phát.
+        </p>
       </div>
 
       {/* Filters */}
@@ -280,7 +305,7 @@ export const CoursesPage = () => {
         <SearchInput
           value={searchTerm}
           onChange={setSearchTerm}
-          placeholder="Tìm kiếm khóa học..."
+          placeholder="Tìm kiếm môn học..."
           className="sm:max-w-sm"
         />
         <Button variant="outline" size="icon" onClick={() => refetch()}>
@@ -294,18 +319,18 @@ export const CoursesPage = () => {
           <div className="bg-card rounded-xl border border-border p-4">
             <div className="flex items-center gap-3">
               <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center">
-                <BookOpen className="w-6 h-6 text-primary" />
+                <FlaskConical className="w-6 h-6 text-primary" />
               </div>
               <div>
                 <p className="text-2xl font-bold">{coursesData.total}</p>
-                <p className="text-sm text-muted-foreground">Tổng khóa học</p>
+                <p className="text-sm text-muted-foreground">Môn Science</p>
               </div>
             </div>
           </div>
           <div className="bg-card rounded-xl border border-border p-4">
             <div className="flex items-center gap-3">
               <div className="w-12 h-12 rounded-lg bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
-                <TrendingUp className="w-6 h-6 text-green-600 dark:text-green-400" />
+                <BookOpen className="w-6 h-6 text-green-600 dark:text-green-400" />
               </div>
               <div>
                 <p className="text-2xl font-bold">{coursesData.total}</p>
@@ -322,7 +347,7 @@ export const CoursesPage = () => {
                 <p className="text-2xl font-bold">
                   {coursesData.items?.reduce((sum, course) => sum + (course.enrolledStudents || 0), 0) || 0}
                 </p>
-                <p className="text-sm text-muted-foreground">Học viên đăng ký</p>
+                <p className="text-sm text-muted-foreground">Học sinh đăng ký</p>
               </div>
             </div>
           </div>
@@ -334,7 +359,7 @@ export const CoursesPage = () => {
         columns={columns}
         data={coursesData?.items || []}
         loading={isLoading}
-        emptyMessage="Không có khóa học nào"
+        emptyMessage="Không có môn Science nào"
         onRowClick={(course) => {
           setSelectedCourse(course);
           setDetailModalOpen(true);
@@ -375,6 +400,7 @@ export const CoursesPage = () => {
           }}
           loading={createCourseMutation.isPending}
           error={createError}
+          syllabi={syllabi}
         />
       </Modal>
 
@@ -402,7 +428,9 @@ export const CoursesPage = () => {
             defaultValues={{
               title: selectedCourse.title,
               description: selectedCourse.description,
+              syllabusId: selectedCourse.syllabusId,
             }}
+            syllabi={syllabi}
           />
         )}
       </Modal>
@@ -436,10 +464,6 @@ export const CoursesPage = () => {
                 </p>
               </div>
               <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <p className="text-sm text-muted-foreground">Trường</p>
-                  <p className="font-medium">{selectedCourse.schoolName || '—'}</p>
-                </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Ngày tạo</p>
                   <p className="font-medium">

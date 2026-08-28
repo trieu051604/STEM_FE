@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { DialogHeader, DialogContent, DialogFooter, DialogTitle } from '@/components/ui/dialog';
-import { X, ExternalLink, RefreshCw } from 'lucide-react';
+import { X, ExternalLink, RefreshCw, Wrench, BookOpen } from 'lucide-react';
 import { WokwiLinkValidator } from './WokwiLinkValidator';
 import { CircuitBuilderTeacherMode } from './Sandbox/CircuitBuilderTeacherMode';
 import type {
@@ -33,6 +33,11 @@ export interface LabAssignmentOption {
   classId?: number;
 }
 
+export interface LabLessonOption {
+  id: number;
+  label: string;
+}
+
 // Dữ liệu điền sẵn từ "bài tập mẫu" (src/data/virtualLabSampleExercises.ts) — KHÁC với
 // initialLab: không bật chế độ "đang sửa lab có sẵn" (isEditing vẫn false), Lưu vẫn gọi
 // labsApi.create(), không phải update(). Chỉ áp dụng khi mở modal để TẠO MỚI.
@@ -51,6 +56,7 @@ interface CreateLabModalProps {
   onValidateWokwi: (value: string) => Promise<ValidateWokwiProjectResponse>;
   classOptions: LabClassOption[];
   assignmentOptions: LabAssignmentOption[];
+  lessonOptions?: LabLessonOption[];
   componentOptions?: ComponentGlueRegistryEntity[];
   isComponentsLoading?: boolean;
   componentsError?: string | null;
@@ -59,14 +65,17 @@ interface CreateLabModalProps {
   templateData?: CreateLabTemplateData | null;
   isSaving?: boolean;
   error?: string | null;
-}
+  scheduleOptions?: LabLessonOption[]; // Danh sách buổi dạy (schedules)
 
-const categories: Array<{ value: LabCategory; label: string }> = [
-  { value: 'physics', label: 'Vật lý' },
-  { value: 'chemistry', label: 'Hóa học' },
-  { value: 'biology', label: 'Sinh học' },
-  { value: 'robotics', label: 'Robot' },
-];
+  // ROBOT DELIVERY TEMPLATE UI INTEGRATION fix — khi Teacher mở modal này từ
+  // 1 trong 2 lối vào KHÔNG đi qua TemplatePickerModal ("Tạo phòng thí
+  // nghiệm mới" ở header, hoặc thẻ "Tạo Lab Mới" trong lưới lab), modal vẫn
+  // phải cho họ cơ hội quay lại chọn mẫu thay vì chỉ có đường "tạo mạch thủ
+  // công". Optional — khi không truyền, modal giữ nguyên hành vi cũ (không
+  // hiện bước chọn, vào thẳng form thủ công) để không phá bất kỳ nơi gọi
+  // nào khác.
+  onRequestTemplatePicker?: () => void;
+}
 
 const defaultCircuitConfig: LabCircuitConfig = {
   board: 'arduino_uno',
@@ -86,6 +95,7 @@ const defaultFormData = {
   classIds: [] as number[],
   status: 'published' as LabStatus,
   linkedAssignmentId: '',
+  scheduleId: '',
   simulationMode: 'custom_sandbox' as LabSimulationMode,
   starterCode: defaultStarterCode,
   circuitConfig: defaultCircuitConfig,
@@ -93,9 +103,9 @@ const defaultFormData = {
 
 // Native <select>/<input multiple> chưa có primitive Radix tương đương cho multi-select,
 // nên style thủ công theo đúng token của Input/Select (border-input, bg-background,
-// dark:bg-input/30, focus ring) để đồng bộ hình ảnh với các control khác trong modal.
+// focus ring) để đồng bộ hình ảnh với các control khác trong modal.
 const nativeFieldClassName =
-  'flex h-10 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground outline-none transition-colors focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/50 dark:bg-input/30 dark:border-input';
+  'flex h-10 w-full rounded-lg border border-input bg-white px-3 py-2 text-sm text-gray-900 outline-none transition-colors focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/50 dark:bg-gray-900 dark:text-gray-100 dark:border-gray-700';
 
 function getInitialFormData(
   initialLab?: LabEntity | null,
@@ -113,13 +123,14 @@ function getInitialFormData(
       // buộc chọn lớp ngay lúc chỉ mới "dùng thử mẫu".
       status: 'draft' as LabStatus,
       linkedAssignmentId: '',
+      scheduleId: '',
       simulationMode: 'custom_sandbox' as LabSimulationMode,
       starterCode: templateData.starterCode,
       circuitConfig: templateData.circuitConfig,
     };
   }
 
-  if (!initialLab) return defaultFormData;
+  if (!initialLab) return { ...defaultFormData };
 
   return {
     title: initialLab.title,
@@ -132,6 +143,7 @@ function getInitialFormData(
     linkedAssignmentId: initialLab.linkedAssignmentId
       ? String(initialLab.linkedAssignmentId)
       : '',
+    scheduleId: '',
     simulationMode:
       (initialLab.simulationMode === 'custom_sandbox'
         ? 'custom_sandbox'
@@ -148,6 +160,8 @@ export const CreateLabModal = ({
   onValidateWokwi,
   classOptions,
   assignmentOptions,
+  lessonOptions = [],
+  scheduleOptions = [], // Danh sách buổi dạy (schedules)
   componentOptions = [],
   isComponentsLoading,
   componentsError,
@@ -156,18 +170,24 @@ export const CreateLabModal = ({
   templateData,
   isSaving,
   error,
+  onRequestTemplatePicker,
 }: CreateLabModalProps) => {
   const [formData, setFormData] = useState(defaultFormData);
   const [isWokwiValid, setIsWokwiValid] = useState(false);
   const [wokwiValidation, setWokwiValidation] =
     useState<ValidateWokwiProjectResponse | null>(null);
   const [localError, setLocalError] = useState<string | null>(null);
+  // Chỉ có ý nghĩa khi tạo mới hoàn toàn (không sửa lab có sẵn, không đã có
+  // templateData sẵn từ TemplatePickerModal) — 'choose' hiện bước chọn
+  // "thủ công" hay "từ mẫu" trước khi vào form thật.
+  const [entryMode, setEntryMode] = useState<'choose' | 'manual'>('manual');
 
   useEffect(() => {
     if (!isOpen) return;
 
     const initialFormData = getInitialFormData(initialLab, templateData);
     setFormData(initialFormData);
+    setEntryMode(!initialLab && !templateData && onRequestTemplatePicker ? 'choose' : 'manual');
     setIsWokwiValid(
       initialFormData.simulationMode === 'wokwi_iframe' &&
         Boolean(initialLab?.wokwiProjectId)
@@ -198,6 +218,58 @@ export const CreateLabModal = ({
 
   const isEditing = Boolean(initialLab);
   const isWokwiMode = formData.simulationMode === 'wokwi_iframe';
+
+  if (entryMode === 'choose') {
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+        <div className="bg-card border border-border rounded-xl shadow-xl w-full max-w-xl flex flex-col">
+          <DialogHeader className="flex items-center justify-between gap-4 shrink-0">
+            <DialogTitle>Tạo phòng thí nghiệm mới</DialogTitle>
+            <button
+              type="button"
+              onClick={onClose}
+              className="w-9 h-9 flex items-center justify-center rounded-full hover:bg-accent text-muted-foreground hover:text-foreground transition-colors shrink-0"
+              aria-label="Đóng"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </DialogHeader>
+          <DialogContent className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              Bắt đầu từ đâu?
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <button
+                type="button"
+                onClick={() => setEntryMode('manual')}
+                className="rounded-xl border border-border p-5 flex flex-col items-center text-center gap-2 hover:border-indigo-500/40 hover:bg-accent transition-colors"
+              >
+                <Wrench className="w-6 h-6 text-indigo-400" />
+                <span className="font-semibold text-foreground">Tạo mạch thủ công</span>
+                <span className="text-xs text-muted-foreground">
+                  Tự chọn board, linh kiện và thiết kế mạch từ đầu.
+                </span>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  onClose();
+                  onRequestTemplatePicker?.();
+                }}
+                className="rounded-xl border border-border p-5 flex flex-col items-center text-center gap-2 hover:border-indigo-500/40 hover:bg-accent transition-colors"
+              >
+                <BookOpen className="w-6 h-6 text-indigo-400" />
+                <span className="font-semibold text-foreground">Chọn bài tập mẫu</span>
+                <span className="text-xs text-muted-foreground">
+                  Bao gồm module Robot Giao Hàng Mini (LAB01-08) — đã có sẵn sơ đồ + code.
+                </span>
+              </button>
+            </div>
+          </DialogContent>
+        </div>
+      </div>
+    );
+  }
   const circuitParts = Array.isArray(formData.circuitConfig.parts)
     ? formData.circuitConfig.parts
     : [];
@@ -259,6 +331,7 @@ export const CreateLabModal = ({
         linkedAssignmentId: formData.linkedAssignmentId
           ? Number(formData.linkedAssignmentId)
           : null,
+        scheduleId: formData.scheduleId ? Number(formData.scheduleId) : null,
       },
       initialLab ?? undefined
     );
@@ -336,40 +409,18 @@ export const CreateLabModal = ({
               />
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-1.5">
-                <label className="text-sm font-medium text-foreground">Môn học</label>
-                <select
-                  value={formData.category}
-                  onChange={(event) =>
-                    setFormData({
-                      ...formData,
-                      category: event.target.value as LabCategory,
-                    })
-                  }
-                  className={nativeFieldClassName}
-                >
-                  {categories.map((category) => (
-                    <option key={category.value} value={category.value}>
-                      {category.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="space-y-1.5">
-                <label className="text-sm font-medium text-foreground">Trạng thái</label>
-                <select
-                  value={formData.status}
-                  onChange={(event) =>
-                    setFormData({ ...formData, status: event.target.value as LabStatus })
-                  }
-                  className={nativeFieldClassName}
-                >
-                  <option value="published">Xuất bản</option>
-                  <option value="draft">Bản nháp</option>
-                </select>
-              </div>
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium text-foreground">Trạng thái</label>
+              <select
+                value={formData.status}
+                onChange={(event) =>
+                  setFormData({ ...formData, status: event.target.value as LabStatus })
+                }
+                className={nativeFieldClassName}
+              >
+                <option value="published">Xuất bản</option>
+                <option value="draft">Bản nháp</option>
+              </select>
             </div>
 
             <div className="space-y-1.5">
@@ -470,6 +521,36 @@ export const CreateLabModal = ({
                   </option>
                 ))}
               </select>
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium text-foreground">
+                Gắn vào buổi dạy
+              </label>
+              <select
+                value={formData.scheduleId}
+                onChange={(event) =>
+                  setFormData({ ...formData, scheduleId: event.target.value })
+                }
+                className={nativeFieldClassName}
+              >
+                <option value="">Bỏ qua</option>
+                {scheduleOptions.length === 0 && (
+                  <option value="" disabled>
+                    Chưa có buổi dạy nào cho các lớp đã chọn
+                  </option>
+                )}
+                {scheduleOptions.map((schedule) => (
+                  <option key={schedule.id} value={schedule.id}>
+                    {schedule.label}
+                  </option>
+                ))}
+              </select>
+              <p className="text-xs text-muted-foreground">
+                {scheduleOptions.length === 0
+                  ? 'Các lớp đã chọn chưa có buổi dạy nào trong thời khóa biểu.'
+                  : 'Tùy chọn - gán lab vào một buổi dạy cụ thể.'}
+              </p>
             </div>
 
             {(localError || error) && (

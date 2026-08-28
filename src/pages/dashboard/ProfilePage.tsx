@@ -44,13 +44,16 @@ type PasswordFormData = z.infer<typeof passwordFormSchema>;
 export function ProfilePage() {
   const { user, updateUser } = useAuthStore();
   const queryClient = useQueryClient();
-  const [activeTab, setActiveTab] = useState<'profile' | 'security' | 'notifications'>('profile');
+  const [activeTab, setActiveTab] = useState<'profile' | 'security'>('profile');
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const [profileSuccess, setProfileSuccess] = useState(false);
   const [passwordSuccess, setPasswordSuccess] = useState(false);
   const [profileError, setProfileError] = useState<string | null>(null);
   const [passwordError, setPasswordError] = useState<string | null>(null);
+
+  // Check if user can change password (not teacher/student who use Google login)
+  const canChangePassword = user?.role === 'master_admin' || user?.role === 'school_admin';
 
   // Fetch profile data
   const { data: profile, isLoading } = useQuery({
@@ -175,28 +178,19 @@ export function ProfilePage() {
           <Shield className="w-4 h-4" />
           Thông tin cá nhân
         </button>
-        <button
-          onClick={() => setActiveTab('security')}
-          className={`flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
-            activeTab === 'security'
-              ? 'border-indigo-500 text-indigo-500'
-              : 'border-transparent text-muted-foreground hover:text-foreground'
-          }`}
-        >
-          <Key className="w-4 h-4" />
-          Bảo mật
-        </button>
-        <button
-          onClick={() => setActiveTab('notifications')}
-          className={`flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
-            activeTab === 'notifications'
-              ? 'border-indigo-500 text-indigo-500'
-              : 'border-transparent text-muted-foreground hover:text-foreground'
-          }`}
-        >
-          <Bell className="w-4 h-4" />
-          Thông báo
-        </button>
+        {canChangePassword && (
+          <button
+            onClick={() => setActiveTab('security')}
+            className={`flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
+              activeTab === 'security'
+                ? 'border-indigo-500 text-indigo-500'
+                : 'border-transparent text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            <Key className="w-4 h-4" />
+            Bảo mật
+          </button>
+        )}
       </div>
 
       {/* Tab Content */}
@@ -439,42 +433,6 @@ export function ProfilePage() {
         </div>
       )}
 
-      {activeTab === 'notifications' && (
-        <div className="max-w-xl">
-          <TeacherCard title="Cài đặt thông báo">
-            <div className="space-y-4">
-              <div className="flex items-center justify-between py-3 border-b border-border">
-                <div>
-                  <p className="font-medium">Thông báo email</p>
-                  <p className="text-sm text-muted-foreground">Nhận thông báo qua email</p>
-                </div>
-                <Switch defaultChecked />
-              </div>
-              <div className="flex items-center justify-between py-3 border-b border-border">
-                <div>
-                  <p className="font-medium">Thông báo hệ thống</p>
-                  <p className="text-sm text-muted-foreground">Nhận thông báo từ hệ thống</p>
-                </div>
-                <Switch defaultChecked />
-              </div>
-              <div className="flex items-center justify-between py-3 border-b border-border">
-                <div>
-                  <p className="font-medium">Nhắc nhở bài tập</p>
-                  <p className="text-sm text-muted-foreground">Thông báo khi có bài tập mới</p>
-                </div>
-                <Switch defaultChecked />
-              </div>
-              <div className="flex items-center justify-between py-3">
-                <div>
-                  <p className="font-medium">Thông báo lớp học</p>
-                  <p className="text-sm text-muted-foreground">Cập nhật về lớp học</p>
-                </div>
-                <Switch defaultChecked />
-              </div>
-            </div>
-          </TeacherCard>
-        </div>
-      )}
     </div>
   );
 }

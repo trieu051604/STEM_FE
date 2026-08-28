@@ -34,6 +34,24 @@ function hasVisualOnlyComponent(exercise: VirtualLabSampleExercise) {
   return exercise.components.some((type) => VISUAL_ONLY_TYPES.has(type));
 }
 
+// Gom các bài có cùng `module` (vd. "Robot Giao Hàng Mini" LAB01-08) vào 1
+// nhóm hiển thị dưới 1 tiêu đề, thay vì trộn lẫn phẳng với các bài đơn lẻ —
+// giữ nguyên THỨ TỰ xuất hiện trong VIRTUAL_LAB_SAMPLE_EXERCISES (không sắp
+// xếp lại), bài không có `module` rơi vào nhóm rời rạc "Bài tập đơn lẻ".
+function groupByModule(exercises: VirtualLabSampleExercise[]) {
+  const groups: { module: string | null; items: VirtualLabSampleExercise[] }[] = [];
+  for (const exercise of exercises) {
+    const key = exercise.module ?? null;
+    const last = groups[groups.length - 1];
+    if (last && last.module === key) {
+      last.items.push(exercise);
+    } else {
+      groups.push({ module: key, items: [exercise] });
+    }
+  }
+  return groups;
+}
+
 export const TemplatePickerModal = ({ isOpen, onClose, onSelect }: TemplatePickerModalProps) => {
   if (!isOpen) return null;
 
@@ -58,46 +76,63 @@ export const TemplatePickerModal = ({ isOpen, onClose, onSelect }: TemplatePicke
           </button>
         </div>
 
-        <div className="p-6 overflow-y-auto grid grid-cols-1 md:grid-cols-2 gap-4">
-          {VIRTUAL_LAB_SAMPLE_EXERCISES.map((exercise) => (
-            <div
-              key={exercise.slug}
-              className="rounded-2xl border border-border p-5 flex flex-col gap-3 hover:border-[#0f4c5c]/40 transition-colors"
-            >
-              <div className="flex items-center gap-2 flex-wrap">
-                <span
-                  className={`text-[10px] font-bold px-2 py-1 rounded-md uppercase ${
-                    levelClass[exercise.level] ?? 'bg-slate-100 text-slate-600'
-                  }`}
-                >
-                  {levelLabel[exercise.level] ?? exercise.level}
-                </span>
-                <span className="text-[10px] font-bold px-2 py-1 rounded-md bg-cyan-50 text-cyan-700">
-                  {exercise.estimatedTimeMinutes} phút
-                </span>
-                {hasVisualOnlyComponent(exercise) && (
-                  <span
-                    className="text-[10px] font-bold px-2 py-1 rounded-md bg-slate-100 text-slate-500"
-                    title={exercise.limitations}
-                  >
-                    Có linh kiện visual-only
+        <div className="p-6 overflow-y-auto flex flex-col gap-6">
+          {groupByModule(VIRTUAL_LAB_SAMPLE_EXERCISES).map((group, groupIndex) => (
+            <div key={group.module ?? `standalone-${groupIndex}`} className="flex flex-col gap-4">
+              {group.module && (
+                <div className="flex items-center gap-2">
+                  <h3 className="text-sm font-bold uppercase tracking-wide text-[#0f4c5c]">
+                    {group.module}
+                  </h3>
+                  <span className="text-[10px] font-bold px-2 py-1 rounded-md bg-[#0f4c5c]/10 text-[#0f4c5c]">
+                    {group.items.length} bài — tiến trình
                   </span>
-                )}
+                  <div className="h-px flex-1 bg-border" />
+                </div>
+              )}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {group.items.map((exercise) => (
+                  <div
+                    key={exercise.slug}
+                    className="rounded-2xl border border-border p-5 flex flex-col gap-3 hover:border-[#0f4c5c]/40 transition-colors"
+                  >
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span
+                        className={`text-[10px] font-bold px-2 py-1 rounded-md uppercase ${
+                          levelClass[exercise.level] ?? 'bg-slate-100 text-slate-600'
+                        }`}
+                      >
+                        {levelLabel[exercise.level] ?? exercise.level}
+                      </span>
+                      <span className="text-[10px] font-bold px-2 py-1 rounded-md bg-cyan-50 text-cyan-700">
+                        {exercise.estimatedTimeMinutes} phút
+                      </span>
+                      {hasVisualOnlyComponent(exercise) && (
+                        <span
+                          className="text-[10px] font-bold px-2 py-1 rounded-md bg-slate-100 text-slate-500"
+                          title={exercise.limitations}
+                        >
+                          Có linh kiện visual-only
+                        </span>
+                      )}
+                    </div>
+
+                    <h3 className="text-lg font-bold text-[#0f4c5c]">{exercise.title}</h3>
+                    <p className="text-sm text-muted-foreground line-clamp-3">{exercise.objective}</p>
+                    <p className="text-xs text-slate-500">
+                      Linh kiện: {exercise.components.map((c) => c.replace(/^wokwi-/, '')).join(', ')}
+                    </p>
+
+                    <button
+                      type="button"
+                      onClick={() => onSelect(exercise)}
+                      className="mt-auto bg-[#0f4c5c] hover:bg-[#0a3540] text-white py-2.5 rounded-full text-sm font-bold transition-colors"
+                    >
+                      Dùng mẫu này
+                    </button>
+                  </div>
+                ))}
               </div>
-
-              <h3 className="text-lg font-bold text-[#0f4c5c]">{exercise.title}</h3>
-              <p className="text-sm text-muted-foreground line-clamp-3">{exercise.objective}</p>
-              <p className="text-xs text-slate-500">
-                Linh kiện: {exercise.components.map((c) => c.replace(/^wokwi-/, '')).join(', ')}
-              </p>
-
-              <button
-                type="button"
-                onClick={() => onSelect(exercise)}
-                className="mt-auto bg-[#0f4c5c] hover:bg-[#0a3540] text-white py-2.5 rounded-full text-sm font-bold transition-colors"
-              >
-                Dùng mẫu này
-              </button>
             </div>
           ))}
         </div>

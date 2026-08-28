@@ -67,12 +67,19 @@ export type ComponentSource = 'wokwi' | 'stem' | 'custom';
 export type SupportLevel =
   | 'runtime-supported'
   | 'wiring-validation'
+  // Visual exists, but pin identity/geometry has NO evidence (provider
+  // metadata, datasheet, manufacturer doc, verified open-source part) — an
+  // invented/eyeballed pin position, not a wiring rule waiting to be
+  // written. Distinct from 'wiring-validation' (real pins, rule pending)
+  // — see Verified External Component Assets milestone, Phase 20.
+  | 'pin-unverified'
   | 'visual-only'
   | 'bom-only';
 
 export const SUPPORT_LEVEL_BADGE: Record<SupportLevel, string> = {
   'runtime-supported': 'Mô phỏng được',
   'wiring-validation': 'Kiểm tra nối dây',
+  'pin-unverified': 'Chưa xác minh sơ đồ chân',
   'visual-only': 'Chỉ hiển thị',
   'bom-only': 'Phụ kiện BOM',
 };
@@ -167,7 +174,7 @@ export const ROBOT_KIT_COMPONENTS: ComponentRegistryEntry[] = [
     runtimeAdapter: 'L298nModel (STEM.Application/UseCases/Simulation/Runners/Educational/Components/L298nModel.cs) — gọi từ QemuEsp32Runner.ComponentIndex',
     renderer: 'fallback-card (không có element @wokwi/elements cho L298N)',
     notes:
-      'Runtime THẬT: đọc digitalWrite trên IN1/IN2 (Motor A) và IN3/IN4 (Motor B) qua SF_EVENT có sẵn từ QEMU, suy ra forward/backward/stopped/brake theo đúng bảng sự thật L298N, emit part-state "l298n" mỗi khi state đổi. FE hiện trực tiếp trên card (A:.../B:...). KHÔNG đọc ENA/ENB (QEMU không instrument analogWrite/ledcWrite PWM) — coi như luôn enabled, đây là giới hạn kỹ thuật đã biết, không phải thiếu sót.',
+      'Runtime THẬT: đọc digitalWrite trên IN1/IN2 (Motor A) và IN3/IN4 (Motor B) qua SF_EVENT có sẵn từ QEMU, suy ra forward/backward/stopped/brake theo đúng bảng sự thật L298N, emit part-state "l298n" mỗi khi state đổi. FE hiện trực tiếp trên card (T:.../P:... — Trái/Phải, Phase 6 đổi nhãn từ A/B cho dễ đọc khi demo robot 2 bánh). KHÔNG đọc ENA/ENB (QEMU không instrument analogWrite/ledcWrite PWM) — coi như luôn enabled, đây là giới hạn kỹ thuật đã biết, không phải thiếu sót.',
   },
   {
     componentType: 'wokwi-dc-motor',
@@ -672,18 +679,18 @@ export const EXTENDED_COMPONENT_LIBRARY: ComponentRegistryEntry[] = [
     licenseNote: '@wokwi/elements — MIT license',
   },
 
-  // --- Fallback card (tự vẽ) — wiring-validation ---
+  // --- Fallback card (tự vẽ) — runtime-supported (RelayModel.cs) ---
   {
     componentType: 'wokwi-relay-module',
     displayName: 'Relay Module',
     category: 'actuator',
     source: 'stem',
-    supportLevel: 'wiring-validation',
+    supportLevel: 'runtime-supported',
     quantity: 1,
     pins: ['VCC', 'IN', 'GND', 'NO', 'COM', 'NC'],
     defaultProps: {},
-    wiringRules: ['Structural-only (MVP).'],
-    runtimeAdapter: null,
+    wiringRules: ['IN must reach an ESP32 GPIO.', 'VCC must connect to 3V3/5V.', 'GND must connect to ground.'],
+    runtimeAdapter: 'RelayModel.cs (STEM.Application/UseCases/Simulation/Runners/Educational/Components/RelayModel.cs) — digitalWrite(IN) -> ON/OFF. NO/COM/NC là metadata, không mô phỏng chuyển mạch điện thật.',
     renderer: 'fallback-card',
     notes: 'Không có element @wokwi/elements cho relay module — card tự vẽ (icon + tên), tham khảo hình dáng module relay 1-kênh phổ biến.',
     visualSource: 'custom-svg (fallback-card, tham khảo hình dáng module relay Fritzing/thực tế)',
@@ -749,6 +756,17 @@ export const EXTENDED_COMPONENT_LIBRARY: ComponentRegistryEntry[] = [
     visualSource: 'custom-svg (fallback-card)',
   },
   {
+    // Component Source Resolution milestone: pin SEMANTICS verified
+    // (VCC/GND/DO/AO, cross-vendor corroborated YL-69+LM393 module
+    // convention) + real dedicated wiring rule added. No matching visual/CAD
+    // asset found in @wokwi/elements, Fritzing core, or KiCad core (both
+    // Fritzing soil-moisture parts checked were a different module identity,
+    // rejected). REAL COMPONENT VISUAL Phase 2: re-assessed the existing
+    // fallback-card SVG itself against the real YL-69 reference — 2 metal
+    // probes + separate comparator board below matches the real module's
+    // actual 2-piece design, and pin y-coordinates sit consistently at the
+    // card's mid-height across all 4 pins. Upgraded to VERIFIED_INTERNAL_VISUAL
+    // (component-compatibility.json) — geometry is now verified too.
     componentType: 'wokwi-soil-moisture-sensor',
     displayName: 'Soil Moisture Sensor',
     category: 'sensor',
@@ -757,11 +775,11 @@ export const EXTENDED_COMPONENT_LIBRARY: ComponentRegistryEntry[] = [
     quantity: 1,
     pins: ['VCC', 'GND', 'DO', 'AO'],
     defaultProps: {},
-    wiringRules: ['Structural-only (MVP).'],
+    wiringRules: ['AO -> ESP32 GPIO (analog-capable).', 'VCC -> 3V3/5V.', 'GND -> ground.'],
     runtimeAdapter: null,
     renderer: 'fallback-card',
-    notes: 'Fallback card — không có element thật.',
-    visualSource: 'custom-svg (fallback-card)',
+    notes: 'Fallback card, nhưng đã verified: đúng hình dạng module thật (2 đầu dò + board so sánh riêng), pin semantics + geometry đều đã xác minh — xem component-compatibility.json.',
+    visualSource: 'custom-svg (verified-internal)',
   },
   {
     componentType: 'wokwi-ir-obstacle-sensor',
@@ -1129,19 +1147,26 @@ export const EXTENDED_COMPONENT_LIBRARY: ComponentRegistryEntry[] = [
     visualSource: 'custom-svg (fallback-card)',
   },
   {
+    // PIN_UNVERIFIED (Verified External Component Assets milestone, Phase
+    // 20/22) — VCC/GND/PO were never checked against any provider metadata,
+    // datasheet, or manufacturer doc; also unresolved whether "pH Sensor"
+    // should mean the raw probe (BNC electrode, not directly wireable) or
+    // an interface/adapter board (VCC/GND/analog-signal — the thing that
+    // actually gets wired). Do NOT promote to 'wiring-validation' without
+    // real evidence settling both questions first.
     componentType: 'wokwi-ph-sensor',
     displayName: 'pH Sensor',
     category: 'sensor',
     source: 'stem',
-    supportLevel: 'wiring-validation',
+    supportLevel: 'pin-unverified',
     quantity: 1,
     pins: ['VCC', 'GND', 'PO'],
     defaultProps: {},
-    wiringRules: ['Structural-only (MVP).'],
+    wiringRules: ['PIN_UNVERIFIED — no wiring rule until pin identity + geometry are evidenced.'],
     runtimeAdapter: null,
     renderer: 'fallback-card',
-    notes: 'Không có element @wokwi/elements cho pH sensor — card tự vẽ, đơn giản hoá theo module pH meter phổ biến (VCC/GND/PO analog).',
-    visualSource: 'custom-svg (fallback-card)',
+    notes: 'Không có element @wokwi/elements cho pH sensor — card tự vẽ. VCC/GND/PO là suy đoán theo tên gọi phổ biến, CHƯA có evidence xác minh (datasheet/manufacturer/provider) — xem PIN_UNVERIFIED.',
+    visualSource: 'custom-svg (fallback-card, unverified pins)',
   },
   {
     componentType: 'wokwi-line-tracking-3ch',

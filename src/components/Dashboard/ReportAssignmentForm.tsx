@@ -72,16 +72,8 @@ export const ReportAssignmentForm: React.FC<ReportAssignmentFormProps> = ({
     return createDefaultAssignmentBasics();
   });
 
-  // Separate detailed instructions field
-  const [instructions, setInstructions] = useState(
-    initialData?.reportDetail?.instructions ?? initialData?.description ?? ''
-  );
-
   const [allowFile, setAllowFile] = useState(
     initialData?.reportDetail?.allowedSubmissionTypes?.includes('file') ?? true
-  );
-  const [allowVideo, setAllowVideo] = useState(
-    initialData?.reportDetail?.allowedSubmissionTypes?.includes('video') ?? false
   );
   const [allowedExtensions, setAllowedExtensions] = useState(
     initialData?.reportDetail?.allowedFileExtensions?.join(',') ?? '.pdf,.doc,.docx,.ppt,.pptx,.xlsx,.zip'
@@ -104,10 +96,7 @@ export const ReportAssignmentForm: React.FC<ReportAssignmentFormProps> = ({
   const handleSave = async () => {
     const classId = Number(basics.classId);
     const title = basics.title.trim();
-    const submissionTypes = [
-      ...(allowFile ? ['file'] : []),
-      ...(allowVideo ? ['video'] : []),
-    ];
+    const submissionTypes = ['file'];
     const fileExtensions = allowedExtensions
       .split(',')
       .map((extension) => extension.trim())
@@ -123,9 +112,18 @@ export const ReportAssignmentForm: React.FC<ReportAssignmentFormProps> = ({
       return;
     }
 
-    if (!instructions.trim()) {
-      setLocalError('Vui lòng nhập hướng dẫn chi tiết.');
+    if (!basics.description.trim()) {
+      setLocalError('Vui lòng nhập mô tả bài tập.');
       return;
+    }
+
+    if (basics.dueDate) {
+      const selectedDate = new Date(basics.dueDate);
+      const now = new Date();
+      if (selectedDate <= now) {
+        setLocalError('Hạn nộp phải lớn hơn thời gian hiện tại.');
+        return;
+      }
     }
 
     if (submissionTypes.length === 0) {
@@ -153,7 +151,7 @@ export const ReportAssignmentForm: React.FC<ReportAssignmentFormProps> = ({
         description: c.description,
       })) : undefined,
       reportDetail: {
-        instructions: instructions.trim(),
+        instructions: basics.description.trim(),
         allowedSubmissionTypes: submissionTypes,
         allowedFileExtensions: fileExtensions,
         maxFileSizeMb: Number.isFinite(maxSize) && maxSize > 0 ? maxSize : 50,
@@ -192,24 +190,9 @@ export const ReportAssignmentForm: React.FC<ReportAssignmentFormProps> = ({
           isClassesLoading={isClassesLoading}
           classesError={classesError}
           onRetryClasses={onRetryClasses}
-          descriptionLabel="Mô tả ngắn"
-          descriptionPlaceholder="Nhập mô tả ngắn về bài tập..."
+          descriptionLabel="Mô tả / Hướng dẫn"
+          descriptionPlaceholder="Nhập mô tả và hướng dẫn chi tiết bài tập (nội dung này sẽ hiển thị cho học sinh)..."
         />
-
-        <div className="rounded-xl border border-border p-5">
-          <label className="text-sm font-medium text-foreground block mb-2">
-            Hướng dẫn chi tiết <span className="text-destructive">*</span>
-          </label>
-          <p className="text-xs text-muted-foreground mb-3">
-            Nội dung này sẽ hiển thị cho sinh viên khi nộp bài
-          </p>
-          <Textarea
-            value={instructions}
-            onChange={(e) => setInstructions(e.target.value)}
-            placeholder="Nhập hướng dẫn chi tiết bài tập báo cáo (yêu cầu, nội dung, tiêu chí đánh giá...)"
-            className="min-h-[200px] whitespace-pre-wrap"
-          />
-        </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-5 bg-muted/30 rounded-xl border border-border">
           <div>
@@ -218,10 +201,6 @@ export const ReportAssignmentForm: React.FC<ReportAssignmentFormProps> = ({
               <label className="flex items-center gap-3">
                 <Switch checked={allowFile} onCheckedChange={setAllowFile} />
                 <span className="text-sm text-foreground">File tài liệu (PDF, Word, Excel...)</span>
-              </label>
-              <label className="flex items-center gap-3">
-                <Switch checked={allowVideo} onCheckedChange={setAllowVideo} />
-                <span className="text-sm text-foreground">Video (.mp4, .mov...)</span>
               </label>
             </div>
           </div>

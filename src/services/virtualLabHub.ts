@@ -305,6 +305,44 @@ class VirtualLabHubService {
     await this.connection!.invoke('SimulationEvent', projectId, eventPayload);
   }
 
+  // Realtime input (STEP 3/5) — mirrors SimulationEvent's call shape above.
+  // Value is sent as a string ("1"/"0") to match the Hub method's signature
+  // (avoids SignalR JSON-typing ambiguity on the server side). Errors are NOT
+  // swallowed here — a rejected input (e.g. simulation not running) should
+  // surface to the caller, not fail silently and leave the UI showing a
+  // press that never took effect.
+  //
+  // The trailing `null` (sensorKind) is REQUIRED, not decorative — SignalR's
+  // JS client binds Hub method arguments positionally against the C# method's
+  // full declared parameter list; a C# optional-parameter default is NOT
+  // applied when the client sends fewer arguments than the method has
+  // parameters (found live: omitting it made every digital/analog call fail
+  // server-side once SetSimulationInput gained a 6th parameter for sensor
+  // support, while setSensorInput — which always sent 6 — worked fine).
+  public async setSimulationInput(projectId: string, componentId: string, pressed: boolean, pin: string | null = null) {
+    await this.ensureConnected();
+    await this.connection!.invoke('SetSimulationInput', projectId, componentId, pin, 'digital', pressed ? '1' : '0', null);
+  }
+
+  // Value must already be within the BE's canonical ESP32 ADC range
+  // (0..4095) — the Hub rejects out-of-range values rather than clamping, so
+  // callers (the potentiometer slider) clamp on their own end first.
+  public async setAnalogInput(projectId: string, componentId: string, value: number, pin: string | null = null) {
+    await this.ensureConnected();
+    await this.connection!.invoke('SetSimulationInput', projectId, componentId, pin, 'analog', String(value), null);
+  }
+
+  // sensorKind (e.g. "light") is required server-side for inputType "sensor" —
+  // STEP 9's DTO shape, kept distinct from setAnalogInput even though the
+  // wire value is mechanically the same 0..4095 scalar today, so a future
+  // sensor with a genuinely different shape doesn't have to retrofit this one.
+  public async setSensorInput(
+    projectId: string, componentId: string, sensorKind: string, value: number, pin: string | null = null
+  ) {
+    await this.ensureConnected();
+    await this.connection!.invoke('SetSimulationInput', projectId, componentId, pin, 'sensor', String(value), sensorKind);
+  }
+
   public async stopped(projectId: string) {
     await this.ensureConnected();
     await this.connection!.invoke('Stopped', projectId);

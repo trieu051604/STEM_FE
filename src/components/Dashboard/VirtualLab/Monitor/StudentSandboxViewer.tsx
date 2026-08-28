@@ -6,7 +6,7 @@ import { CodeEditorPanel } from '../Sandbox/CodeEditorPanel';
 import { CircuitCanvas, type PartVisualState } from '../Sandbox/CircuitCanvas';
 import { SerialMonitorPanel } from '../Sandbox/SerialMonitorPanel';
 import { virtualLabProjectsApi } from '@/services/dashboardApi';
-import type { LabCircuitComponent, SimulationEventEntity } from '@/services/dashboardApi';
+import type { LabCircuitComponent, SimulationEventEntity, MechanicalLink } from '@/services/dashboardApi';
 
 interface StudentSandboxViewerProps {
   projectId: string;
@@ -29,6 +29,7 @@ export const StudentSandboxViewer = ({ projectId, studentName, onClose, boardTyp
   const [code, setCode] = useState('');
   const [components, setComponents] = useState<LabCircuitComponent[]>([]);
   const [connections, setConnections] = useState<any[]>([]);
+  const [mechanicalLinks, setMechanicalLinks] = useState<MechanicalLink[]>([]);
   const [partStates, setPartStates] = useState<Record<string, PartVisualState>>({});
   const [serialOutput, setSerialOutput] = useState('');
   const [guidanceMessage, setGuidanceMessage] = useState('');
@@ -55,6 +56,7 @@ export const StudentSandboxViewer = ({ projectId, studentName, onClose, boardTyp
         setCode(snapshot.codeContent);
         setComponents(snapshot.circuitConfig.parts ?? []);
         setConnections(snapshot.circuitConfig.connections ?? []);
+        setMechanicalLinks(snapshot.circuitConfig.mechanicalLinks ?? []);
       })
       .catch((err) => {
         console.error('[StudentSandboxViewer] Failed to load initial snapshot', err);
@@ -77,6 +79,7 @@ export const StudentSandboxViewer = ({ projectId, studentName, onClose, boardTyp
         const parsed = JSON.parse(diagramJson);
         if (parsed.parts) setComponents(parsed.parts);
         if (parsed.connections) setConnections(parsed.connections);
+        if (parsed.mechanicalLinks) setMechanicalLinks(parsed.mechanicalLinks);
       } catch (e) {
         console.error('Failed to parse diagram', e);
       }
@@ -145,6 +148,17 @@ export const StudentSandboxViewer = ({ projectId, studentName, onClose, boardTyp
           const channelKey = event.payload.channel === 'G' ? 'rgbG' : event.payload.channel === 'B' ? 'rgbB' : 'rgbR';
           const on = event.payload.state === 'on';
           setPartStates(prev => ({ ...prev, [partId]: { ...prev[partId], [channelKey]: on } }));
+        } else if (component === 'fan') {
+          const on = event.payload.state === 'on';
+          setPartStates(prev => ({ ...prev, [partId]: { ...prev[partId], fan: on } }));
+        } else if (component === 'drone-motor') {
+          const on = event.payload.state === 'on';
+          setPartStates(prev => ({ ...prev, [partId]: { ...prev[partId], droneMotor: on } }));
+        } else if (component === 'servo' && event.payload.state === 'angle') {
+          const angle = typeof event.payload.angle === 'number' ? event.payload.angle : undefined;
+          if (angle !== undefined) {
+            setPartStates(prev => ({ ...prev, [partId]: { ...prev[partId], angle } }));
+          }
         }
       }
     };
@@ -246,6 +260,7 @@ export const StudentSandboxViewer = ({ projectId, studentName, onClose, boardTyp
                 boardType={boardType}
                 components={components}
                 connections={connections}
+                mechanicalLinks={mechanicalLinks}
                 partStates={partStates}
                 onComponentMove={() => {}}
                 onWireConnect={() => {}}

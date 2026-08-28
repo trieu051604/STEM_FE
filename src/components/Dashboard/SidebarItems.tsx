@@ -8,25 +8,29 @@ interface SidebarItem {
 
 const roleSidebarItems: Record<UserRole, SidebarItem[]> = {
   master_admin: [
+    { label: 'Tổng quan', path: '/dashboard', icon: 'LayoutDashboard' },
+    { label: 'Quản lý khối lớp', path: '/dashboard/grade-levels', icon: 'GraduationCap' },
+    { label: 'Khung chương trình', path: '/dashboard/syllabus', icon: 'BookOpen' },
+    { label: 'Quản lý khóa học', path: '/dashboard/courses', icon: 'FlaskConical' },
     { label: 'Quản lý trường', path: '/dashboard/schools', icon: 'Building2' },
     { label: 'Quản lý gói token', path: '/dashboard/packages', icon: 'Package' },
-    { label: 'Thông báo', path: '/dashboard/notifications', icon: 'Bell' },
+    { label: 'Thống kê doanh thu', path: '/dashboard/revenue', icon: 'DollarSign' },
     { label: 'Hồ sơ', path: '/dashboard/profile', icon: 'User' },
   ],
   school_admin: [
     { label: 'Tổng quan', path: '/dashboard', icon: 'LayoutDashboard' },
+    { label: 'Khung chương trình', path: '/dashboard/school-syllabus', icon: 'BookOpen' },
     { label: 'Quản lý học sinh', path: '/dashboard/students', icon: 'GraduationCap' },
     { label: 'Quản lý giáo viên', path: '/dashboard/teachers', icon: 'UserCheck' },
-    { label: 'Khóa học', path: '/dashboard/courses', icon: 'BookOpen' },
     { label: 'Lớp học', path: '/dashboard/classes', icon: 'School' },
     { label: 'Mua Token', path: '/dashboard/payments', icon: 'Coins' },
     { label: 'Quản lý AI Quota', path: '/dashboard/ai-quota', icon: 'Sparkles' },
     { label: 'Lịch sử đăng nhập', path: '/dashboard/login-history', icon: 'History' },
-    { label: 'Thông báo', path: '/dashboard/notifications', icon: 'Bell' },
     { label: 'Hồ sơ', path: '/dashboard/profile', icon: 'User' },
   ],
   teacher: [
     { label: 'Tổng quan', path: '/dashboard', icon: 'LayoutDashboard' },
+    { label: 'Lớp học của tôi', path: '/dashboard/teacher/classes', icon: 'School' },
     { label: 'Phòng lab ảo', path: '/dashboard/virtual-lab', icon: 'FlaskConical' },
     { label: 'Lịch dạy hàng tuần', path: '/dashboard/teacher/schedule', icon: 'GraduationCap' },
     { label: 'Quản lý bài tập', path: '/dashboard/assignments', icon: 'ClipboardList' },

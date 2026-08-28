@@ -135,7 +135,7 @@ export const ClassDetailDrawer: React.FC<ClassDetailDrawerProps> = ({ isOpen, on
             title={!session?.classId ? "Tính năng điểm danh đang bảo trì do thiếu ClassId từ hệ thống" : ""}
             className={`w-full font-medium py-3 px-4 rounded-lg flex items-center justify-center gap-2 transition-colors border-0 ${
               session?.classId 
-                ? 'bg-indigo-500 hover:bg-indigo-600 text-white' 
+                ? 'bg-primary hover:bg-primary/90 text-primary-foreground' 
                 : 'bg-muted text-muted-foreground cursor-not-allowed'
             }`}
           >

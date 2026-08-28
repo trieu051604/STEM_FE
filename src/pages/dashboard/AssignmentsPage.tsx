@@ -1,6 +1,6 @@
 import { FormEvent, useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import toast from 'react-hot-toast';
+import { useToast } from '@/components/ToastProvider';
 import { useAuthStore } from '@/stores/authStore';
 import { assignmentsApi, classesApi, usersApi, gradingApi } from '@/services/dashboardApi';
 import type {
@@ -279,6 +279,7 @@ function parseJsonText(value: string) {
 export const AssignmentsPage = () => {
   const { user, token, updateUser } = useAuthStore();
   const navigate = useNavigate();
+  const { showToast } = useToast();
   const canManageAssignments = user?.role === 'teacher' || user?.role === 'school_admin';
 
   const [assignments, setAssignments] = useState<AssignmentEntity[]>([]);
@@ -372,7 +373,7 @@ export const AssignmentsPage = () => {
     try {
       const response =
         user?.role === 'teacher'
-          ? await classesApi.getMyClasses(await resolveUserId())
+          ? await classesApi.getMyClasses()
           : await classesApi.getAll({ pageNumber: 1, pageSize: 100 });
 
       setManagedClasses((response.items ?? []).map(toClassOption));
@@ -554,10 +555,10 @@ export const AssignmentsPage = () => {
     try {
       await assignmentsApi.delete(assignment.id);
       await fetchAssignments(searchQuery);
-      toast.success(`Đã xóa bài tập "${assignment.title}"`);
+      showToast(`Đã xóa bài tập "${assignment.title}"`);
     } catch (err) {
       setError(getErrorMessage(err, 'Không xóa được bài tập.'));
-      toast.error(getErrorMessage(err, 'Không xóa được bài tập.'));
+      showToast(getErrorMessage(err, 'Không xóa được bài tập.'), 'error');
     } finally {
       setDeletingId(null);
     }
@@ -1112,11 +1113,7 @@ export const AssignmentsPage = () => {
                   {detailAssignmentType === 'quiz' && (
                     <div className="rounded-2xl border border-blue-500/20 bg-blue-500/5 p-5">
                       <h3 className="font-bold text-blue-300 mb-3">Cấu hình Quiz</h3>
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-sm">
-                        <div className="rounded-xl bg-card border border-blue-500/20 p-3">
-                          <p className="text-blue-400 mb-1">Số câu hỏi</p>
-                          <p className="font-bold text-blue-300">{detailQuizQuestions.length}</p>
-                        </div>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
                         <div className="rounded-xl bg-card border border-blue-500/20 p-3">
                           <p className="text-blue-400 mb-1">Thời gian</p>
                           <p className="font-bold text-blue-300">

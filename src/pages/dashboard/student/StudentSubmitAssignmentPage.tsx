@@ -12,7 +12,8 @@ import {
   Lightbulb,
   RefreshCw,
   Trophy,
-  Eye
+  Eye,
+  MessageSquare
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { studentApi } from '@/services/teacherStudentApi';
@@ -22,7 +23,7 @@ import { cn } from '@/lib/utils';
 import { StudentQuizSubmit } from '@/components/Dashboard/StudentQuizSubmit';
 import { StudentReportSubmit } from '@/components/Dashboard/StudentReportSubmit';
 import { StudentSimulationSubmit } from '@/components/Dashboard/StudentSimulationSubmit';
-import { ReviewQuizSubmission, ReviewReportSubmission, ReviewSimulationSubmission } from '@/components/Dashboard/ReviewSubmission';
+import { ReviewQuizSubmission, ReviewReportSubmission, ReviewSimulationSubmission, ReviewQuizFromResults } from '@/components/Dashboard/ReviewSubmission';
 
 interface QuizQuestion {
   id: string;
@@ -105,10 +106,23 @@ export default function StudentSubmitAssignmentPage() {
     staleTime: 30 * 1000,
   });
 
+  // Query để lấy quiz questions từ assignment API riêng
+  const { data: assignmentWithQuizQuestions } = useQuery({
+    queryKey: ['assignment-quiz-questions', assignmentId],
+    queryFn: async () => {
+      const response = await studentApi.getAssignmentDetailWithQuiz(assignmentId);
+      return response;
+    },
+    enabled: !!assignmentId,
+    retry: 1,
+  });
+
   const queryClient = useQueryClient();
   const [searchParams] = useSearchParams();
   const isViewMode = searchParams.get('view') === 'true';
   const [isRedirecting, setIsRedirecting] = useState(false);
+  // State riêng cho quiz - khi bấm "Làm lại" mới hiện form
+  const [showQuizRetakeForm, setShowQuizRetakeForm] = useState(false);
 
   // Check if submission is still loading (undefined = not yet loaded)
   const isSubmissionLoading = mySubmission === undefined;
@@ -117,26 +131,22 @@ export default function StudentSubmitAssignmentPage() {
 
   // Tự động chuyển sang chế độ xem lại khi đã nộp - chỉ khi submission đã load
   useEffect(() => {
+    // Only redirect if: has submission, not already in view mode, not already redirecting, submission fully loaded
     if (hasSubmitted && !isViewMode && !isRedirecting && !isSubmissionLoading) {
       setIsRedirecting(true);
       const url = new URL(window.location.href);
       url.searchParams.set('view', 'true');
-      window.location.href = url.toString();
+      // Use replace to avoid adding to history
+      window.history.replaceState(null, '', url.toString());
     }
   }, [hasSubmitted, isViewMode, isRedirecting, isSubmissionLoading]);
 
-  // Tự động redirect khi có submission (chỉ khi submission load xong)
+  // Clear redirect flag when switching to view mode
   useEffect(() => {
-    if (mySubmission !== undefined && mySubmission !== null && !isViewMode) {
-      setIsRedirecting(true);
-      const timer = setTimeout(() => {
-        navigate(`/dashboard/student/assignments/${assignmentId}/submit?view=true`, { replace: true });
-      }, 100);
-      return () => clearTimeout(timer);
-    } else if (mySubmission !== undefined) {
+    if (isViewMode) {
       setIsRedirecting(false);
     }
-  }, [mySubmission, isViewMode, assignmentId, navigate]);
+  }, [isViewMode]);
 
   // Combined error state
   const hasError = assignmentError || submissionError;
@@ -266,7 +276,13 @@ export default function StudentSubmitAssignmentPage() {
   const canSubmit = assignment.status === 'published' && !dueInfo.isOverdue;
   
   // Use assignment-level submission info for better UX
-  const canResubmit = assignment.allowResubmit && (mySubmission ? true : false);
+  // Check: assignment allows resubmit, has submitted, and hasn't reached limit
+  const remainingAttempts = assignment.resubmitLimit
+    ? Math.max(0, assignment.resubmitLimit - (mySubmission?.attemptNumber ?? 0))
+    : null;
+  const canResubmit = assignment.allowResubmit && 
+                      mySubmission && 
+                      (assignment.resubmitLimit == null || remainingAttempts! > 0);
 
   // Xem lại bài đã nộp - Mặc định hiện xem lại khi đã nộp (KHÔNG hiện form làm bài)
   const showReviewMode = hasSubmitted;
@@ -371,57 +387,6 @@ export default function StudentSubmitAssignmentPage() {
         </div>
       </div>
 
-      {/* Previous Submission Info */}
-      {hasSubmitted && mySubmission && (
-        <div className={cn(
-          "bg-card rounded-xl border p-5",
-          mySubmission.status === 'graded' 
-            ? "border-green-200 dark:border-green-800 bg-green-50/50 dark:bg-green-900/20" 
-            : "border-blue-200 dark:border-blue-800 bg-blue-50/50 dark:bg-blue-900/20"
-        )}>
-          <div className="flex items-center justify-between">
-            <div>
-              <h3 className="font-semibold flex items-center gap-2">
-                {mySubmission.status === 'graded' ? (
-                  <>
-                    <CheckCircle className="w-5 h-5 text-green-600" />
-                    Đã hoàn thành
-                  </>
-                ) : (
-                  <>
-                    <Clock className="w-5 h-5 text-blue-600" />
-                    Đã nộp bài
-                  </>
-                )}
-              </h3>
-              <p className="text-sm text-muted-foreground mt-1">
-                Lần nộp #{mySubmission.attemptNumber} - {format(parseISO(mySubmission.submittedAt), 'HH:mm, dd/MM/yyyy', { locale: vi })}
-              </p>
-            </div>
-            <div className="text-right">
-              {mySubmission.score !== undefined && mySubmission.score !== null ? (
-                <>
-                  <div className="flex items-center gap-2">
-                    <Trophy className="w-5 h-5 text-yellow-500" />
-                    <span className="text-2xl font-bold text-green-600">{mySubmission.score}</span>
-                    <span className="text-muted-foreground">/{mySubmission.maxScore}</span>
-                  </div>
-                  <p className="text-xs text-muted-foreground mt-1">Điểm cao nhất</p>
-                </>
-              ) : (
-                <span className="text-muted-foreground">Chờ chấm điểm</span>
-              )}
-            </div>
-          </div>
-          {mySubmission.feedback && (
-            <div className="mt-3 p-3 bg-white/50 dark:bg-black/20 rounded-lg">
-              <p className="text-sm text-muted-foreground">Phản hồi:</p>
-              <p className="text-sm mt-1">{mySubmission.feedback}</p>
-            </div>
-          )}
-        </div>
-      )}
-
       {/* Instructions for Report */}
       {(assignment.assignmentType === 'text_report'
         ? (assignment.description || assignment.reportDetail?.instructions)
@@ -476,16 +441,27 @@ export default function StudentSubmitAssignmentPage() {
       )}
 
       {/* Xem lại bài đã nộp - Quiz */}
-      {showReviewMode && assignment.assignmentType === 'quiz' && mySubmission?.contentJson && (
+      {showReviewMode && assignment.assignmentType === 'quiz' && (
         <div className="bg-card rounded-xl border border-indigo-200 dark:border-indigo-800 p-6">
           <h3 className="font-semibold mb-4 flex items-center gap-2">
             <Eye className="w-5 h-5" />
             Xem lại bài làm Quiz
           </h3>
-          <ReviewQuizSubmission 
-            questions={assignment.quizDetail?.questions || []} 
-            submission={mySubmission}
-          />
+          {(mySubmission?.autoGradeResultJson || mySubmission?.contentJson) && assignmentWithQuizQuestions?.quizDetail?.questions?.length ? (
+            <ReviewQuizFromResults 
+              submission={mySubmission} 
+              questions={assignmentWithQuizQuestions.quizDetail.questions}
+            />
+          ) : mySubmission?.contentJson && assignmentWithQuizQuestions?.quizDetail?.questions?.length ? (
+            <ReviewQuizSubmission 
+              questions={assignmentWithQuizQuestions.quizDetail.questions} 
+              submission={mySubmission}
+            />
+          ) : (
+            <div className="text-center py-8 text-muted-foreground">
+              <p>Không có dữ liệu để hiển thị</p>
+            </div>
+          )}
         </div>
       )}
 
@@ -545,7 +521,6 @@ export default function StudentSubmitAssignmentPage() {
           {assignment.assignmentType === 'text_report' && (
             <StudentReportSubmit 
               assignment={assignment}
-              instructions={assignment.reportDetail?.instructions}
               onSuccess={() => {
                 refetchSubmission();
                 queryClient.invalidateQueries({ queryKey: ['student-assignments'] });
@@ -568,27 +543,28 @@ export default function StudentSubmitAssignmentPage() {
       )}
 
       {/* Nút nộp lại - Chỉ hiện khi xem lại và được phép nộp lại */}
-      {showReviewMode && canResubmit && (
+      {showReviewMode && canResubmit && !showQuizRetakeForm && (
         <div className="bg-card rounded-xl border border-border p-6">
           <h3 className="font-semibold mb-4">Nộp lại bài</h3>
+          {remainingAttempts !== null && (
+            <p className="text-sm text-muted-foreground mb-3">
+              Còn lại {remainingAttempts} lần nộp lại
+            </p>
+          )}
           
           {assignment.assignmentType === 'quiz' && assignment.quizDetail && (
-            <StudentQuizSubmit 
-              assignment={assignment} 
-              questions={assignment.quizDetail.questions}
-              isResubmit
-              previousAttempt={mySubmission.attemptNumber}
-              onSuccess={() => {
-                refetchSubmission();
-                queryClient.invalidateQueries({ queryKey: ['student-assignments'] });
-              }}
-            />
+            <Button
+              onClick={() => setShowQuizRetakeForm(true)}
+              className="bg-orange-500 hover:bg-orange-600 text-white"
+            >
+              <RefreshCw className="w-4 h-4 mr-2" />
+              Làm lại bài Quiz
+            </Button>
           )}
 
-          {assignment.assignmentType === 'text_report' && (
+          {assignment.assignmentType === 'text_report' && mySubmission && (
             <StudentReportSubmit 
               assignment={assignment}
-              instructions={assignment.reportDetail?.instructions}
               isResubmit
               previousAttempt={mySubmission.attemptNumber}
               onSuccess={() => {
@@ -598,7 +574,7 @@ export default function StudentSubmitAssignmentPage() {
             />
           )}
 
-          {assignment.assignmentType === 'practical_simulation' && (
+          {assignment.assignmentType === 'practical_simulation' && mySubmission && (
             <StudentSimulationSubmit 
               assignment={assignment}
               baseDiagram={assignment.simulationDetail?.baseDiagram}
@@ -612,6 +588,36 @@ export default function StudentSubmitAssignmentPage() {
             />
           )}
         </div>
+      )}
+
+      {/* Form làm lại Quiz - Chỉ hiện khi bấm nút "Làm lại" */}
+      {showQuizRetakeForm && assignment.assignmentType === 'quiz' && assignment.quizDetail && mySubmission && (
+        <>
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="font-semibold flex items-center gap-2">
+              <RefreshCw className="w-5 h-5" />
+              Làm lại bài Quiz
+            </h3>
+            <Button
+              variant="outline"
+              onClick={() => setShowQuizRetakeForm(false)}
+            >
+              <ArrowLeft className="w-4 h-4 mr-2" />
+              Quay lại xem kết quả
+            </Button>
+          </div>
+          <StudentQuizSubmit 
+            assignment={assignment} 
+            questions={assignment.quizDetail.questions}
+            isResubmit
+            previousAttempt={mySubmission.attemptNumber}
+            onSuccess={() => {
+              setShowQuizRetakeForm(false);
+              refetchSubmission();
+              queryClient.invalidateQueries({ queryKey: ['student-assignments'] });
+            }}
+          />
+        </>
       )}
     </div>
   );

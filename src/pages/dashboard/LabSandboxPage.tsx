@@ -7,7 +7,7 @@ import { labsApi, virtualLabProjectsApi, diagramsApi, submissionsApi, assignment
 import type { ResubmitRequestEntity } from '@/services/dashboardApi';
 import { Textarea } from '@/components/ui/textarea';
 import { virtualLabHub } from '@/services/virtualLabHub';
-import type { LabCircuitComponent, LabEntity, DiagramValidationResult, SimulationEventEntity, AutoGradeResultEntity, ComponentGlueRegistryEntity, SensorScenarioConfig } from '@/services/dashboardApi';
+import type { LabCircuitComponent, LabEntity, DiagramValidationResult, SimulationEventEntity, AutoGradeResultEntity, ComponentGlueRegistryEntity, SensorScenarioConfig, MechanicalLink } from '@/services/dashboardApi';
 import { CodeEditorPanel } from '@/components/Dashboard/VirtualLab/Sandbox/CodeEditorPanel';
 import { CircuitCanvas, type PartVisualState } from '@/components/Dashboard/VirtualLab/Sandbox/CircuitCanvas';
 import { SerialMonitorPanel } from '@/components/Dashboard/VirtualLab/Sandbox/SerialMonitorPanel';
@@ -17,6 +17,12 @@ import { CloudDashboardPanel, type CloudComponentState } from '@/components/Dash
 import { getSandboxProjectId } from '@/components/Dashboard/VirtualLab/Sandbox/projectId';
 import { AiAssistantPanel } from '@/components/Dashboard/VirtualLab/Sandbox/AiAssistantPanel';
 import type { ProposedChange } from '@/services/aiAssistantApi';
+import { componentRegistryApi } from '@/services/componentRegistryApi';
+import {
+  isRegistryComponentPaletteEnabled,
+  mergeWithExistingGlueRegistry,
+  toGlueRegistryCandidates,
+} from '@/services/componentRegistryPaletteAdapter';
 
 const DIAGRAM_SAVE_DEBOUNCE_MS = 1500;
 // Riêng biệt với debounce lưu diagram (1.5s) — dài hơn 1 chút vì đây chỉ là
@@ -82,6 +88,13 @@ export const LabSandboxPage = () => {
   // save/reload có sẵn (nhúng trong circuitConfig, KHÔNG API/DB riêng).
   const [sensorScenario, setSensorScenario] = useState<SensorScenarioConfig>({ sensors: {} });
   const [isSensorPanelOpen, setIsSensorPanelOpen] = useState(false);
+  // Mechanical attachment (STANDARDIZE MOTOR / ROTATING COMPONENT ANIMATION
+  // follow-up) — explicit Robot Wheel/Propeller -> Motor link, same
+  // save/reload mechanism as sensorScenario (nhúng trong circuitConfig,
+  // KHÔNG API/DB riêng). Không có UI vẽ link riêng trong pass này — chỉ sample
+  // exercises/diagram JSON tự khai báo trực tiếp; CircuitCanvas tự fallback về
+  // nearest-distance khi mảng này rỗng/không có, không phá diagram cũ.
+  const [mechanicalLinks, setMechanicalLinks] = useState<MechanicalLink[]>([]);
   // WiFi/Cloud — Virtual Cloud Runtime Phase 1 (xem CloudDashboardPanel.tsx +
   // BE CloudRuntimeHeaderGenerator.cs/QemuEsp32Runner.cs). key=componentId
   // (Cloud/Dashboard node trên canvas) -> topics theo tên (latest value) + log
@@ -188,6 +201,7 @@ export const LabSandboxPage = () => {
       let resolvedComponents = starterComponents;
       let resolvedConnections = starterConnections;
       let resolvedSensorScenario: SensorScenarioConfig = labResponse.circuitConfig?.sensorScenario ?? { sensors: {} };
+      let resolvedMechanicalLinks: MechanicalLink[] = labResponse.circuitConfig?.mechanicalLinks ?? [];
 
       // Lab (catalog) và VirtualLabProject (Guid, nơi lưu diagram/code thật)
       // không có liên kết nào ở BE — suy ra Guid tất định từ (labId, studentId)
@@ -204,6 +218,7 @@ export const LabSandboxPage = () => {
           }
           resolvedConnections = (project.circuitConfig.connections as any[]) ?? resolvedConnections;
           resolvedSensorScenario = project.circuitConfig.sensorScenario ?? resolvedSensorScenario;
+          resolvedMechanicalLinks = project.circuitConfig.mechanicalLinks ?? resolvedMechanicalLinks;
           // Board/Language của compile phải theo đúng VirtualLabProject (nguồn
           // sự thật duy nhất từ giờ), không còn hardcode Uno như luồng cũ.
           // Fallback về boardType của Lab (thay vì hardcode 'esp32' trần —
@@ -271,6 +286,7 @@ export const LabSandboxPage = () => {
       setSandboxComponents(resolvedComponents);
       setSandboxConnections(resolvedConnections);
       setSensorScenario(resolvedSensorScenario);
+      setMechanicalLinks(resolvedMechanicalLinks);
 
       if (user?.role === 'student') {
         try {
@@ -420,7 +436,20 @@ export const LabSandboxPage = () => {
   useEffect(() => {
     labsApi
       .getComponentGlueRegistry(true)
-      .then(setComponentGlueRegistry)
+      .then(async (registry) => {
+        if (!isRegistryComponentPaletteEnabled()) {
+          setComponentGlueRegistry(registry);
+          return;
+        }
+        try {
+          const registryComponents = await componentRegistryApi.list();
+          setComponentGlueRegistry(
+            mergeWithExistingGlueRegistry(registry, toGlueRegistryCandidates(registryComponents))
+          );
+        } catch {
+          setComponentGlueRegistry(registry);
+        }
+      })
       .catch((error) => console.error('[LabSandboxPage] Failed to load component glue registry', error));
   }, []);
 
@@ -434,14 +463,14 @@ export const LabSandboxPage = () => {
     saveTimerRef.current = setTimeout(() => {
       void diagramsApi
         .save(projectId, {
-          circuitConfig: { parts: sandboxComponents, connections: sandboxConnections, sensorScenario },
+          circuitConfig: { parts: sandboxComponents, connections: sandboxConnections, sensorScenario, mechanicalLinks },
           sourceCode: code,
         })
         .then((session) => {
           setDiagramValidation(session.validation);
           setSaveStatus('saved');
           if (projectId) {
-            virtualLabHub.diagramUpdated(projectId, JSON.stringify({ parts: sandboxComponents, connections: sandboxConnections, sensorScenario })).catch(() => {});
+            virtualLabHub.diagramUpdated(projectId, JSON.stringify({ parts: sandboxComponents, connections: sandboxConnections, sensorScenario, mechanicalLinks })).catch(() => {});
             virtualLabHub.codeUpdated(projectId, code).catch(() => {});
           }
         })
@@ -454,7 +483,7 @@ export const LabSandboxPage = () => {
     return () => {
       if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
     };
-  }, [projectId, sandboxComponents, sandboxConnections, sensorScenario, code]);
+  }, [projectId, sandboxComponents, sandboxConnections, sensorScenario, mechanicalLinks, code]);
 
   // Precompile nền (Wokwi-like): 2.5s sau khi ngừng gõ code, "làm ấm" firmware
   // cache trước khi học sinh bấm Run — để lúc Run thật, QemuEsp32Runner rơi
@@ -531,9 +560,31 @@ export const LabSandboxPage = () => {
         const channelKey = event.payload.channel === 'G' ? 'rgbG' : event.payload.channel === 'B' ? 'rgbB' : 'rgbR';
         const on = event.payload.state === 'on';
         setPartStates((prev) => ({ ...prev, [partId]: { ...prev[partId], [channelKey]: on } }));
+      } else if (component === 'relay') {
+        // Runtime adapter thật (RelayModel.cs) — suy ra ON/OFF từ digitalWrite
+        // trên chân IN qua EducationalSimulationRunner, không phải giả lập.
+        const on = event.payload.state === 'on';
+        setPartStates((prev) => ({ ...prev, [partId]: { ...prev[partId], relay: on } }));
+      } else if (component === 'fan') {
+        // FanModel.cs (QemuEsp32Runner) — ON/OFF thật từ digitalWrite.
+        const on = event.payload.state === 'on';
+        setPartStates((prev) => ({ ...prev, [partId]: { ...prev[partId], fan: on } }));
+      } else if (component === 'drone-motor') {
+        // DroneMotorModel.cs (QemuEsp32Runner) — ON/OFF thật từ digitalWrite.
+        const on = event.payload.state === 'on';
+        setPartStates((prev) => ({ ...prev, [partId]: { ...prev[partId], droneMotor: on } }));
+      } else if (component === 'servo' && event.payload.state === 'angle') {
+        // ServoModel.cs — CHỈ có ở Educational runner hôm nay (QEMU không đọc
+        // được PWM servo.write() dùng để tạo góc, xem ServoModel.cs comment).
+        // Trước đây event này bị rơi (không có branch nào xử lý) — STANDARDIZE
+        // MOTOR/ROTATING COMPONENT ANIMATION task nối lại vào PartVisualState.
+        const angle = typeof event.payload.angle === 'number' ? event.payload.angle : undefined;
+        if (angle !== undefined) {
+          setPartStates((prev) => ({ ...prev, [partId]: { ...prev[partId], angle } }));
+        }
       }
-      // Button/Servo/DHT/Ultrasonic: chưa có adapter runtime — không có gì để
-      // ánh xạ (giới hạn kỹ thuật đã ghi trong Component Support Matrix, xem
+      // Button/DHT/Ultrasonic: chưa có adapter runtime — không có gì để ánh xạ
+      // (giới hạn kỹ thuật đã ghi trong Component Support Matrix, xem
       // robotKitComponents.ts, không phải thiếu sót ở nơi này).
       return;
     }
@@ -635,7 +686,7 @@ export const LabSandboxPage = () => {
 
       const runResult = await virtualLabProjectsApi.start(projectId, {
         code,
-        diagram: { parts: sandboxComponents, connections: sandboxConnections, sensorScenario },
+        diagram: { parts: sandboxComponents, connections: sandboxConnections, sensorScenario, mechanicalLinks },
       });
 
       if (runResult.status === 'error') {
@@ -808,7 +859,7 @@ export const LabSandboxPage = () => {
       const result = await submissionsApi.submitVirtualLab({
         assignmentId: linkedAssignmentId,
         sessionId: projectId,
-        circuitConfig: { parts: sandboxComponents, connections: sandboxConnections, sensorScenario },
+        circuitConfig: { parts: sandboxComponents, connections: sandboxConnections, sensorScenario, mechanicalLinks },
         sourceCode: code,
         simulationEvents: lastSimulationEvents,
       });
@@ -1097,9 +1148,9 @@ export const LabSandboxPage = () => {
             variant="outline"
             onClick={() => setIsSensorPanelOpen(true)}
             className="border-indigo-500/30 text-indigo-400 hover:bg-indigo-500/10 hover:text-indigo-300"
-            title="Cấu hình kịch bản sensor (Phase 1 — scenario/timeline)"
+            title="Cấu hình kịch bản cảm biến theo thời gian"
           >
-            Sensor Scenario
+            Kịch bản cảm biến
           </Button>
           {linkedAssignmentId ? (
           <div className="flex flex-col items-end gap-1">
@@ -1229,6 +1280,7 @@ export const LabSandboxPage = () => {
           parts: sandboxComponents,
           connections: sandboxConnections,
           sensorScenario,
+          mechanicalLinks,
         })}
         onApplyChange={handleApplyAiChange}
         onUndo={handleUndoAiChange}
@@ -1255,6 +1307,7 @@ export const LabSandboxPage = () => {
               boardType={lab?.boardType}
               components={sandboxComponents}
               connections={sandboxConnections}
+              mechanicalLinks={mechanicalLinks}
               partStates={partStates}
               onComponentMove={handleComponentMove}
               onWireConnect={handleWireConnect}
@@ -1278,6 +1331,28 @@ export const LabSandboxPage = () => {
               }}
               onOpenPalette={() => setIsPaletteOpen(true)}
               autoSelectId={autoSelectPartId}
+              onButtonInput={(componentId, pressed) => {
+                // Only meaningful while a simulation is actually running —
+                // matches ACCEPTANCE CRITERIA "no restart, no recompile":
+                // this never triggers a new Run, it only reaches a session
+                // ISimulationInputChannel already has registered.
+                if (!isRunning || !projectId) return;
+                virtualLabHub.setSimulationInput(projectId, componentId, pressed).catch((error) => {
+                  console.error('[LabSandboxPage] setSimulationInput failed', error);
+                });
+              }}
+              onAnalogInput={(componentId, value) => {
+                if (!isRunning || !projectId) return;
+                virtualLabHub.setAnalogInput(projectId, componentId, value).catch((error) => {
+                  console.error('[LabSandboxPage] setAnalogInput failed', error);
+                });
+              }}
+              onSensorInput={(componentId, sensorKind, value) => {
+                if (!isRunning || !projectId) return;
+                virtualLabHub.setSensorInput(projectId, componentId, sensorKind, value).catch((error) => {
+                  console.error('[LabSandboxPage] setSensorInput failed', error);
+                });
+              }}
             />
 
             <ComponentPalettePopup

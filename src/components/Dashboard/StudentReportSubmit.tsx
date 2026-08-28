@@ -3,13 +3,13 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
-import { Upload, AlertCircle, CheckCircle, Loader2, FileText } from 'lucide-react';
+import { Upload, AlertCircle, CheckCircle, Loader2, FileText, X } from 'lucide-react';
 import { studentApi } from '@/services/teacherStudentApi';
 
 interface AssignmentDetail {
   id: number;
   title: string;
-  maxScore: number;
+  description?: string;
   reportDetail?: {
     instructions?: string;
     allowedSubmissionTypes?: string[];
@@ -20,7 +20,6 @@ interface AssignmentDetail {
 
 interface StudentReportSubmitProps {
   assignment: AssignmentDetail;
-  instructions?: string;
   isResubmit?: boolean;
   previousAttempt?: number;
   onSuccess?: () => void;
@@ -28,7 +27,6 @@ interface StudentReportSubmitProps {
 
 export function StudentReportSubmit({
   assignment,
-  instructions,
   isResubmit = false,
   previousAttempt = 0,
   onSuccess
@@ -46,6 +44,7 @@ export function StudentReportSubmit({
 
   const allowedExtensions = assignment.reportDetail?.allowedFileExtensions || ['.pdf', '.doc', '.docx', '.zip'];
   const maxSizeMb = assignment.reportDetail?.maxFileSizeMb || 10;
+  const allowFile = true;
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0];
@@ -67,8 +66,12 @@ export function StudentReportSubmit({
   };
 
   const handleSubmit = async () => {
-    if (!content.trim() && !file) {
-      setError('Vui lòng nhập nội dung báo cáo hoặc đính kèm file.');
+    const hasFile = file !== null;
+
+    const canSubmit = allowFile && hasFile;
+
+    if (!canSubmit) {
+      setError('Vui lòng đính kèm file báo cáo.');
       return;
     }
 
@@ -78,12 +81,9 @@ export function StudentReportSubmit({
     try {
       let fileId: number | undefined;
 
-      // Upload file first if selected
       if (file) {
         const uploadResponse = await studentApi.uploadFile(file, 'submissions');
         if (uploadResponse && uploadResponse.success) {
-          // FileEntity should be created by BE, get the fileId from response
-          // If BE returns fileId, use it. Otherwise, we'll rely on fileUrl in contentJson
           fileId = (uploadResponse as any).fileId;
         }
       }
@@ -137,60 +137,61 @@ export function StudentReportSubmit({
         )}
       </h3>
 
-      {/* Instructions */}
-      {instructions && (
-        <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl p-4 mb-6">
-          <h4 className="font-medium text-blue-800 dark:text-blue-200 mb-2">Hướng dẫn nộp bài:</h4>
-          <p className="text-sm text-blue-700 dark:text-blue-300 whitespace-pre-wrap">{instructions}</p>
+      {/* File Upload */}
+      {allowFile && (
+        <div className="mb-6">
+          <label className="block text-sm font-medium mb-2">
+            Đính kèm file
+            <span className="text-muted-foreground font-normal ml-1">
+              (Tối đa {maxSizeMb}MB, định dạng: {allowedExtensions.join(', ')})
+            </span>
+          </label>
+          <div className={cn(
+            "border-2 border-dashed rounded-xl p-8 text-center transition-colors",
+            file
+              ? "border-blue-500 bg-blue-50/50 dark:bg-blue-900/20"
+              : "border-gray-300 dark:border-gray-700 hover:border-blue-400 dark:hover:border-blue-600"
+          )}>
+            <input
+              type="file"
+              id="file-upload"
+              className="hidden"
+              onChange={handleFileChange}
+              accept={allowedExtensions.join(',')}
+            />
+            <label htmlFor="file-upload" className="cursor-pointer">
+              {file ? (
+                <div className="flex items-center justify-center gap-3">
+                  <FileText className="w-8 h-8 text-blue-600" />
+                  <div className="text-left">
+                    <p className="font-medium text-blue-700 dark:text-blue-300">{file.name}</p>
+                    <p className="text-sm text-blue-600 dark:text-blue-400">
+                      {(file.size / 1024 / 1024).toFixed(2)} MB
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={(e) => { e.preventDefault(); setFile(null); }}
+                    className="ml-4 p-1 hover:bg-blue-100 rounded-full"
+                  >
+                    <X className="w-4 h-4 text-blue-600" />
+                  </button>
+                </div>
+              ) : (
+                <>
+                  <Upload className="w-10 h-10 text-gray-400 mx-auto mb-3" />
+                  <p className="text-gray-600 dark:text-gray-400 mb-1">
+                    Kéo thả file vào đây hoặc <span className="text-blue-600 dark:text-blue-400 font-medium">chọn file</span>
+                  </p>
+                  <p className="text-sm text-gray-400">
+                    {allowedExtensions.join(', ')} - Tối đa {maxSizeMb}MB
+                  </p>
+                </>
+              )}
+            </label>
+          </div>
         </div>
       )}
-
-      {/* File Upload */}
-      <div className="mb-6">
-        <label className="block text-sm font-medium mb-2">
-          Đính kèm file
-          <span className="text-muted-foreground font-normal ml-1">
-            (Tối đa {maxSizeMb}MB, định dạng: {allowedExtensions.join(', ')})
-          </span>
-        </label>
-        <div className={cn(
-          "border-2 border-dashed rounded-xl p-8 text-center transition-colors",
-          file 
-            ? "border-blue-500 bg-blue-50/50 dark:bg-blue-900/20" 
-            : "border-gray-300 dark:border-gray-700 hover:border-blue-400 dark:hover:border-blue-600"
-        )}>
-          <input
-            type="file"
-            id="file-upload"
-            className="hidden"
-            onChange={handleFileChange}
-            accept={allowedExtensions.join(',')}
-          />
-          <label htmlFor="file-upload" className="cursor-pointer">
-            {file ? (
-              <div className="flex items-center justify-center gap-3">
-                <FileText className="w-8 h-8 text-blue-600" />
-                <div className="text-left">
-                  <p className="font-medium text-blue-700 dark:text-blue-300">{file.name}</p>
-                  <p className="text-sm text-blue-600 dark:text-blue-400">
-                    {(file.size / 1024 / 1024).toFixed(2)} MB
-                  </p>
-                </div>
-              </div>
-            ) : (
-              <>
-                <Upload className="w-10 h-10 text-gray-400 mx-auto mb-3" />
-                <p className="text-gray-600 dark:text-gray-400 mb-1">
-                  Kéo thả file vào đây hoặc <span className="text-blue-600 dark:text-blue-400 font-medium">chọn file</span>
-                </p>
-                <p className="text-sm text-gray-400">
-                  {allowedExtensions.join(', ')} - Tối đa {maxSizeMb}MB
-                </p>
-              </>
-            )}
-          </label>
-        </div>
-      </div>
 
       {/* Content Textarea */}
       <div className="mb-6">

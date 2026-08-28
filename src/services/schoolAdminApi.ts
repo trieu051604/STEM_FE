@@ -30,6 +30,10 @@ export interface StudentsListResponse {
   total: number;
   page: number;
   pageSize: number;
+  totalActiveStudents: number;
+  totalEnrolledClasses: number;
+  totalWithScores: number;
+  totalWithoutScores: number;
 }
 
 export interface LearningProgress {
@@ -70,6 +74,10 @@ export const studentsApi = {
       total,
       page: nestedData?.pageNumber || 1,
       pageSize: nestedData?.pageSize || 10,
+      totalActiveStudents: nestedData?.totalActiveStudents || 0,
+      totalEnrolledClasses: nestedData?.totalEnrolledClasses || 0,
+      totalWithScores: nestedData?.totalWithScores || 0,
+      totalWithoutScores: nestedData?.totalWithoutScores || 0,
     };
   },
 
@@ -241,9 +249,10 @@ export interface LoginHistory {
   logoutTime?: string;
   ipAddress?: string;
   location?: string;
-  userAgent?: string;
+  deviceName?: string;
   loginStatus?: 'Success' | 'Failed';
   failureReason?: string;
+  createdAt: string;
 }
 
 export interface LoginHistoryResponse {
@@ -261,14 +270,14 @@ export const loginHistoryApi = {
     startDate?: string;
     endDate?: string;
   }): Promise<LoginHistoryResponse> => {
-    const response = await api.post('/login-history/get-histories', params || {});
-    const data = response.data.data as {
-      data: LoginHistory[];
-      total: number;
-    };
+    const response = await api.post('/loginhistory/get-histories', params || {});
+    const data = response.data as { success: boolean; total: number; data: LoginHistory[] };
 
     return {
-      items: data.data || [],
+      items: (data.data || []).map(item => ({
+        ...item,
+        loginStatus: item.loginStatus || 'Success'
+      })),
       total: data.total,
       page: params?.pageNumber || 1,
       pageSize: params?.pageSize || 20,
@@ -302,17 +311,20 @@ export const schoolAuthApi = {
 };
 
 // ==========================================
-// Courses API (dành cho SchoolAdmin)
+// Courses API (dành cho MasterAdmin)
 // ==========================================
 export interface Course {
   id: number;
   title: string;
   description?: string;
-  schoolId: number;
-  schoolName?: string;
+  syllabusId?: number;
+  syllabusTitle?: string;
+  estimatedHours?: number;
+  isRequired?: boolean;
+  isActive?: boolean;
+  enrolledStudents?: number;
   createdAt: string;
   updatedAt?: string;
-  enrolledStudents?: number;
 }
 
 export interface CoursesListResponse {
@@ -325,18 +337,18 @@ export interface CoursesListResponse {
 export const coursesApi = {
   getAll: async (params?: {
     searchTerm?: string;
-    schoolId?: number;
     pageNumber?: number;
     pageSize?: number;
   }): Promise<CoursesListResponse> => {
     const response = await api.get('/courses', { params });
+    console.log('[coursesApi.getAll] Raw response:', JSON.stringify(response.data, null, 2));
     const nestedData = response.data.data;
-    const result = nestedData?.data || nestedData?.items || nestedData || response.data;
-    const rawItems = Array.isArray(result) ? result : [];
-    const total = nestedData?.total ?? nestedData?.totalCount ?? rawItems.length;
+    console.log('[coursesApi.getAll] nestedData:', nestedData);
+    const items = nestedData?.items || [];
+    const total = nestedData?.totalCount ?? nestedData?.total ?? items.length;
 
     return {
-      items: rawItems.map((item: any) => ({
+      items: items.map((item: any) => ({
         ...item,
         title: item.title || item.name,
       })),
@@ -348,20 +360,48 @@ export const coursesApi = {
 
   getById: async (id: number): Promise<Course> => {
     const response = await api.get(`/courses/${id}`);
-    const data = response.data.data;
+    const data = response.data.data?.data || response.data.data;
     return {
       ...data,
-      title: data.title || data.name,
+      title: data?.title || data?.name,
     };
   },
 
-  create: async (data: { title: string; description?: string }): Promise<number> => {
-    const response = await api.post('/courses', { title: data.title, description: data.description });
-    return response.data.data.id;
+  create: async (data: {
+    title: string;
+    description?: string;
+    syllabusId?: number;
+    estimatedHours?: number;
+    isRequired?: boolean;
+    isActive?: boolean;
+  }): Promise<number> => {
+    const response = await api.post('/courses', {
+      title: data.title,
+      description: data.description,
+      syllabusId: data.syllabusId,
+      estimatedHours: data.estimatedHours,
+      isRequired: data.isRequired,
+      isActive: data.isActive,
+    });
+    return response.data.data?.id ?? response.data?.data?.data?.id;
   },
 
-  update: async (id: number, data: { title: string; description?: string }): Promise<void> => {
-    await api.put(`/courses/${id}`, { title: data.title, description: data.description });
+  update: async (id: number, data: {
+    title: string;
+    description?: string;
+    syllabusId?: number;
+    estimatedHours?: number;
+    isRequired?: boolean;
+    isActive?: boolean;
+  }): Promise<void> => {
+    await api.put(`/courses/${id}`, {
+      title: data.title,
+      description: data.description,
+      syllabusId: data.syllabusId,
+      estimatedHours: data.estimatedHours,
+      isRequired: data.isRequired,
+      isActive: data.isActive,
+    });
   },
 
   delete: async (id: number): Promise<void> => {
@@ -372,6 +412,8 @@ export const coursesApi = {
 // ==========================================
 // Classes API (dành cho SchoolAdmin)
 // ==========================================
+export type ClassStatus = 'Active' | 'Completed' | 'Suspended';
+
 export interface ClassEntity {
   id: number;
   classCode: string;
@@ -379,17 +421,35 @@ export interface ClassEntity {
   schoolName?: string;
   courseId: number;
   courseName?: string;
+  syllabusId?: number;
+  syllabusTitle?: string;
+  gradeLevelId?: number;
+  gradeLevelName?: string;
   teacherId?: number;
   teacherName?: string;
   startDate?: string;
   endDate?: string;
+  status: ClassStatus;
   createdAt: string;
   studentCount: number;
   enrolledStudents?: number;
-  students?: { id: number; fullName: string; email: string; enrolledAt: string }[];
+  students?: { id: number; fullName: string; email: string; enrolledAt: string; leftAt?: string }[];
   availableStudents?: { id: number; fullName: string; email: string; phone?: string; gender?: string }[];
   schedules?: any[];
   announcements?: any[];
+  previousTeacherId?: number;
+  previousTeacherName?: string;
+  previousTeacherStartedAt?: string;
+  previousTeacherEndedAt?: string;
+}
+
+export interface ClassTeacherHistory {
+  id: number;
+  teacherId: number;
+  teacherName: string;
+  startedAt: string;
+  endedAt: string | null;
+  isCurrent: boolean;
 }
 
 export interface ClassesListResponse {
@@ -404,6 +464,7 @@ export const classesApi = {
     searchTerm?: string;
     courseId?: number;
     teacherId?: number;
+    status?: ClassStatus;
     pageNumber?: number;
     pageSize?: number;
   }): Promise<ClassesListResponse> => {
@@ -428,10 +489,12 @@ export const classesApi = {
 
   create: async (data: {
     classCode: string;
+    gradeLevelId: number;
     courseId: number;
-    teacherId: number;
+    teacherId?: number;
     startDate: string;
-    endDate: string;
+    endDate?: string;
+    syllabusId?: number;
   }): Promise<number> => {
     const response = await api.post('/classes', data);
     return response.data.data.id;
@@ -439,6 +502,7 @@ export const classesApi = {
 
   update: async (id: number, data: {
     classCode?: string;
+    gradeLevelId?: number;
     courseId?: number;
     teacherId?: number;
     startDate?: string;
@@ -449,6 +513,16 @@ export const classesApi = {
 
   delete: async (id: number): Promise<void> => {
     await api.delete(`/classes/${id}`);
+  },
+
+  // Complete class - marks as completed and records end date
+  complete: async (id: number, endDate?: string): Promise<void> => {
+    await api.post(`/classes/${id}/complete`, { endDate });
+  },
+
+  // Reopen completed class for new term
+  reopen: async (id: number, newStartDate: string, newEndDate?: string): Promise<void> => {
+    await api.post(`/classes/${id}/reopen`, { newStartDate, newEndDate });
   },
 
   assignStudents: async (classId: number, studentIds: number[]): Promise<void> => {
@@ -469,6 +543,42 @@ export const classesApi = {
   getAvailableTeachers: async (classId: number): Promise<any> => {
     const response = await api.get(`/classes/${classId}/available-teachers`);
     return response.data;
+  },
+
+  // Change teacher in class - preserves history
+  changeTeacher: async (classId: number, newTeacherId: number): Promise<void> => {
+    await api.post(`/classes/${classId}/change-teacher`, { newTeacherId });
+  },
+
+  // Get teacher history for a class
+  getTeacherHistory: async (classId: number): Promise<ClassTeacherHistory[]> => {
+    const response = await api.get(`/classes/${classId}/teacher-history`);
+    return response.data.data || [];
+  },
+
+  // Bulk import students via Excel
+  bulkImportStudents: async (classId: number, file: File): Promise<{
+    success: number;
+    failed: number;
+    errors?: string[];
+  }> => {
+    const formData = new FormData();
+    formData.append('file', file);
+    const response = await api.post(`/classes/${classId}/students/import`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return response.data.data;
+  },
+
+  // Get student template info (returns list of student IDs available for this class)
+  getStudentTemplate: async (classId: number): Promise<{
+    classId: number;
+    classCode: string;
+    courseName: string;
+    totalEnrolled: number;
+  }> => {
+    const response = await api.get(`/classes/${classId}/students/template`);
+    return response.data.data;
   },
 };
 
@@ -564,7 +674,13 @@ export const usersApi = {
     page: number;
     pageSize: number;
   }> => {
-    const response = await api.post('/users/get-list', params || {});
+    const queryParams = new URLSearchParams();
+    if (params?.pageNumber) queryParams.append('pageNumber', String(params.pageNumber));
+    if (params?.pageSize) queryParams.append('pageSize', String(params.pageSize));
+    if (params?.search) queryParams.append('search', params.search);
+    if (params?.role) queryParams.append('role', params.role);
+    if (params?.isActive !== undefined) queryParams.append('isActive', String(params.isActive));
+    const response = await api.get(`/users?${queryParams.toString()}`);
     return response.data.data;
   },
 };
@@ -579,6 +695,7 @@ export interface ScheduleCalendarItem {
   end: string;
   classCode: string;
   className: string;
+  lessonTitle?: string;
   color: string;
 }
 
@@ -613,6 +730,8 @@ export interface ScheduleResponse {
   classId: number;
   classCode: string;
   className: string;
+  lessonId?: number;
+  lessonTitle?: string;
   startTime: string;
   endTime: string;
   createdAt?: string;
@@ -621,12 +740,14 @@ export interface ScheduleResponse {
 
 export interface CreateScheduleRequest {
   classId: number;
+  lessonId?: number;
   startTime: string;
   endTime: string;
 }
 
 export interface UpdateScheduleRequest {
   id?: number;
+  lessonId?: number;
   startTime?: string;
   endTime?: string;
 }
@@ -662,12 +783,14 @@ export const scheduleApi = {
     // Convert to ScheduleResponse format
     return (data || []).map((s: any) => ({
       id: s.id,
-      classId: classId,
-      startTime: s.start,
-      endTime: s.end,
-      classCode: s.classCode,
-      className: s.className,
+      classId: s.classId,
+      startTime: s.start || s.startTime,
+      endTime: s.end || s.endTime,
+      classCode: s.classCode || '',
+      className: s.className || '',
       color: s.color,
+      lessonId: s.lessonId,
+      lessonTitle: s.lessonTitle || '',
     }));
   },
 
@@ -751,6 +874,10 @@ export interface TokenBalance {
   tokensUsed: number;
   expiresAt?: string;
   lastPurchaseAt?: string;
+  teacherCount: number;
+  studentCount: number;
+  teacherTokens: number;
+  studentTokens: number;
 }
 
 export interface TokenTransaction {

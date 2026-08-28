@@ -246,15 +246,6 @@ export function MasterAdminCharts({ stats }: DashboardChartsProps) {
     staleTime: 5 * 60 * 1000,
   });
 
-  const schoolsGrowth = chartData?.schoolsGrowth || [
-    { name: 'T1', schools: 0 },
-    { name: 'T2', schools: 0 },
-    { name: 'T3', schools: 0 },
-    { name: 'T4', schools: 0 },
-    { name: 'T5', schools: 0 },
-    { name: 'T6', schools: stats?.totalSchools || 0 },
-  ];
-
   const usersByRole = chartData?.usersByRole || [
     { name: 'Master Admin', value: 0 },
     { name: 'School Admin', value: 0 },
@@ -262,14 +253,21 @@ export function MasterAdminCharts({ stats }: DashboardChartsProps) {
     { name: 'Học sinh', value: 0 },
   ];
 
+  // System overview bar chart
+  const systemOverview = [
+    { name: 'Trường học', value: stats?.totalSchools || 0 },
+    { name: 'Yêu cầu chờ duyệt', value: stats?.pendingSchoolRequests || 0 },
+    { name: 'Khóa học', value: stats?.totalCourses || 0 },
+  ];
+
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-      {/* Schools Growth */}
+      {/* System Overview Bar Chart */}
       <div className="bg-card rounded-xl border border-border p-6">
-        <h3 className="text-lg font-semibold mb-4">Tăng trưởng trường học</h3>
+        <h3 className="text-lg font-semibold mb-4">Tổng quan hệ thống</h3>
         <div className="h-64">
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={schoolsGrowth}>
+            <BarChart data={systemOverview}>
               <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
               <XAxis dataKey="name" stroke="#9ca3af" />
               <YAxis stroke="#9ca3af" />
@@ -280,13 +278,13 @@ export function MasterAdminCharts({ stats }: DashboardChartsProps) {
                   borderRadius: '8px',
                 }}
               />
-              <Bar dataKey="schools" fill="#8b5cf6" radius={[4, 4, 0, 0]} />
+              <Bar dataKey="value" fill="#8b5cf6" radius={[4, 4, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </div>
       </div>
 
-      {/* Users by Role */}
+      {/* Users by Role Pie Chart */}
       <div className="bg-card rounded-xl border border-border p-6">
         <h3 className="text-lg font-semibold mb-4">Phân bố người dùng theo vai trò</h3>
         <div className="h-64">

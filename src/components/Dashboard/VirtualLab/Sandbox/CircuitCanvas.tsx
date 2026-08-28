@@ -1,14 +1,23 @@
 import '@wokwi/elements';
-import React, { createElement, useCallback, useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from 'react';
+import React, { createElement, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { SimulationEngine } from './SimulationEngine';
 import { attachLed } from './glue/led';
 import { attachButton } from './glue/button';
-import type { LabCircuitComponent } from '@/services/dashboardApi';
+import type { LabCircuitComponent, MechanicalLink } from '@/services/dashboardApi';
 import { Toolbar, COMPONENT_COLOR_OPTIONS } from './Toolbar';
 import { getPinCoords, getPinKind } from './pinMaps';
 import { HelpCircle, Plus } from 'lucide-react';
 import { normalizeComponentType } from './componentTypeNormalize';
 import { ROBOT_KIT_FALLBACK_CARDS, getFallbackIllustration } from './componentIllustrations';
+import { getInteractionCapability } from './runtimeInteractionCapability';
+import {
+  type MotorVisualState,
+  STOPPED_VISUAL,
+  driveStateToVisual,
+  onOffToVisual,
+  findNearest,
+  findL298nChannel,
+} from './motorVisual';
 
 export type Waypoint = { x: number; y: number };
 export type Connection = [string, string, string, Waypoint[]?];
@@ -31,6 +40,20 @@ export interface PartVisualState {
   // thị đầy đủ topic/value/log; ở đây chỉ 1 chấm nhỏ báo "đang có dữ liệu",
   // card 70x60 quá nhỏ để nhồi thêm danh sách topic).
   cloudLive?: boolean;
+  // Relay Module — suy ra thật từ digitalWrite trên chân IN qua
+  // RelayModel.cs (Educational runner). undefined = chưa nhận event nào.
+  relay?: boolean;
+  // Fan/Drone Motor — nhị phân ON/OFF suy ra thật từ digitalWrite qua
+  // FanModel.cs/DroneMotorModel.cs (QemuEsp32Runner.ComponentIndex). undefined
+  // = chưa nhận event nào (xem TASK "STANDARDIZE MOTOR / ROTATING COMPONENT
+  // ANIMATION"). KHÔNG có PWM/tốc độ — QEMU chỉ instrument digitalWrite.
+  fan?: boolean;
+  droneMotor?: boolean;
+  // Servo — góc thật 0-180 độ qua ServoModel.cs (`state:'angle'`). CHỈ có ở
+  // Educational runner hôm nay (QEMU không đọc được PWM servo write() dùng
+  // để tạo — xem ServoModel.cs/QemuEsp32Runner.cs, không phải thiếu sót ở
+  // tầng FE). undefined = chưa nhận event nào -> hiển thị góc mặc định 90°.
+  angle?: number;
 }
 
 // wokwi-led/wokwi-buzzer (Lit) khai báo `value`/`hasSignal` là boolean nội
@@ -65,6 +88,12 @@ interface CircuitCanvasProps {
   boardType?: string;
   components?: LabCircuitComponent[];
   connections?: Connection[];
+  // Liên kết cơ khí TƯỜNG MINH (Robot Wheel/Propeller -> Motor) — tuỳ chọn.
+  // Khi có, ƯU TIÊN dùng thay vì heuristic nearest-canvas-distance (xem
+  // motorVisual.ts) vì đây là quan hệ diagram tác giả THẬT SỰ khai báo, không
+  // phải suy đoán theo khoảng cách. Bỏ trống = giữ nguyên hành vi cũ 100%
+  // (mọi diagram hiện có không khai báo field này).
+  mechanicalLinks?: MechanicalLink[];
   // Trạng thái LED/Buzzer từ event mock-runner (thay cho glue avr8js —
   // engine ở trên chỉ còn dùng khi boardType === 'arduino_uno', ESP32 luôn
   // truyền engine={null} và dùng partStates thay thế).
@@ -90,6 +119,23 @@ interface CircuitCanvasProps {
   // hoạt lại useEffect chọn lại, không cần biến CircuitCanvas thành fully
   // controlled component cho toàn bộ selection state.
   autoSelectId?: string | null;
+  // Realtime input (STEP 5) — opt-in, same pattern as onOpenPalette above.
+  // CircuitCanvas doesn't know about SignalR/simulation state at all; it just
+  // reports press/release for push_button components while this callback is
+  // provided. Only the parent (LabSandboxPage) decides whether/when to wire
+  // it to virtualLabHub.setSimulationInput. When omitted, push_button behaves
+  // exactly as before (drag/select only, no press semantics).
+  onButtonInput?: (componentId: string, pressed: boolean) => void;
+  // Realtime analog input (STEP 6) — same opt-in shape as onButtonInput.
+  // Value is already clamped to the canonical ESP32 ADC range (0..4095)
+  // before this fires; CircuitCanvas owns the slider widget, not the value's
+  // meaning.
+  onAnalogInput?: (componentId: string, value: number) => void;
+  // Realtime sensor input (STEP 8) — same shape as onAnalogInput plus a
+  // sensorKind label (STEP 9's DTO requirement). Only "light" is wired today
+  // (photoresistor-sensor); a future sensor with a genuinely different value
+  // shape gets its own prop rather than overloading this one.
+  onSensorInput?: (componentId: string, sensorKind: string, value: number) => void;
 }
 
 function getBoardTagName(boardType: string) {
@@ -156,7 +202,12 @@ const MOTOR_STATE_COLOR: Record<MotorDriveState, string> = {
   brake: 'text-red-400',
 };
 
-function renderFallbackCard(type: string, rawType: string, partState: PartVisualState | undefined) {
+function renderFallbackCard(
+  type: string,
+  rawType: string,
+  partState: PartVisualState | undefined,
+  motorVisual?: MotorVisualState,
+) {
   const config = ROBOT_KIT_FALLBACK_CARDS[type];
   if (!config) {
     // Type hoàn toàn chưa biết (kể cả chưa nằm trong bộ robot kit) — giữ
@@ -172,12 +223,24 @@ function renderFallbackCard(type: string, rawType: string, partState: PartVisual
   const Icon = config.icon;
   // L298N — trạng thái động cơ suy ra THẬT từ QEMU (L298nModel.cs), không
   // phải giả lập UI. Chưa có event nào (undefined) hiện "—" thay vì bịa trạng
-  // thái mặc định.
+  // thái mặc định. Nhãn "T"/"P" (Trái/Phải) thay cho "A"/"B" kỹ thuật — L298N
+  // trong app này chỉ dùng cho robot 2 bánh (motorA=trái, motorB=phải theo
+  // ROBOT_DELIVERY_PINS/circuitConfig của mọi bài robotics), nên nhãn theo
+  // ngữ nghĩa dễ đọc hơn cho học sinh khi demo (Phase 6 hardening).
   const showMotorState = type === 'l298n';
+  // Relay Module — trạng thái ON/OFF suy ra thật từ digitalWrite trên chân IN
+  // (RelayModel.cs, Educational runner). Không animation phức tạp, chỉ nhãn.
+  const showRelayState = type === 'relay-module';
+  // Fan/Drone Motor — ON/OFF suy ra thật từ digitalWrite (FanModel.cs/
+  // DroneMotorModel.cs). Cùng pattern nhãn với Relay ở trên; animation quay
+  // thật đọc qua motorVisual (xem getFallbackIllustration bên dưới), nhãn chữ
+  // chỉ là phụ trợ debug/đọc nhanh, không thay thế animation.
+  const showFanState = type === 'fan';
+  const showDroneMotorState = type === 'drone-motor';
   // WiFi/Cloud Phase 1 — chấm nhỏ báo đang nhận dữ liệu cloud-event (chi tiết
   // đầy đủ topic/value/log xem CloudDashboardPanel.tsx, KHÔNG nhồi vào đây).
   const showCloudDot = (type === 'wifi-cloud-node' || type === 'dashboard-cloud') && partState?.cloudLive;
-  const illustration = getFallbackIllustration(type, config.width, config.height);
+  const illustration = getFallbackIllustration(type, config.width, config.height, motorVisual);
 
   // Có minh hoạ SVG riêng — hình chiếm gần hết card, tên/badge/motor-state
   // hiện dạng nhãn phủ mờ phía dưới (không đè lên chi tiết hình vẽ). Card
@@ -194,19 +257,43 @@ function renderFallbackCard(type: string, rawType: string, partState: PartVisual
         {showCloudDot && (
           <span className="absolute top-1 right-1 h-2 w-2 rounded-full bg-emerald-400 animate-pulse" title="Đang nhận dữ liệu cloud" />
         )}
-        <div className="absolute bottom-0 left-0 right-0 bg-black/60 px-1 py-0.5">
+        <div
+          className={`absolute left-0 right-0 bg-black/60 px-1 py-0.5 ${
+            // L298N (ảnh thật): nửa dưới ảnh là hàng pin VIN/GND/5V/ENA-ENB —
+            // nhãn phủ ở bottom-0 sẽ đè lên đúng terminal đó. Nửa trên ảnh chỉ
+            // có heatsink/lỗ vít (không có pin), nên đặt nhãn ở top-0 thay vì
+            // bottom-0 chỉ cho riêng type này (các fallback card khác vẫn giữ
+            // nguyên bottom-0 — pin của chúng không nằm ở nửa dưới card).
+            type === 'l298n' ? 'top-0' : 'bottom-0'
+          }`}
+        >
           <span className="block text-[9px] font-medium text-center leading-tight text-slate-100 truncate">
             {config.label}
           </span>
           {showMotorState && (
             <span className="block text-[8px] font-mono leading-tight text-center">
               <span className={MOTOR_STATE_COLOR[partState?.motorA ?? 'stopped']}>
-                A:{partState?.motorA ? MOTOR_STATE_LABEL[partState.motorA] : '—'}
+                T:{partState?.motorA ? MOTOR_STATE_LABEL[partState.motorA] : '—'}
               </span>
               {' '}
               <span className={MOTOR_STATE_COLOR[partState?.motorB ?? 'stopped']}>
-                B:{partState?.motorB ? MOTOR_STATE_LABEL[partState.motorB] : '—'}
+                P:{partState?.motorB ? MOTOR_STATE_LABEL[partState.motorB] : '—'}
               </span>
+            </span>
+          )}
+          {showRelayState && (
+            <span className={`block text-[8px] font-mono leading-tight text-center ${partState?.relay ? 'text-emerald-400' : 'text-slate-400'}`}>
+              {partState?.relay === undefined ? '—' : partState.relay ? 'ON' : 'OFF'}
+            </span>
+          )}
+          {showFanState && (
+            <span className={`block text-[8px] font-mono leading-tight text-center ${partState?.fan ? 'text-emerald-400' : 'text-slate-400'}`}>
+              {partState?.fan === undefined ? '—' : partState.fan ? 'ON' : 'OFF'}
+            </span>
+          )}
+          {showDroneMotorState && (
+            <span className={`block text-[8px] font-mono leading-tight text-center ${partState?.droneMotor ? 'text-emerald-400' : 'text-slate-400'}`}>
+              {partState?.droneMotor === undefined ? '—' : partState.droneMotor ? 'ON' : 'OFF'}
             </span>
           )}
         </div>
@@ -231,6 +318,11 @@ function renderFallbackCard(type: string, rawType: string, partState: PartVisual
           <span className={MOTOR_STATE_COLOR[partState?.motorB ?? 'stopped']}>
             B:{partState?.motorB ? MOTOR_STATE_LABEL[partState.motorB] : '—'}
           </span>
+        </span>
+      )}
+      {showRelayState && (
+        <span className={`text-[9px] font-mono leading-tight ${partState?.relay ? 'text-emerald-400' : 'text-slate-400'}`}>
+          {partState?.relay === undefined ? '—' : partState.relay ? 'ON' : 'OFF'}
         </span>
       )}
     </div>
@@ -277,6 +369,14 @@ function getAutoWireColor(sourcePin: string, targetPin: string) {
   if (isAnalog(sourcePin) || isAnalog(targetPin)) return 'blue';
   return 'green';
 }
+
+// WIRE ROUTING tuning — xem autoRoutedWaypoints (bên trong CircuitCanvas) cho
+// thuật toán đầy đủ. WIRE_LANE_GAP: khoảng cách tối thiểu giữa 2 lane (đoạn
+// trunk thẳng đứng) trước khi coi là va chạm. PIN_ESCAPE_DISTANCE: khoảng
+// cách tối thiểu dây phải đi thẳng ra khỏi pin trước khi được phép đổi
+// hướng (không đổi hướng ngay tại pin).
+const WIRE_LANE_GAP = 8;
+const PIN_ESCAPE_DISTANCE = 14;
 
 function getElbowPath(x1: number, y1: number, x2: number, y2: number) {
   const midX = x1 + (x2 - x1) / 2;
@@ -326,6 +426,7 @@ export const CircuitCanvas = ({
   boardType = 'arduino_uno',
   components = [],
   connections = [],
+  mechanicalLinks = [],
   partStates,
   onComponentMove,
   onWireConnect,
@@ -337,11 +438,28 @@ export const CircuitCanvas = ({
   onComponentRotate,
   onOpenPalette,
   autoSelectId,
+  onButtonInput,
+  onAnalogInput,
+  onSensorInput,
 }: CircuitCanvasProps) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const boardRef = useRef<HTMLElement | null>(null);
   const componentRefs = useRef(new Map<string, HTMLElement | null>());
   const boardTagName = getBoardTagName(boardType);
+  // Light debounce for the potentiometer slider — visual state updates every
+  // drag tick (local, free), but the actual SetSimulationInput call is capped
+  // to at most one in flight per ~80ms so dragging doesn't spam SignalR.
+  // analogInputPending holds the LATEST value per component while a timer is
+  // in flight, so a fast drag still ends up sending the final position, not
+  // whatever value happened to be current when the timer was first armed.
+  const analogInputTimers = useRef(new Map<string, ReturnType<typeof setTimeout>>());
+  const analogInputPending = useRef(new Map<string, number>());
+  const [analogPreview, setAnalogPreview] = useState<Record<string, number>>({});
+  // INTERACTIVE SENSOR CONTROLS milestone — same "input control is user-
+  // controlled local preview, output visual is simulation-event-controlled"
+  // separation as analogPreview (STEP 11): this never reads back from a
+  // simulation event, it's purely the last value the user clicked.
+  const [digitalSensorPreview, setDigitalSensorPreview] = useState<Record<string, boolean>>({});
 
   // Board position & rotation (draggable) — "arduino" id is kept as the fixed
   // main-board slot regardless of which board type is actually selected.
@@ -400,6 +518,68 @@ export const CircuitCanvas = ({
     componentRefs.current.set(id, element as HTMLElement | null);
   };
 
+  // Trạng thái quay CHUẨN HOÁ cho mọi linh kiện cơ khí (STANDARDIZE MOTOR /
+  // ROTATING COMPONENT ANIMATION) — tính 1 LẦN/render từ dữ liệu THẬT đã có
+  // sẵn (partStates + connections), KHÔNG tạo state giả nào ở FE:
+  //   - DC Motor: kênh L298N nó đấu vào qua OUT1-4 (tra trong connections[]),
+  //     rồi đọc motorA/motorB thật của đúng L298N đó.
+  //   - Fan/Drone Motor: ON/OFF thật qua FanModel.cs/DroneMotorModel.cs.
+  //   - Robot Wheel/Propeller: KHÔNG có kết nối điện nào (visual-only, không
+  //     vào netlist) — ƯU TIÊN mechanicalLinks[] tường minh (diagram tác giả
+  //     tự khai báo targetId->motorId thật, xem MechanicalLink), CHỈ fallback
+  //     về nearest-canvas-distance khi diagram không khai báo link nào cho
+  //     đúng component đó (không phá diagram cũ chưa có field này).
+  const motorVisualStates = useMemo(() => {
+    const result: Record<string, MotorVisualState> = {};
+
+    const dcMotors = components.filter((c) => normalizeComponentType(c.type) === 'dc-motor');
+    const droneMotors = components.filter((c) => normalizeComponentType(c.type) === 'drone-motor');
+    const wheels = components.filter((c) => normalizeComponentType(c.type) === 'robot-wheel');
+    const propellers = components.filter((c) => normalizeComponentType(c.type) === 'propeller');
+    const fans = components.filter((c) => normalizeComponentType(c.type) === 'fan');
+
+    for (const motor of dcMotors) {
+      const channel = findL298nChannel(motor.id, connections);
+      const l298nState = channel ? partStates?.[channel.l298nId] : undefined;
+      const driveState = channel?.channel === 'motorB' ? l298nState?.motorB : l298nState?.motorA;
+      result[motor.id] = driveStateToVisual(driveState);
+    }
+
+    for (const drone of droneMotors) {
+      result[drone.id] = onOffToVisual(partStates?.[drone.id]?.droneMotor);
+    }
+
+    for (const fan of fans) {
+      result[fan.id] = onOffToVisual(partStates?.[fan.id]?.fan);
+    }
+
+    // resolveLinkedMotorId: mechanicalLinks[] trước, nearest-distance sau.
+    const resolveLinkedMotorId = (
+      target: { id: string; x: number; y: number },
+      candidates: { id: string; x: number; y: number }[],
+    ): string | null => {
+      const explicitLink = mechanicalLinks.find((link) => link.targetId === target.id);
+      if (explicitLink && result[explicitLink.motorId]) {
+        return explicitLink.motorId;
+      }
+      return findNearest(target, candidates)?.id ?? null;
+    };
+
+    const dcMotorPoints = dcMotors.map((m) => ({ id: m.id, x: m.x, y: m.y }));
+    for (const wheel of wheels) {
+      const motorId = resolveLinkedMotorId({ id: wheel.id, x: wheel.x, y: wheel.y }, dcMotorPoints);
+      result[wheel.id] = (motorId && result[motorId]) || STOPPED_VISUAL;
+    }
+
+    const droneMotorPoints = droneMotors.map((m) => ({ id: m.id, x: m.x, y: m.y }));
+    for (const propeller of propellers) {
+      const motorId = resolveLinkedMotorId({ id: propeller.id, x: propeller.x, y: propeller.y }, droneMotorPoints);
+      result[propeller.id] = (motorId && result[motorId]) || STOPPED_VISUAL;
+    }
+
+    return result;
+  }, [components, connections, mechanicalLinks, partStates]);
+
   useEffect(() => {
     components.forEach((component) => {
       const type = normalizeComponentType(component.type);
@@ -436,6 +616,27 @@ export const CircuitCanvas = ({
       el.ledGreen = state?.rgbG ? 1 : 0;
       // @ts-ignore
       el.ledBlue = state?.rgbB ? 1 : 0;
+    });
+  }, [components, partStates]);
+
+  // wokwi-servo: `angle` là number property (ServoElement.angle) — CÙNG lý
+  // do RGB LED ở trên (React chỉ gán thẳng DOM property cho boolean qua JSX,
+  // number luôn đi qua setAttribute -> Lit đọc lại thành string, ghi đè giá
+  // trị nội bộ). Gán trực tiếp qua ref. Mặc định 90° (giữa hành trình) khi
+  // chưa có event nào — KHÔNG bịa chuyển động, chỉ là vị trí nghỉ hợp lý.
+  // STEP 6: KHÔNG dùng animation quay vô hạn — chỉ set góc tĩnh, phần "mượt"
+  // do CSS transition bên trong bản thân wokwi-servo's shadow DOM tự xử lý
+  // nếu có; nếu không, vẫn đúng yêu cầu "0/90/180 hiển thị khác nhau rõ
+  // ràng", chỉ là chuyển động dạng snap thay vì tween.
+  useEffect(() => {
+    components.forEach((component) => {
+      const type = normalizeComponentType(component.type);
+      if (type !== 'servo') return;
+      const el = componentRefs.current.get(component.id);
+      if (!el) return;
+      const angle = partStates?.[component.id]?.angle;
+      // @ts-ignore
+      el.angle = typeof angle === 'number' ? angle : 90;
     });
   }, [components, partStates]);
 
@@ -612,6 +813,83 @@ export const CircuitCanvas = ({
     [arduinoPos, components]
   );
 
+  // WIRE ROUTING — fan-out/fan-in với lane riêng cho từng dây, thay cho
+  // getDefaultWaypoints() cũ (đã lỗi thời, giữ lại chỉ làm fallback cuối cùng
+  // bên dưới): getDefaultWaypoints() tính midX ĐỘC LẬP cho từng dây, chỉ dựa
+  // vào src.x/tgt.x của chính nó — khi nhiều dây nối giữa 2 cụm linh kiện gần
+  // nhau (vd 4 GPIO ESP32 -> 4 chân L298N, các chân cách nhau ~25px) thì
+  // midX của chúng gần như trùng nhau, khiến đoạn trunk (thân dây thẳng
+  // đứng) chồng lên nhau nhìn như 1 "bó" dây duy nhất.
+  //
+  // Thuật toán mới xử lý TOÀN BỘ connections theo thứ tự index ổn định
+  // (deterministic — không Math.random(), cùng 1 diagram JSON luôn ra cùng 1
+  // kết quả): mỗi dây thử đặt lane tại midX tự nhiên trước; nếu đoạn trunk
+  // đó (đường thẳng đứng tại 1 toạ độ X, trải theo khoảng Y từ src tới tgt)
+  // chồng Y-range với 1 trunk đã đăng ký ở X cách đó < WIRE_LANE_GAP, thì
+  // dịch sang lane kế tiếp (+gap, -gap, +2*gap, -2*gap, ...) và thử lại —
+  // đúng yêu cầu "detect collision -> tăng lane offset -> thử lại". Lane
+  // cũng bị ép cách CẢ src.x lẫn tgt.x tối thiểu PIN_ESCAPE_DISTANCE, để dây
+  // không đổi hướng ngay tại pin.
+  //
+  // CHỈ áp dụng cho dây CHƯA có waypoint tuỳ chỉnh đã lưu (storedWaypoints) —
+  // dây người dùng tự kéo tay giữ nguyên 100% hành vi cũ, không bị auto-route
+  // đè lên, và không tính vào danh sách occupied (đó là lựa chọn có chủ ý
+  // của người dùng, không phải đối tượng auto-router cần né).
+  const autoRoutedWaypoints = useMemo(() => {
+    type OccupiedTrunk = { x: number; yMin: number; yMax: number };
+    const occupied: OccupiedTrunk[] = [];
+    const results: Array<[Waypoint, Waypoint] | null> = [];
+
+    const collidesAt = (x: number, yMin: number, yMax: number) =>
+      occupied.some((seg) => Math.abs(seg.x - x) < WIRE_LANE_GAP && yMin <= seg.yMax && yMax >= seg.yMin);
+
+    connections.forEach((conn, index) => {
+      const [src, tgt, , storedWaypoints] = conn;
+      if (getValidStoredWaypoints(storedWaypoints)) {
+        results[index] = null;
+        return;
+      }
+
+      const [srcId, srcPin] = src.split(':');
+      const [tgtId, tgtPin] = tgt.split(':');
+      const srcCoord = getPinAbsCoord(srcId, srcPin) ?? getOwnerFallbackCoord(srcId);
+      const tgtCoord = getPinAbsCoord(tgtId, tgtPin) ?? getOwnerFallbackCoord(tgtId);
+      if (!srcCoord || !tgtCoord) {
+        results[index] = null;
+        return;
+      }
+
+      const dx = tgtCoord.x - srcCoord.x;
+      const naturalMidX = srcCoord.x + dx / 2;
+      const yMin = Math.min(srcCoord.y, tgtCoord.y);
+      const yMax = Math.max(srcCoord.y, tgtCoord.y);
+
+      const minLaneX = Math.min(srcCoord.x, tgtCoord.x) + PIN_ESCAPE_DISTANCE;
+      const maxLaneX = Math.max(srcCoord.x, tgtCoord.x) - PIN_ESCAPE_DISTANCE;
+      // src/tgt quá gần nhau để chừa đủ escape distance cả 2 phía — chấp
+      // nhận midX chưa clamp thay vì ép ra 1 khoảng rỗng (minLaneX>maxLaneX).
+      const clamp = (x: number) => (minLaneX <= maxLaneX ? Math.min(Math.max(x, minLaneX), maxLaneX) : naturalMidX);
+
+      let laneX = clamp(naturalMidX);
+      let attempt = 0;
+      // Giới hạn an toàn — 1 khu vực trong lab giáo dục hiếm khi có quá vài
+      // chục dây chồng nhau; tránh vòng lặp vô hạn nếu có.
+      while (collidesAt(laneX, yMin, yMax) && attempt < 40) {
+        attempt++;
+        const step = Math.ceil(attempt / 2) * WIRE_LANE_GAP * (attempt % 2 === 0 ? -1 : 1);
+        laneX = clamp(naturalMidX + step);
+      }
+
+      occupied.push({ x: laneX, yMin, yMax });
+      results[index] = [
+        { x: laneX, y: srcCoord.y },
+        { x: laneX, y: tgtCoord.y },
+      ];
+    });
+
+    return results;
+  }, [connections, getPinAbsCoord, getOwnerFallbackCoord]);
+
   const handlePointerMove = (e: React.PointerEvent) => {
     if (!containerRef.current) return;
 
@@ -714,6 +992,49 @@ export const CircuitCanvas = ({
       }
     }
     setDraggingId(compId);
+  };
+
+  const ANALOG_MAX = 4095;
+
+  // sensorKind: undefined -> plain analog (Potentiometer), set -> sensor
+  // (e.g. "light" for the photoresistor) — routes to onSensorInput instead of
+  // onAnalogInput, matching the distinct wire shape STEP 9 asked for.
+  const handleAnalogSliderChange = (componentId: string, rawValue: number, sensorKind?: string) => {
+    const value = Math.round(Math.min(Math.max(rawValue, 0), ANALOG_MAX));
+    setAnalogPreview((prev) => ({ ...prev, [componentId]: value }));
+
+    const send = sensorKind
+      ? (v: number) => onSensorInput?.(componentId, sensorKind, v)
+      : (v: number) => onAnalogInput?.(componentId, v);
+    if (!onAnalogInput && !onSensorInput) return;
+
+    analogInputPending.current.set(componentId, value);
+    const timers = analogInputTimers.current;
+    if (timers.has(componentId)) return; // a send is already scheduled; it will read the pending map at fire time
+
+    timers.set(
+      componentId,
+      setTimeout(() => {
+        timers.delete(componentId);
+        const latest = analogInputPending.current.get(componentId);
+        analogInputPending.current.delete(componentId);
+        if (latest !== undefined) {
+          send(latest);
+        }
+      }, 80)
+    );
+  };
+
+  // INTERACTIVE SENSOR CONTROLS milestone — a discrete click, not a slider
+  // drag, so no debounce needed (unlike handleAnalogSliderChange above).
+  // Reuses onButtonInput as-is: SetSimulationInput's wire contract for
+  // inputType="digital" is identical whether the true physical thing is a
+  // pushbutton or a PIR/Water Leak/Vibration sensor — the backend's
+  // ISimulationInputChannel/DigitalSensorModel.TryReadLiveInput don't care
+  // (STEP 8/12: reuse the existing contract, no new fields).
+  const handleDigitalSensorToggle = (componentId: string, nextValue: boolean) => {
+    setDigitalSensorPreview((prev) => ({ ...prev, [componentId]: nextValue }));
+    onButtonInput?.(componentId, nextValue);
   };
 
   const handlePinPointerDown = (e: React.PointerEvent, partId: string, pinName: string, absX: number, absY: number) => {
@@ -932,7 +1253,14 @@ export const CircuitCanvas = ({
 
             const isBroken = !srcResolvedCoord || !tgtResolvedCoord;
             const isSelected = selectedWireIndex === index;
-            const waypoints = getValidStoredWaypoints(storedWaypoints) ?? getDefaultWaypoints(srcCoord, tgtCoord);
+            // Waypoint tuỳ chỉnh đã lưu (người dùng tự kéo) > lane tự động
+            // (autoRoutedWaypoints — fan-out/fan-in không chồng lane) >
+            // getDefaultWaypoints (fallback cuối, chỉ dùng khi vì lý do gì đó
+            // pin không resolve được trong lúc tính autoRoutedWaypoints).
+            const waypoints =
+              getValidStoredWaypoints(storedWaypoints) ??
+              autoRoutedWaypoints[index] ??
+              getDefaultWaypoints(srcCoord, tgtCoord);
             const pathD = getWaypointPath(srcCoord, waypoints[0], waypoints[1], tgtCoord);
 
             return (
@@ -1116,12 +1444,91 @@ export const CircuitCanvas = ({
             // thật đều rơi vào đây — renderFallbackCard() tự phân biệt card có
             // icon+tên (đã đăng ký trong ROBOT_KIT_FALLBACK_CARDS) và type hoàn
             // toàn lạ (gray box cũ, không đổi hành vi).
-            renderElement = renderFallbackCard(type, component.type, partState);
+            renderElement = renderFallbackCard(type, component.type, partState, motorVisualStates[component.id]);
           }
 
+          // Capability-driven, not a type-name switch — component.type (the
+          // raw diagram type, e.g. "wokwi-pushbutton") is looked up once
+          // against runtimeInteractionCapability.ts's table, which mirrors
+          // the backend's RuntimeCapabilityResolver. A future canonical type
+          // (static or Registry-imported) gets the right interaction UI just
+          // by having an entry there — no new branch needed here.
+          const interactionCapability = getInteractionCapability(component.type);
+          const isPressableButton = interactionCapability?.kind === 'digital' && Boolean(onButtonInput);
+          const isAnalogPotentiometer = interactionCapability?.kind === 'analog' && Boolean(onAnalogInput);
+          const isLightSensor = interactionCapability?.kind === 'sensor' && Boolean(onSensorInput);
+          const sensorKind = interactionCapability?.kind === 'sensor' ? interactionCapability.sensorKind : 'light';
+          const analogValue = analogPreview[component.id] ?? 0;
+          const isDigitalSensor = interactionCapability?.kind === 'digital-sensor' && Boolean(onButtonInput);
+          const digitalSensorLabels = interactionCapability?.kind === 'digital-sensor' ? interactionCapability : null;
+          const digitalSensorValue = digitalSensorPreview[component.id] ?? false;
+
           return (
-            <div key={component.id} style={style} onPointerDown={(e) => handleComponentPointerDown(e, component.id)}>
+            <div
+              key={component.id}
+              style={isPressableButton ? { ...style, cursor: 'pointer' } : style}
+              onPointerDown={(e) => {
+                handleComponentPointerDown(e, component.id);
+                if (isPressableButton) {
+                  onButtonInput!(component.id, true);
+                }
+              }}
+              // Not stopPropagation()'d — the container's own handlePointerUp
+              // (drag-end/wire-end) still needs to see this event bubble up,
+              // exactly as it did before this prop existed.
+              onPointerUp={isPressableButton ? () => onButtonInput!(component.id, false) : undefined}
+              // Safety net: a real momentary pushbutton releases when you lift
+              // your finger, but the pointer can leave this element's bounds
+              // while still physically held down (e.g. a small drag) with no
+              // pointerup ever landing back on it — without this, the button
+              // would stay latched "pressed" in ComponentInputs indefinitely.
+              onPointerLeave={isPressableButton ? () => onButtonInput!(component.id, false) : undefined}
+            >
               {renderElement}
+
+              {(isAnalogPotentiometer || isLightSensor) && (
+                // Deliberately plain — STEP 6 says not to over-design this.
+                // stopPropagation on pointerdown so dragging the slider thumb
+                // doesn't also start a component-drag via the wrapper's own
+                // onPointerDown above.
+                <div
+                  className="absolute flex items-center gap-1 bg-[#1a1a1a] border border-gray-600 rounded px-1"
+                  style={{ top: '100%', left: 0, marginTop: 4, zIndex: 20, width: 90 }}
+                  onPointerDown={(e) => e.stopPropagation()}
+                >
+                  <input
+                    type="range"
+                    min={0}
+                    max={ANALOG_MAX}
+                    value={analogValue}
+                    onChange={(e) =>
+                      handleAnalogSliderChange(component.id, Number(e.target.value), isLightSensor ? sensorKind : undefined)
+                    }
+                    className="w-full"
+                  />
+                  <span className="text-[9px] text-gray-300 font-mono w-8 text-right">{analogValue}</span>
+                </div>
+              )}
+
+              {isDigitalSensor && digitalSensorLabels && (
+                // Persistent toggle, deliberately NOT the pushbutton's
+                // press/hold-on-body affordance (STEP 3: these sensors are
+                // "state until changed", not "state while held") — same
+                // compact below-component placement as the analog slider.
+                <button
+                  type="button"
+                  className={`absolute text-[9px] font-mono rounded px-1.5 py-0.5 border whitespace-nowrap ${
+                    digitalSensorValue
+                      ? 'bg-amber-600/80 border-amber-400 text-white'
+                      : 'bg-[#1a1a1a] border-gray-600 text-gray-300'
+                  }`}
+                  style={{ top: '100%', left: 0, marginTop: 4, zIndex: 20 }}
+                  onPointerDown={(e) => e.stopPropagation()}
+                  onClick={() => handleDigitalSensorToggle(component.id, !digitalSensorValue)}
+                >
+                  {digitalSensorValue ? digitalSensorLabels.onLabel : digitalSensorLabels.offLabel}
+                </button>
+              )}
 
               {isSelected && (
                 <div className="absolute inset-0 -m-2 border border-dashed border-[#22c55e] pointer-events-none" style={{ zIndex: 15 }}>

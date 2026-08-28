@@ -56,6 +56,8 @@ interface MasterAdminStatsProps {
 }
 
 export const MasterAdminStats = ({ stats }: MasterAdminStatsProps) => {
+  const pendingRequests = stats.pendingSchoolRequests ?? 0;
+
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6">
       <StatCard
@@ -64,13 +66,15 @@ export const MasterAdminStats = ({ stats }: MasterAdminStatsProps) => {
         icon="Building2"
         description="Trường đang hoạt động"
       />
-      <StatCard
-        title="Yêu cầu chờ duyệt"
-        value={stats.pendingSchoolRequests ?? 0}
-        icon="ClipboardCheck"
-        description="Đơn đăng ký mới"
-        className={(stats.pendingSchoolRequests ?? 0) > 0 ? 'border-yellow-500/50' : ''}
-      />
+      {pendingRequests > 0 && (
+        <StatCard
+          title="Yêu cầu chờ duyệt"
+          value={pendingRequests}
+          icon="ClipboardCheck"
+          description="Đơn đăng ký mới"
+          className="border-yellow-500/50"
+        />
+      )}
       <StatCard
         title="Tổng người dùng"
         value={stats.totalUsers ?? 0}

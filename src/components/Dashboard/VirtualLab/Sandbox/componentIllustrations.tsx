@@ -1,11 +1,11 @@
 // Nguồn illustration DÙNG CHUNG giữa CircuitCanvas.tsx (canvas, fallback-card
 // không có element @wokwi/elements thật) và ComponentPalettePopup.tsx (popup
 // "+"/palette). Tách ra từ CircuitCanvas.tsx (2026-07-27, task "hoàn thiện
-// thumbnail palette giống Wokwi") — ROBOT_KIT_FALLBACK_CARDS +
-// getFallbackIllustration() giữ NGUYÊN 100% logic/SVG cũ (đã test PASS qua
-// L298N regression thật), chỉ đổi vị trí file. Không đổi kích thước
-// width/height trong ROBOT_KIT_FALLBACK_CARDS — đây vẫn là bounding box thật
-// dùng để tính pin-dot trong pinMaps.ts, không được đổi.
+// thumbnail palette giống Wokwi"). width/height trong ROBOT_KIT_FALLBACK_CARDS
+// LÀ bounding box thật dùng để tính pin-dot trong pinMaps.ts — đổi 1 trong 2
+// giá trị này BẮT BUỘC phải đo lại toàn bộ pin tương ứng trong pinMaps.ts
+// (xem 'l298n': đã đổi từ box 180x100 (SVG tự vẽ) sang 140x140 khi thay bằng
+// ảnh thật, kèm đo lại đủ 13 pin — "REAL COMPONENT VISUAL COMPLETION" task).
 import { createElement, type ReactNode } from 'react';
 import {
   CircuitBoard,
@@ -41,12 +41,19 @@ import {
   FlaskConical,
 } from 'lucide-react';
 import { normalizeComponentType } from './componentTypeNormalize';
+import { spinStyle, type MotorVisualState } from './motorVisual';
+// Ảnh thật L298N (REAL COMPONENT VISUAL, thay cho SVG tự vẽ) — kích thước
+// gốc 535x536 (gần vuông). width/height card đổi từ 180x100 (tỉ lệ cũ khớp
+// SVG tự vẽ) sang 140x140 (khớp đúng tỉ lệ ảnh thật) — L298N_PINS trong
+// pinMaps.ts đã được đo lại và tính theo ĐÚNG box 140x140 này, không dùng
+// lại toạ độ cũ của box 180x100.
+import l298nImage from '@/assets/components/l298n/l298n.png';
 
 export const ROBOT_KIT_FALLBACK_CARDS: Record<
   string,
   { label: string; icon: typeof CircuitBoard; width: number; height: number; badge: string }
 > = {
-  'l298n': { label: 'L298N Motor Driver', icon: CircuitBoard, width: 180, height: 100, badge: 'Mô phỏng được' },
+  'l298n': { label: 'L298N Motor Driver', icon: CircuitBoard, width: 140, height: 140, badge: 'Mô phỏng được' },
   'dc-motor': { label: 'DC Motor', icon: RotateCw, width: 60, height: 50, badge: 'Mô phỏng được' },
   'battery-pack': { label: 'Battery Pack 7.4V', icon: BatteryFull, width: 90, height: 50, badge: 'Kiểm tra nối dây' },
   'power-switch': { label: 'Power Switch', icon: ToggleLeft, width: 70, height: 36, badge: 'Kiểm tra nối dây' },
@@ -59,11 +66,15 @@ export const ROBOT_KIT_FALLBACK_CARDS: Record<
   // ===== Thư viện linh kiện mở rộng — Actuator/Sensor không có element thật
   // (wiring-validation — width/height PHẢI khớp đúng toạ độ trong
   // pinMaps.ts, xem RELAY_MODULE_PINS/FAN_PINS/... ) =====
-  'relay-module': { label: 'Relay Module', icon: Settings2, width: 90, height: 50, badge: 'Kiểm tra nối dây' },
+  // Relay Module — runtime-supported (RelayModel.cs), width/height giữ nguyên
+  // để khớp toạ độ pinMaps.ts (RELAY_MODULE_PINS), chỉ badge đổi.
+  'relay-module': { label: 'Relay Module', icon: Settings2, width: 90, height: 50, badge: 'Mô phỏng được' },
   'fan': { label: 'Fan / DC Fan', icon: Fan, width: 60, height: 50, badge: 'Kiểm tra nối dây' },
   'water-pump': { label: 'Water Pump / Mini Pump', icon: Droplets, width: 60, height: 50, badge: 'Kiểm tra nối dây' },
   'water-leak-sensor': { label: 'Water Leak Sensor', icon: Droplets, width: 90, height: 50, badge: 'Kiểm tra nối dây' },
   'rain-sensor': { label: 'Rain Sensor', icon: CloudRain, width: 90, height: 50, badge: 'Kiểm tra nối dây' },
+  // Pin semantics verified + wiring rule có, geometry CHƯA verified — xem
+  // component-compatibility.json wokwi-soil-moisture-sensor.
   'soil-moisture-sensor': { label: 'Soil Moisture Sensor', icon: Sprout, width: 90, height: 50, badge: 'Kiểm tra nối dây' },
   'ir-obstacle-sensor': { label: 'IR Obstacle Sensor', icon: ScanLine, width: 90, height: 50, badge: 'Kiểm tra nối dây' },
   'line-tracking-sensor': { label: 'Line Tracking Sensor', icon: Route, width: 90, height: 50, badge: 'Kiểm tra nối dây' },
@@ -98,7 +109,9 @@ export const ROBOT_KIT_FALLBACK_CARDS: Record<
   // getExtraIllustration() bên dưới. =====
   'esc': { label: 'ESC (Electronic Speed Controller)', icon: Zap, width: 90, height: 50, badge: 'Kiểm tra nối dây' },
   'heating-element': { label: 'Heating Element', icon: Thermometer, width: 60, height: 50, badge: 'Kiểm tra nối dây' },
-  'ph-sensor': { label: 'pH Sensor', icon: FlaskConical, width: 90, height: 50, badge: 'Kiểm tra nối dây' },
+  // PIN_UNVERIFIED — VCC/GND/PO suy đoán theo tên gọi phổ biến, chưa có
+  // evidence xác minh (xem component-compatibility.json wokwi-ph-sensor).
+  'ph-sensor': { label: 'pH Sensor', icon: FlaskConical, width: 90, height: 50, badge: 'Chưa xác minh sơ đồ chân' },
 
   // Line Tracking đa kênh (2026-07-28) — width khớp đúng LINE_TRACKING_3CH_PINS
   // / LINE_TRACKING_5CH_PINS trong pinMaps.ts.
@@ -116,47 +129,80 @@ export const ROBOT_KIT_FALLBACK_CARDS: Record<
 // getComponentIllustration() bên dưới), width/height truyền vào vẫn lấy từ
 // ROBOT_KIT_FALLBACK_CARDS (giữ đúng tỉ lệ thật) nhưng render trong khung cố
 // định 44x44 qua preserveAspectRatio — không phá hình.
-export function getFallbackIllustration(type: string, width: number, height: number): ReactNode | null {
+// motorVisual (tuỳ chọn, mặc định "đứng yên" khi bỏ trống — mọi caller cũ
+// không truyền tham số này không đổi hành vi) — CHỈ 5 case dc-motor/
+// robot-wheel/fan/propeller/drone-motor đọc tới, phần còn lại bỏ qua hoàn
+// toàn. Xem TASK "STANDARDIZE MOTOR / ROTATING COMPONENT ANIMATION" và
+// motorVisual.ts — animation luôn là CSS transform: rotate() theo state thật
+// từ simulation runtime, không có setInterval/requestAnimationFrame nào ở
+// đây, không xoay/di chuyển toàn bộ component khỏi vị trí canvas.
+export function getFallbackIllustration(
+  type: string,
+  width: number,
+  height: number,
+  motorVisual?: MotorVisualState,
+): ReactNode | null {
   const vb = `0 0 ${width} ${height}`;
   const svgProps = { viewBox: vb, width: '100%', height: '100%', preserveAspectRatio: 'xMidYMid meet' as const };
 
   switch (type) {
     case 'l298n':
+      // REAL COMPONENT VISUAL (ảnh thật, không tự vẽ SVG nữa). Ảnh gốc
+      // 535x536 (gần vuông) — box card đổi thành 140x140 (component
+      // Illustrations.tsx's ROBOT_KIT_FALLBACK_CARDS['l298n']) để khớp đúng
+      // tỉ lệ ảnh, KHÔNG dùng lại box 180x100 cũ (dành cho SVG tự vẽ, sẽ làm
+      // méo ảnh nếu object-fit: fill, hoặc để trống rất nhiều nếu contain).
+      // Toạ độ 13 pin trong L298N_PINS (pinMaps.ts) đã được đo lại trực tiếp
+      // trên chính ảnh này (đo bằng cách lấy mẫu màu pixel: terminal xanh
+      // dương = khối OUT1-4/VIN/GND/5V, housing đen = khối ENA/IN1-4/ENB),
+      // quy đổi theo scale 140/535 (x) và 140/536 (y) — xem chi tiết cách đo
+      // trong lịch sử trao đổi "REAL COMPONENT VISUAL COMPLETION — L298N".
       return (
-        <svg {...svgProps}>
-          <rect x={2} y={2} width={width - 4} height={height - 4} rx={4} fill="#14532d" stroke="#166534" strokeWidth={1} />
-          {/* Terminal blocks hàng trên (OUT1-4/VIN/GND) và hàng dưới (ENA/IN1-4/ENB/5V) */}
-          <rect x={8} y={4} width={width - 16} height={10} rx={1.5} fill="#1d4ed8" />
-          <rect x={8} y={height - 14} width={width - 16} height={10} rx={1.5} fill="#1d4ed8" />
-          {Array.from({ length: 7 }).map((_, i) => (
-            <rect key={`t-${i}`} x={11 + i * ((width - 22) / 6)} y={5.5} width={3} height={7} fill="#facc15" />
-          ))}
-          {Array.from({ length: 7 }).map((_, i) => (
-            <rect key={`b-${i}`} x={11 + i * ((width - 22) / 6)} y={height - 12.5} width={3} height={7} fill="#facc15" />
-          ))}
-          {/* Heatsink/chip trung tâm */}
-          <rect x={width / 2 - 22} y={height / 2 - 16} width={44} height={32} rx={2} fill="#27272a" stroke="#52525b" strokeWidth={1} />
-          <circle cx={width / 2 - 14} cy={height / 2} r={2} fill="#ef4444" />
-        </svg>
+        <img
+          src={l298nImage}
+          alt="L298N Motor Driver"
+          style={{ width: '100%', height: '100%', objectFit: 'contain', pointerEvents: 'none' }}
+        />
       );
     case 'dc-motor':
+      // DC_MOTOR_PINS (pinMaps.ts): terminal1 x=6 (trái), terminal2 x=54
+      // (phải), cả 2 y=25. Bản vẽ cũ chỉ có 2 dây chì bên PHẢI (quanh x=56-62)
+      // — hitbox vô hình của terminal1 (x=6) nằm trên khung gắn màu vàng,
+      // KHÔNG có dây nào ở đó -> đúng lỗi "pin 1 chỗ, dây xuất phát chỗ khác"
+      // (Phase "Real Component Visual Completion"). Vẽ lại: thân động cơ ở
+      // giữa, 1 dây chì mỗi bên, đúng khớp toạ độ terminal1/terminal2.
       return (
         <svg {...svgProps}>
-          <rect x={2} y={height * 0.2} width={width * 0.4} height={height * 0.6} rx={3} fill="#eab308" />
-          <circle cx={width * 0.62} cy={height / 2} r={height * 0.42} fill="#a1a1aa" stroke="#71717a" strokeWidth={1.5} />
-          <circle cx={width * 0.62} cy={height / 2} r={height * 0.14} fill="#52525b" />
-          <line x1={width - 4} y1={height / 2 - 4} x2={width + 2} y2={height / 2 - 8} stroke="#ef4444" strokeWidth={2} />
-          <line x1={width - 4} y1={height / 2 + 4} x2={width + 2} y2={height / 2 + 8} stroke="#18181b" strokeWidth={2} />
+          <circle cx={width / 2} cy={height / 2} r={height * 0.42} fill="#a1a1aa" stroke="#71717a" strokeWidth={1.5} />
+          {/* Trục quay — CHỈ phần này quay (STEP 2: thân motor đứng yên).
+              Vạch nhỏ lệch tâm để mắt nhận ra chuyển động quay (1 khối tròn
+              đối xứng xoay sẽ trông như đứng yên). */}
+          <g style={spinStyle(motorVisual, width / 2, height / 2)}>
+            <circle cx={width / 2} cy={height / 2} r={height * 0.16} fill="#52525b" />
+            <circle cx={width / 2} cy={height / 2} r={height * 0.05} fill="#d4d4d8" />
+            <line x1={width / 2} y1={height / 2} x2={width / 2} y2={height / 2 - height * 0.16} stroke="#e4e4e7" strokeWidth={1.5} />
+          </g>
+          {/* Dây chì trái -> terminal1 (đỏ, +), dây chì phải -> terminal2 (đen, -) */}
+          <line x1={width / 2 - height * 0.42} y1={height / 2} x2={6} y2={25} stroke="#ef4444" strokeWidth={2} />
+          <line x1={width / 2 + height * 0.42} y1={height / 2} x2={54} y2={25} stroke="#18181b" strokeWidth={2} />
+          <circle cx={6} cy={25} r={2} fill="#ef4444" />
+          <circle cx={54} cy={25} r={2} fill="#18181b" />
         </svg>
       );
     case 'battery-pack':
+      // BATTERY_PACK_PINS (pinMaps.ts): + tại x=10, - tại x=80 (y=25 cả 2).
+      // Dây chì vẽ ĐÚNG TỚI toạ độ pin thay vì kéo dài ra ngoài bounding box
+      // (bản cũ: đầu dây ở x=-4/x=94, lệch ~14px so với hitbox thật tại
+      // x=10/x=80) — Phase "Real Component Visual Completion".
       return (
         <svg {...svgProps}>
           <rect x={4} y={height * 0.15} width={width - 8} height={height * 0.7} rx={5} fill="#18181b" stroke="#3f3f46" strokeWidth={1} />
           <rect x={width * 0.15} y={height * 0.28} width={width * 0.3} height={height * 0.44} rx={4} fill="#3f3f46" />
           <rect x={width * 0.55} y={height * 0.28} width={width * 0.3} height={height * 0.44} rx={4} fill="#3f3f46" />
-          <line x1={2} y1={height / 2} x2={-4} y2={height / 2} stroke="#ef4444" strokeWidth={2.5} />
-          <line x1={width - 2} y1={height / 2} x2={width + 4} y2={height / 2} stroke="#18181b" strokeWidth={2.5} />
+          <line x1={4} y1={25} x2={10} y2={25} stroke="#ef4444" strokeWidth={2.5} />
+          <line x1={width - 4} y1={25} x2={80} y2={25} stroke="#e4e4e7" strokeWidth={2.5} />
+          <circle cx={10} cy={25} r={2} fill="#ef4444" />
+          <circle cx={80} cy={25} r={2} fill="#e4e4e7" />
           <text x={6} y={height * 0.12} fontSize={8} fill="#ef4444" fontWeight="bold">+</text>
           <text x={width - 12} y={height * 0.12} fontSize={8} fill="#e4e4e7" fontWeight="bold">-</text>
         </svg>
@@ -187,15 +233,20 @@ export function getFallbackIllustration(type: string, width: number, height: num
     case 'robot-wheel':
       return (
         <svg {...svgProps}>
+          {/* Vỏ lốp đứng yên (không mô phỏng xe chạy trên canvas — STEP 3) */}
           <circle cx={width / 2} cy={height / 2} r={width / 2 - 2} fill="#18181b" stroke="#3f3f46" strokeWidth={1.5} />
-          <circle cx={width / 2} cy={height / 2} r={width * 0.28} fill="#52525b" />
-          <circle cx={width / 2} cy={height / 2} r={width * 0.08} fill="#a1a1aa" />
-          {Array.from({ length: 5 }).map((_, i) => {
-            const angle = (i * 2 * Math.PI) / 5;
-            const x2 = width / 2 + width * 0.25 * Math.cos(angle);
-            const y2 = height / 2 + width * 0.25 * Math.sin(angle);
-            return <line key={i} x1={width / 2} y1={height / 2} x2={x2} y2={y2} stroke="#a1a1aa" strokeWidth={2} />;
-          })}
+          {/* Nan hoa + hub — quay theo motor liên kết gần nhất (STEP 3, xem
+              motorVisual.findNearest) */}
+          <g style={spinStyle(motorVisual, width / 2, height / 2)}>
+            <circle cx={width / 2} cy={height / 2} r={width * 0.28} fill="#52525b" />
+            <circle cx={width / 2} cy={height / 2} r={width * 0.08} fill="#a1a1aa" />
+            {Array.from({ length: 5 }).map((_, i) => {
+              const angle = (i * 2 * Math.PI) / 5;
+              const x2 = width / 2 + width * 0.25 * Math.cos(angle);
+              const y2 = height / 2 + width * 0.25 * Math.sin(angle);
+              return <line key={i} x1={width / 2} y1={height / 2} x2={x2} y2={y2} stroke="#a1a1aa" strokeWidth={2} />;
+            })}
+          </g>
         </svg>
       );
     case 'caster-wheel':
@@ -241,15 +292,20 @@ export function getFallbackIllustration(type: string, width: number, height: num
     case 'fan':
       return (
         <svg {...svgProps}>
+          {/* Housing đứng yên (STEP 5) */}
           <rect x={2} y={2} width={width - 4} height={height - 4} rx={4} fill="#3f3f46" stroke="#52525b" strokeWidth={1} />
           <circle cx={width / 2} cy={height / 2} r={Math.min(width, height) * 0.4} fill="#18181b" />
-          {[0, 1, 2, 3].map((i) => {
-            const angle = (i * Math.PI) / 2;
-            const r = Math.min(width, height) * 0.34;
-            const x = width / 2 + r * Math.cos(angle);
-            const y = height / 2 + r * Math.sin(angle);
-            return <ellipse key={i} cx={x} cy={y} rx={7} ry={3.5} fill="#71717a" transform={`rotate(${(angle * 180) / Math.PI} ${x} ${y})`} />;
-          })}
+          {/* Cánh quạt — layer quay riêng, điều khiển bởi FanModel.cs (ON/OFF
+              qua digitalWrite) */}
+          <g style={spinStyle(motorVisual, width / 2, height / 2)}>
+            {[0, 1, 2, 3].map((i) => {
+              const angle = (i * Math.PI) / 2;
+              const r = Math.min(width, height) * 0.34;
+              const x = width / 2 + r * Math.cos(angle);
+              const y = height / 2 + r * Math.sin(angle);
+              return <ellipse key={i} cx={x} cy={y} rx={7} ry={3.5} fill="#71717a" transform={`rotate(${(angle * 180) / Math.PI} ${x} ${y})`} />;
+            })}
+          </g>
           <circle cx={width / 2} cy={height / 2} r={4} fill="#a1a1aa" />
         </svg>
       );
@@ -387,10 +443,15 @@ export function getFallbackIllustration(type: string, width: number, height: num
         </svg>
       );
     case 'propeller':
+      // Cả 2 cánh CÙNG là layer quay (propeller đặt riêng trên canvas — không
+      // gắn liền Drone Motor — quay theo motor liên kết gần nhất, xem
+      // motorVisual.findNearest, giống Robot Wheel<->DC Motor).
       return (
         <svg {...svgProps}>
-          <ellipse cx={width / 2} cy={height / 2} rx={width * 0.46} ry={height * 0.14} fill="#52525b" />
-          <ellipse cx={width / 2} cy={height / 2} rx={width * 0.14} ry={height * 0.46} fill="#52525b" />
+          <g style={spinStyle(motorVisual, width / 2, height / 2)}>
+            <ellipse cx={width / 2} cy={height / 2} rx={width * 0.46} ry={height * 0.14} fill="#52525b" />
+            <ellipse cx={width / 2} cy={height / 2} rx={width * 0.14} ry={height * 0.46} fill="#52525b" />
+          </g>
           <circle cx={width / 2} cy={height / 2} r={4} fill="#facc15" />
         </svg>
       );
@@ -453,23 +514,35 @@ export function getFallbackIllustration(type: string, width: number, height: num
           <line x1={width * 0.16} y1={height * 0.48} x2={width * 0.84} y2={height * 0.48} stroke="#e0f2fe" strokeWidth={1} opacity={0.8} />
         </svg>
       );
-    case 'drone-motor':
+    case 'drone-motor': {
+      // STEP 4/STEP 8: motor body ĐỨNG YÊN + propeller là layer riêng đè lên
+      // trên, chỉ layer đó quay theo DroneMotorModel.cs (ON/OFF qua
+      // digitalWrite) — không mô phỏng drone bay, không di chuyển khung/thân.
+      const hubX = width / 2;
+      const hubY = height * 0.42;
+      const propR = Math.min(width, height) * 0.34;
       return (
         <svg {...svgProps}>
-          <circle cx={width / 2} cy={height * 0.42} r={Math.min(width, height) * 0.32} fill="#18181b" stroke="#3f3f46" strokeWidth={1.4} />
-          <circle cx={width / 2} cy={height * 0.42} r={Math.min(width, height) * 0.14} fill="#52525b" />
+          <circle cx={hubX} cy={hubY} r={Math.min(width, height) * 0.32} fill="#18181b" stroke="#3f3f46" strokeWidth={1.4} />
           {Array.from({ length: 3 }).map((_, i) => {
             const angle = (i * 2 * Math.PI) / 3 - Math.PI / 2;
-            const x = width / 2 + Math.min(width, height) * 0.22 * Math.cos(angle);
-            const y = height * 0.42 + Math.min(width, height) * 0.22 * Math.sin(angle);
+            const x = hubX + Math.min(width, height) * 0.22 * Math.cos(angle);
+            const y = hubY + Math.min(width, height) * 0.22 * Math.sin(angle);
             return <circle key={i} cx={x} cy={y} r={1.6} fill="#71717a" />;
           })}
           <rect x={width * 0.42} y={height * 0.72} width={width * 0.16} height={height * 0.24} fill="#3f3f46" />
           {['#ef4444', '#18181b', '#facc15'].map((c, i) => (
             <line key={i} x1={width * 0.5 + (i - 1) * 3} y1={height * 0.9} x2={width * 0.5 + (i - 1) * 6} y2={height} stroke={c} strokeWidth={1.6} />
           ))}
+          {/* Propeller overlay — layer quay riêng, phủ TRÊN thân motor tĩnh */}
+          <g style={spinStyle(motorVisual, hubX, hubY)}>
+            <ellipse cx={hubX} cy={hubY} rx={propR} ry={propR * 0.3} fill="#a1a1aa" opacity={0.85} />
+            <ellipse cx={hubX} cy={hubY} rx={propR * 0.3} ry={propR} fill="#a1a1aa" opacity={0.85} />
+          </g>
+          <circle cx={hubX} cy={hubY} r={Math.min(width, height) * 0.14} fill="#52525b" />
         </svg>
       );
+    }
     case 'stair-obstacle':
       return (
         <svg {...svgProps}>

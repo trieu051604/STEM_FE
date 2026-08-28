@@ -56,7 +56,7 @@ export const LabStatsHeader = ({
   };
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
       <div className="bg-card rounded-xl border border-border p-5 flex items-center gap-4">
         <div className="w-12 h-12 rounded-lg bg-indigo-500/10 flex items-center justify-center shrink-0">
           <Icon name="FlaskConical" className="w-5 h-5 text-indigo-400" />
@@ -74,30 +74,6 @@ export const LabStatsHeader = ({
         <div>
           <p className="text-2xl font-bold text-foreground">{safeStats.totalStudents}</p>
           <p className="text-sm text-muted-foreground">Tổng Học Sinh</p>
-        </div>
-      </div>
-
-      <div className="bg-card rounded-xl border border-border p-5 flex items-center gap-4">
-        <div className="w-12 h-12 rounded-lg bg-blue-500/10 flex items-center justify-center shrink-0">
-          <Icon name="CheckSquare" className="w-5 h-5 text-blue-400" />
-        </div>
-        <div>
-          <p className="text-2xl font-bold text-foreground">
-            {safeStats.completionRate == null ? '--' : `${Math.round(safeStats.completionRate)}%`}
-          </p>
-          <p className="text-sm text-muted-foreground">Tỷ lệ Hoàn Thành</p>
-        </div>
-      </div>
-
-      <div className="bg-card rounded-xl border border-border p-5 flex items-center gap-4">
-        <div className="w-12 h-12 rounded-lg bg-purple-500/10 flex items-center justify-center shrink-0">
-          <Icon name="Clock" className="w-5 h-5 text-purple-400" />
-        </div>
-        <div>
-          <p className="text-2xl font-bold text-foreground">
-            {safeStats.avgTimeMins == null ? '--' : `${Math.round(safeStats.avgTimeMins)}m`}
-          </p>
-          <p className="text-sm text-muted-foreground">Thời Gian TB</p>
         </div>
       </div>
     </div>

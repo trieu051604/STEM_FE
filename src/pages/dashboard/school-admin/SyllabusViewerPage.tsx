@@ -332,8 +332,15 @@ export const SyllabusViewerPage = () => {
                 <div className="space-y-3 mt-4">
                   {([...(selectedModule.lessons || [])])
                     .sort((a, b) => {
-                      const orderA = a.displayOrder ?? 0;
-                      const orderB = b.displayOrder ?? 0;
+                      const extractLessonOrder = (item: any): number => {
+                        if (typeof item.displayOrder === 'number' && item.displayOrder > 0) return item.displayOrder;
+                        if (typeof item.order === 'number' && item.order > 0) return item.order;
+                        const match = String(item.title || '').match(/(?:Bài|Lesson|B\xE0i)\s*(\d+)/i);
+                        if (match) return parseInt(match[1], 10);
+                        return 9999;
+                      };
+                      const orderA = extractLessonOrder(a);
+                      const orderB = extractLessonOrder(b);
                       if (orderA !== orderB) return orderA - orderB;
                       return a.title.localeCompare(b.title, undefined, { numeric: true, sensitivity: 'base' });
                     })

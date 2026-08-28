@@ -1,182 +1,109 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { Link } from 'react-router-dom';
-import { Icon } from '@/components/ui/Icon';
-import { schoolsApi, coursesApi } from '@/services/dashboardApi';
+import { Sparkles, ArrowRight, PlayCircle } from 'lucide-react';
 
-const MOCK_CODE_LINES = [
-  { text: '#include <Arduino.h>', highlight: 'text-pink-500 font-semibold' },
-  { text: '', highlight: '' },
-  { text: 'void setup() {', highlight: 'text-blue-400 font-semibold' },
-  { text: '  pinMode(LED_BUILTIN, OUTPUT);', highlight: 'text-blue-300 pl-4' },
-  { text: '}', highlight: 'text-blue-400' },
-  { text: '', highlight: '' },
-  { text: 'void loop() {', highlight: 'text-blue-400 font-semibold' },
-  { text: '  digitalWrite(LED_BUILTIN, HIGH);', highlight: 'text-blue-300 pl-4' },
-  { text: '  delay(1000);', highlight: 'text-blue-300 pl-4' },
-  { text: '}', highlight: 'text-blue-400' }
+const VIRTUAL_LAB_IMAGE_URL = 'https://xvookhjvebxszqfdfuen.supabase.co/storage/v1/object/public/avatars/dashboard/1.jpg';
+
+const HIGHLIGHT_METRICS = [
+  { value: '100%', label: 'Mô phỏng Trực tuyến', desc: 'Không cần phần cứng vật lý' },
+  { value: 'ESP32 DevKit', label: 'Vi điều khiển chuẩn', desc: 'WiFi, Bluetooth & Lập trình C' },
+  { value: 'Thời gian thực', label: 'Biên dịch tức thì', desc: 'Trợ lý AI phân tích & hướng dẫn sửa lỗi' },
 ];
 
 export function HeroSection() {
-  const [partnerSchoolsCount, setPartnerSchoolsCount] = useState<number | null>(null);
-  const [coursesCount, setCoursesCount] = useState<number | null>(null);
-
-  useEffect(() => {
-    schoolsApi.getAll()
-      .then((res) => {
-        const list = Array.isArray(res) ? res : (res?.items || []);
-        const approved = list.filter((s: any) => s.status === 1 || String(s.status).toLowerCase() === 'approved');
-        if (approved.length > 0) {
-          setPartnerSchoolsCount(approved.length);
-        }
-      })
-      .catch(() => {});
-
-    coursesApi.getAll({ pageSize: 1 })
-      .then((res: any) => {
-        const total = res?.totalItems ?? res?.totalCount ?? (Array.isArray(res) ? res.length : null);
-        if (total !== null && total > 0) {
-          setCoursesCount(total);
-        }
-      })
-      .catch(() => {});
-  }, []);
-
   return (
-    <section className="relative pt-24 pb-32 overflow-hidden bg-background border-b border-border transition-colors duration-300">
-      
-      {/* CSS Dot Grid Background */}
-      <div className="absolute inset-0 z-0 bg-[radial-gradient(hsl(var(--border))_1px,transparent_1px)] [background-size:24px_24px] opacity-35"></div>
-      
-      {/* Glowing Ambient Blurs */}
+    <section className="relative pt-20 pb-24 overflow-hidden bg-background border-b border-border transition-colors duration-300">
+      {/* Background ambient lighting */}
+      <div className="absolute inset-0 z-0 bg-[radial-gradient(hsl(var(--border))_1px,transparent_1px)] [background-size:24px_24px] opacity-30"></div>
       <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-brand-600/10 rounded-full blur-[120px] pointer-events-none"></div>
-      <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-emerald-500/5 rounded-full blur-[120px] pointer-events-none"></div>
+      <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-emerald-500/10 rounded-full blur-[120px] pointer-events-none"></div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-        <div className="grid lg:grid-cols-2 gap-12 items-center">
+        <div className="grid lg:grid-cols-12 gap-12 items-center">
           
-          {/* Left Side Copy */}
-          <div className="space-y-6">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-secondary border border-border text-brand-500 dark:text-brand-400 text-xs font-mono">
-              <span className="w-2.5 h-2.5 rounded-full bg-brand-500 animate-pulse"></span>
-              v2.0 Simulation Engine
+          {/* Left Hero Content (5 cols) */}
+          <div className="lg:col-span-5 space-y-6">
+            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-brand-500/10 border border-brand-500/20 text-brand-500 text-xs sm:text-sm font-semibold tracking-wide">
+              <Sparkles className="w-4 h-4 text-brand-500" />
+              Nền tảng Thực hành STEM IoT & Vi điều khiển ESP32
             </div>
-            <h1 className="text-5xl md:text-6xl font-extrabold text-foreground leading-[1.1] tracking-tight">
-              Biến ý tưởng thành hiện thực. <br />
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-brand-400 to-brand-500">
-                Không lo cháy nổ.
+            
+            <h1 className="text-3xl sm:text-4xl lg:text-[2.75rem] font-bold text-foreground tracking-tight leading-[1.2]">
+              Lập trình STEM & IoT{' '}
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-brand-400 via-indigo-400 to-emerald-400">
+                Thực hành mô phỏng ESP32
               </span>
             </h1>
-            <p className="text-lg text-muted-foreground leading-relaxed max-w-lg">
-              Hệ sinh thái thực hành STEM trực tuyến kết hợp lập trình và mô phỏng phần cứng. Viết code, nối dây và chạy thử mạch điện tử y như thật ngay trên trình duyệt.
+
+            <p className="text-base sm:text-lg text-muted-foreground leading-relaxed">
+              Hệ sinh thái mô phỏng phần cứng ESP32 chuyên sâu cho học sinh. Tự do nối dây cảm biến, lập trình Smart Home, điều khiển Robot và biên dịch code C an toàn 100% trên trình duyệt.
             </p>
-            <div className="flex flex-col sm:flex-row gap-4 pt-2">
+
+            <div className="flex flex-wrap gap-4 pt-2">
               <Link 
                 to="/register" 
-                className="inline-flex justify-center items-center gap-2 bg-brand-600 hover:bg-brand-500 text-white px-8 py-3.5 rounded-xl font-semibold shadow-glow-brand transition-all active:scale-[0.98]"
+                className="inline-flex items-center justify-center gap-2 bg-brand-600 hover:bg-brand-500 text-white px-7 py-3.5 rounded-xl font-semibold text-base shadow-lg shadow-brand-600/20 hover:shadow-brand-600/30 transition-all active:scale-[0.98]"
               >
-                Mở Lab Miễn phí
-                <Icon name="ArrowRight" size={18} />
+                Đăng ký Dành cho Trường học
+                <ArrowRight size={18} />
               </Link>
-              <a 
-                href="#b2b" 
-                className="inline-flex justify-center items-center gap-2 bg-transparent hover:bg-secondary text-muted-foreground hover:text-foreground border border-border px-8 py-3.5 rounded-xl font-semibold transition-all"
+              <Link 
+                to="/login" 
+                className="inline-flex items-center justify-center gap-2 bg-secondary hover:bg-muted text-foreground border border-border px-7 py-3.5 rounded-xl font-semibold text-base transition-all"
               >
-                Dành cho Nhà trường
-              </a>
+                <PlayCircle size={18} className="text-brand-500" />
+                Vào Phòng Học Lab
+              </Link>
             </div>
 
-            {/* Platform Stats */}
-            <div className="grid grid-cols-3 gap-4 pt-8 border-t border-border/65 max-w-lg">
-              <div>
-                <div className="text-2xl font-extrabold text-foreground tracking-tight">
-                  {partnerSchoolsCount !== null ? `${partnerSchoolsCount}+` : '15+'}
+            {/* Feature Metrics */}
+            <div className="grid grid-cols-3 gap-4 pt-6 border-t border-border">
+              {HIGHLIGHT_METRICS.map((item, idx) => (
+                <div key={idx}>
+                  <div className="text-xl sm:text-2xl font-black text-foreground tracking-tight">{item.value}</div>
+                  <div className="text-xs sm:text-sm font-semibold text-brand-500 mt-0.5">{item.label}</div>
+                  <div className="text-xs text-muted-foreground hidden sm:block mt-0.5">{item.desc}</div>
                 </div>
-                <div className="text-[10px] md:text-xs text-muted-foreground font-bold uppercase tracking-wider">Trường đối tác</div>
-              </div>
-              <div>
-                <div className="text-2xl font-extrabold text-foreground tracking-tight">
-                  {coursesCount !== null ? `${coursesCount}+` : '10+'}
-                </div>
-                <div className="text-[10px] md:text-xs text-muted-foreground font-bold uppercase tracking-wider">Khóa học STEM</div>
-              </div>
-              <div>
-                <div className="text-2xl font-extrabold text-foreground tracking-tight">100%</div>
-                <div className="text-[10px] md:text-xs text-muted-foreground font-bold uppercase tracking-wider">Mô phỏng Cloud</div>
-              </div>
+              ))}
             </div>
           </div>
 
-          {/* Right Side Interactive Mockup (No Image Tag) */}
-          <div className="relative">
-            <div className="bg-card/85 backdrop-blur-xl border border-border rounded-2xl overflow-hidden shadow-2xl flex flex-col h-[400px]">
-              
+          {/* Right Hero Virtual Lab Actual Screenshot (7 cols) */}
+          <div className="lg:col-span-7 relative">
+            <div className="absolute -inset-1 bg-gradient-to-r from-brand-500/20 via-indigo-500/20 to-emerald-500/20 rounded-3xl blur-xl opacity-60"></div>
+            
+            <div className="relative bg-card border border-border rounded-2xl overflow-hidden shadow-2xl">
               {/* Window Bar */}
-              <div className="bg-muted/80 px-4 py-3 flex items-center gap-2 border-b border-border">
-                <div className="flex gap-1.5">
-                  <div className="w-3 h-3 rounded-full bg-rose-500/80"></div>
-                  <div className="w-3 h-3 rounded-full bg-amber-500/80"></div>
-                  <div className="w-3 h-3 rounded-full bg-emerald-500/80"></div>
-                </div>
-                <div className="mx-auto bg-card text-muted-foreground text-xs font-mono px-3 py-1 rounded-md">main.cpp - ESP32</div>
-              </div>
-              
-              {/* Split Pane Editor/Simulator */}
-              <div className="flex flex-1 overflow-hidden">
-                
-                {/* Fake VS Code syntax highlighted editor */}
-                <div className="w-1/2 bg-slate-950 p-4 font-mono text-xs overflow-hidden border-r border-border/40 select-none">
-                  <div className="text-slate-500 flex gap-4">
-                    <div className="text-slate-850 text-right select-none space-y-1 w-4">
-                      {MOCK_CODE_LINES.map((_, i) => <div key={i}>{i + 1}</div>)}
-                    </div>
-                    <div className="space-y-1 overflow-x-auto no-scrollbar w-full">
-                      {MOCK_CODE_LINES.map((line, i) => (
-                        <div key={i} className={line.highlight || 'text-slate-500'}>{line.text}</div>
-                      ))}
-                    </div>
+              <div className="bg-muted/90 px-4 py-3 flex items-center justify-between border-b border-border">
+                <div className="flex items-center gap-3">
+                  <div className="flex gap-1.5">
+                    <div className="w-3 h-3 rounded-full bg-red-500/80"></div>
+                    <div className="w-3 h-3 rounded-full bg-amber-500/80"></div>
+                    <div className="w-3 h-3 rounded-full bg-emerald-500/80"></div>
+                  </div>
+                  <div className="text-xs font-mono text-muted-foreground bg-background px-3 py-0.5 rounded border border-border">
+                    sketch.ino • StemFlow Virtual Lab
                   </div>
                 </div>
-                
-                {/* Abstract ESP32 hardware simulator block */}
-                <div className="w-1/2 bg-muted/20 relative overflow-hidden flex items-center justify-center">
-                  <div className="absolute inset-0 bg-[radial-gradient(hsl(var(--border))_1px,transparent_1px)] [background-size:12px_12px] opacity-15"></div>
-                  
-                  {/* Board layout */}
-                  <div className="relative z-10 bg-zinc-950 border-2 border-zinc-800 rounded-xl w-28 h-40 md:w-32 md:h-48 shadow-xl flex flex-col items-center py-2">
-                    
-                    {/* ESP32 Core module */}
-                    <div className="w-12 h-12 md:w-16 md:h-16 bg-zinc-900 border border-zinc-800 rounded-lg flex flex-col items-center justify-center mb-4 p-1">
-                      <Icon name="Cpu" className="text-zinc-700 animate-pulse w-8 h-8" />
-                      <span className="text-zinc-600 text-[8px] md:text-[9px] font-mono">ESP32</span>
-                    </div>
-                    
-                    {/* GPIO Pins representation */}
-                    <div className="flex gap-1 w-full px-2 justify-between">
-                      <div className="flex flex-col gap-1">
-                        {[...Array(6)].map((_, i) => <div key={`l-${i}`} className="w-1.5 h-1.5 md:w-2 md:h-2 rounded-full bg-zinc-800"></div>)}
-                      </div>
-                      <div className="flex flex-col gap-1">
-                        {[...Array(6)].map((_, i) => <div key={`r-${i}`} className="w-1.5 h-1.5 md:w-2 md:h-2 rounded-full bg-zinc-800"></div>)}
-                      </div>
-                    </div>
-                    
-                    {/* Glowing synthetic LED connection wire */}
-                    <div className="absolute -right-6 md:-right-8 top-12 flex items-center">
-                      <div className="w-6 md:w-8 h-0.5 bg-red-500/50"></div>
-                      <div className="w-3.5 h-3.5 md:w-4.5 md:h-4.5 rounded-full bg-red-500 shadow-[0_0_15px_rgba(239,68,68,0.8)] animate-pulse"></div>
-                    </div>
-                  </div>
-
-                </div>
-
+                <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                  ĐANG MÔ PHỎNG
+                </span>
               </div>
 
+              {/* Lab Interface Image */}
+              <div className="relative bg-[#121214] overflow-hidden group">
+                <img 
+                  src={VIRTUAL_LAB_IMAGE_URL} 
+                  alt="StemFlow Virtual Lab Interface" 
+                  className="w-full h-auto object-cover rounded-b-2xl shadow-inner transition-transform duration-500 group-hover:scale-[1.015]"
+                />
+              </div>
             </div>
           </div>
 
         </div>
       </div>
-
     </section>
   );
 }

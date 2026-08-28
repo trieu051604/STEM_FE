@@ -19,6 +19,7 @@ import {
   PanelLeftOpen,
 } from 'lucide-react';
 import { useSidebarStore } from '@/stores/sidebarStore';
+import { useUnreadNotificationsCount } from '@/hooks/useUnreadNotificationsCount';
 
 export const StandardDashboardLayout = () => {
   const location = useLocation();
@@ -32,6 +33,7 @@ export const StandardDashboardLayout = () => {
 
   const sidebarItems = getSidebarItems(user?.role || 'student');
   const isMasterAdmin = user?.role === 'master_admin';
+  const unreadNotificationsCount = useUnreadNotificationsCount();
 
   const roleLabels: Record<string, string> = {
     master_admin: 'Quản trị hệ thống',
@@ -92,14 +94,9 @@ export const StandardDashboardLayout = () => {
         )}
       >
         <div className="h-16 flex items-center justify-between px-4 border-b border-border shrink-0">
-          <Link to="/dashboard" className="flex items-center gap-2">
-            <div className={cn(
-              "w-8 h-8 rounded-lg flex items-center justify-center font-bold text-sm",
-              isMasterAdmin ? "bg-brand text-brand-foreground" : "bg-primary text-primary-foreground"
-            )}>
-              <span>ST</span>
-            </div>
-            <span className="font-semibold text-lg text-foreground">STEM</span>
+          <Link to="/dashboard" className="font-bold text-xl tracking-tight text-foreground flex items-center gap-2 select-none">
+            <Icon name="Cpu" className="text-brand-500 animate-pulse w-6 h-6" />
+            <span>Stem<span className="text-brand-500">Flow</span></span>
           </Link>
           <button
             onClick={handleSidebarToggle}
@@ -132,7 +129,15 @@ export const StandardDashboardLayout = () => {
                     {isActive && (
                       <div className="absolute left-0 top-0 bottom-0 w-1 bg-[#0f4c5c] rounded-r-md"></div>
                     )}
-                    <Icon name={item.icon} className="w-5 h-5 shrink-0" />
+                    <span className="relative shrink-0">
+                      <Icon name={item.icon} className="w-5 h-5 shrink-0" />
+                      {item.icon === 'Bell' && unreadNotificationsCount > 0 && (
+                        <span className="absolute -top-1 -right-1 flex h-2.5 w-2.5">
+                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-500 opacity-75" />
+                          <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-red-500" />
+                        </span>
+                      )}
+                    </span>
                     <span className="truncate">{item.label}</span>
                   </Link>
                 </li>
@@ -182,21 +187,10 @@ export const StandardDashboardLayout = () => {
               <button
                 onClick={() => navigate(-1)}
                 className="p-1.5 hover:bg-accent rounded-md transition-colors"
+                title="Quay lại"
               >
                 <ChevronLeft className="w-4 h-4 text-foreground" />
               </button>
-
-              <Link
-                to="/dashboard"
-                className="p-1.5 hover:bg-accent rounded-md transition-colors"
-              >
-                <Home className="w-4 h-4 text-foreground" />
-              </Link>
-
-              <span className="text-foreground/50">/</span>
-              <span className="text-sm font-medium text-foreground">
-                {getPageTitle()}
-              </span>
             </div>
           </div>
 

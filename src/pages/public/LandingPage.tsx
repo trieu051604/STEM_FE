@@ -3,7 +3,6 @@ import Navbar from '@/components/ui/Navbar';
 import HeroSection from '@/components/ui/HeroSection';
 import FeatureShowcase from '@/components/ui/FeatureShowcase';
 import LabRoomSection from '@/components/ui/LabRoomSection';
-import B2bSection from '@/components/ui/B2bSection';
 import Footer from '@/components/ui/Footer';
 
 export function LandingPage() {
@@ -17,17 +16,14 @@ export function LandingPage() {
         {/* 2. Hero Section (Visual Simulator Hook) */}
         <HeroSection />
         
-        {/* 3. Feature Showcase Section (B2C & Quiz Banner & Bento Grid) */}
+        {/* 3. Feature Showcase Section (AI Assistant & Packages) */}
         <FeatureShowcase />
 
         {/* 4. Virtual Lab Room Section (Phòng Lab ảo) */}
         <LabRoomSection />
-
-        {/* 5. B2B / Enterprise Section (Z-pattern & Social Proof) */}
-        <B2bSection />
       </main>
       
-      {/* 6. Minimal footer */}
+      {/* 5. Minimal footer */}
       <Footer />
     </div>
   );

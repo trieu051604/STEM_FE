@@ -153,13 +153,6 @@ export function LoginPage() {
           {loginType === 'student' ? (
             /* Student/Teacher Login (Google OAuth) */
             <div className="space-y-5 animate-in fade-in duration-200">
-              <div className="p-4 bg-brand-500/10 border border-brand-500/20 rounded-xl">
-                <p className="text-xs text-brand-600 dark:text-brand-400 font-medium leading-relaxed">
-                  <strong>Lưu ý:</strong> Tài khoản của bạn cần được Quản trị viên trường tạo trước.
-                  Nếu chưa có tài khoản, vui lòng liên hệ nhà trường để được cung cấp quyền truy cập.
-                </p>
-              </div>
-
               {/* Error Message */}
               {error && (
                 <div className="flex items-center gap-2.5 p-4 rounded-xl bg-destructive/10 border border-destructive/20 text-destructive text-xs font-semibold">
@@ -215,12 +208,6 @@ export function LoginPage() {
           ) : loginType === 'school_admin' ? (
             /* School Admin Login (Email/Password) */
             <div className="space-y-4 animate-in fade-in duration-200">
-              <div className="p-4 bg-emerald-500/10 border border-emerald-500/20 rounded-xl">
-                <p className="text-xs text-emerald-600 dark:text-emerald-450 font-medium leading-relaxed">
-                  <strong>Quản trị trường học:</strong> Đăng nhập để quản lý học sinh, giáo viên, khóa học và lớp học của trường bạn.
-                </p>
-              </div>
-
               <form onSubmit={handleSubmit(handleAdminLogin)} className="space-y-4">
                 {/* Email Field */}
                 <div>
@@ -332,11 +319,6 @@ export function LoginPage() {
           ) : (
             /* Master Admin Login (Email/Password) */
             <div className="space-y-4 animate-in fade-in duration-200">
-              <div className="p-4 bg-purple-500/10 border border-purple-500/20 rounded-xl">
-                <p className="text-xs text-purple-600 dark:text-purple-400 font-medium leading-relaxed">
-                  <strong>Quản trị hệ thống:</strong> Đăng nhập để quản lý toàn bộ hệ thống STEM, duyệt trường học và giám sát hệ thống.
-                </p>
-              </div>
 
               <form onSubmit={handleSubmit(handleAdminLogin)} className="space-y-4">
                 {/* Email Field */}
@@ -439,80 +421,66 @@ export function LoginPage() {
       </main>
 
       {/* Right Side (Branding & Showcase Area) */}
-      <section className="hidden lg:flex relative bg-slate-950 border-l border-border/40 text-slate-150 flex-col justify-between p-16 overflow-hidden select-none">
+      <section className="hidden lg:flex relative bg-muted/30 border-l border-border text-foreground flex-col justify-between p-16 overflow-hidden select-none transition-colors duration-300">
 
-        {/* Wokwi-style Engineering dot grid background */}
-        <div className="absolute inset-0 z-0 bg-[radial-gradient(rgba(255,255,255,0.06)_1px,transparent_1px)] [background-size:24px_24px] opacity-75"></div>
+        {/* Engineering dot grid background */}
+        <div className="absolute inset-0 z-0 bg-[radial-gradient(hsl(var(--border))_1px,transparent_1px)] [background-size:24px_24px] opacity-40"></div>
 
         {/* Soft Radial Ambient Glows */}
         <div className="absolute top-1/4 left-1/3 w-[500px] h-[500px] bg-brand-500/10 rounded-full blur-[140px] pointer-events-none"></div>
-        <div className="absolute bottom-1/4 right-1/4 w-[400px] h-[400px] bg-emerald-500/5 rounded-full blur-[120px] pointer-events-none"></div>
+        <div className="absolute bottom-1/4 right-1/4 w-[400px] h-[400px] bg-emerald-500/10 rounded-full blur-[120px] pointer-events-none"></div>
 
         {/* Brand Header */}
         <div className="relative z-10 flex items-center gap-2.5">
           <Icon name="Cpu" className="text-brand-500 w-8 h-8 animate-pulse" />
-          <span className="font-extrabold text-2xl tracking-tight text-white">
+          <span className="font-extrabold text-2xl tracking-tight text-foreground">
             Stem<span className="text-brand-500">Flow</span>
           </span>
         </div>
 
         {/* Main Branding copy */}
-        <div className="relative z-10 space-y-8 max-w-lg">
-          <h2 className="text-4xl font-black text-white leading-tight">
+        <div className="relative z-10 space-y-6 max-w-lg">
+          <h2 className="text-4xl font-black text-foreground leading-tight">
             Nền tảng thực hành <br />
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-brand-400 to-emerald-400">
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-brand-500 to-emerald-500">
               STEM không giới hạn.
             </span>
           </h2>
-          <p className="text-slate-400 leading-relaxed text-base font-medium">
+          <p className="text-muted-foreground leading-relaxed text-sm font-medium">
             Viết code, nối mạch điện tử và chạy mô phỏng cảm biến trực tuyến y như thật ngay trên trình duyệt mà không lo cháy nổ hay hao tổn thiết bị.
           </p>
 
-          {/* Role-based features */}
-          <div className="space-y-3">
-            <div className="flex items-center gap-3 p-3.5 rounded-xl bg-slate-900 border border-slate-800">
-              <div className="w-8 h-8 rounded-lg bg-brand-500/20 flex items-center justify-center">
-                <User size={16} className="text-brand-400" />
+          {/* Real Virtual Lab Screenshot */}
+          <div className="bg-card border border-border rounded-2xl overflow-hidden shadow-2xl">
+            <div className="bg-muted px-4 py-2.5 border-b border-border flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="flex gap-1.5">
+                  <div className="w-2.5 h-2.5 rounded-full bg-red-500/80"></div>
+                  <div className="w-2.5 h-2.5 rounded-full bg-amber-500/80"></div>
+                  <div className="w-2.5 h-2.5 rounded-full bg-emerald-500/80"></div>
+                </div>
+                <span className="text-[11px] font-mono text-muted-foreground">sketch.ino • ESP32 Lab</span>
               </div>
-              <div>
-                <p className="text-xs font-bold text-slate-200">Học sinh & Giáo viên</p>
-                <p className="text-[10px] text-slate-500 font-semibold uppercase tracking-wider">Đăng nhập nhanh bằng Google OAuth</p>
-              </div>
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 flex items-center gap-1 border border-emerald-500/30">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                RUNNING
+              </span>
             </div>
-            <div className="flex items-center gap-3 p-3.5 rounded-xl bg-slate-900 border border-emerald-500/20">
-              <div className="w-8 h-8 rounded-lg bg-emerald-500/20 flex items-center justify-center">
-                <Building2 size={16} className="text-emerald-400" />
-              </div>
-              <div>
-                <p className="text-xs font-bold text-slate-200">Quản trị trường học</p>
-                <p className="text-[10px] text-slate-500 font-semibold uppercase tracking-wider">Quản lý HS, GV, khóa học & lớp học</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-3 p-3.5 rounded-xl bg-slate-900 border border-purple-500/20">
-              <div className="w-8 h-8 rounded-lg bg-purple-500/20 flex items-center justify-center">
-                <Crown size={16} className="text-purple-400" />
-              </div>
-              <div>
-                <p className="text-xs font-bold text-slate-200">Quản trị hệ thống</p>
-                <p className="text-[10px] text-slate-500 font-semibold uppercase tracking-wider">Duyệt trường học & cấu hình linh kiện</p>
-              </div>
-            </div>
+            <img 
+              src="https://xvookhjvebxszqfdfuen.supabase.co/storage/v1/object/public/avatars/dashboard/1.jpg" 
+              alt="StemFlow Virtual Lab Preview" 
+              className="w-full h-auto object-cover"
+            />
           </div>
         </div>
 
-        {/* Customer testimonial */}
-        <div className="relative z-10 border-t border-slate-800 pt-8 max-w-lg">
-          <blockquote className="text-slate-400 text-sm italic leading-relaxed">
-            &ldquo;StemFlow giúp học sinh của chúng tôi tiếp cận với lập trình nhúng và thiết kế mạch điện tử chỉ trong vài phút, loại bỏ hoàn toàn chi phí phần cứng vật lý đắt đỏ.&rdquo;
-          </blockquote>
-          <div className="mt-4">
-            <cite className="not-italic text-sm font-semibold text-slate-200 block">
-              Thầy Nguyễn Văn An
-            </cite>
-            <span className="text-xs text-slate-500 font-semibold">
-              Giám đốc Trung tâm STEM EduTech
-            </span>
-          </div>
+        {/* Footer info strip */}
+        <div className="relative z-10 border-t border-border pt-6 max-w-lg flex items-center justify-between text-xs text-muted-foreground font-mono">
+          <span>Hỗ trợ vi điều khiển ESP32 & Cảm biến</span>
+          <span className="text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+            Cloud Sandbox Online
+          </span>
         </div>
 
       </section>

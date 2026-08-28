@@ -44,21 +44,10 @@ export const TeacherHeader = ({ isDesktop }: { isDesktop: boolean }) => {
           <button
             onClick={() => navigate(-1)}
             className="p-1.5 hover:bg-accent rounded-md transition-colors"
+            title="Quay lại"
           >
             <ChevronLeft className="w-4 h-4 text-foreground" />
           </button>
-
-          <Link
-            to="/dashboard"
-            className="p-1.5 hover:bg-accent rounded-md transition-colors"
-          >
-            <Home className="w-4 h-4 text-foreground" />
-          </Link>
-
-          <span className="text-foreground/50">/</span>
-          <span className="text-sm font-medium text-foreground">
-            {getPageTitle()}
-          </span>
         </div>
       </div>
 

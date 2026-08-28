@@ -8,8 +8,8 @@ export default function StudentSchedulePage() {
     <div className="space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-bold">Lịch học</h1>
-        <p className="text-muted-foreground">Xem lịch học của bạn</p>
+        <h1 className="text-2xl font-bold">Lịch học hàng tuần</h1>
+        <p className="text-muted-foreground">Xem và theo dõi thời khóa biểu học tập của bạn</p>
       </div>
 
       {/* Weekly Schedule Grid - Student View */}

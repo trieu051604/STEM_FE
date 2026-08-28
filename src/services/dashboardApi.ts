@@ -853,6 +853,13 @@ function toStringValue(value: unknown, fallback = '') {
   return typeof value === 'string' ? value : fallback;
 }
 
+// Khác toStringValue: giữ nguyên chuỗi rỗng "" (giáo viên cố ý xóa trắng nội
+// dung) thay vì gộp chung với null/undefined (chưa từng thiết lập) — tránh
+// bug fallback nhầm về defaultStarterCode ở nơi tiêu thụ.
+function toNullableStringValue(value: unknown) {
+  return typeof value === 'string' ? value : null;
+}
+
 function toBooleanValue(value: unknown, fallback = false) {
   return typeof value === 'boolean' ? value : fallback;
 }
@@ -917,7 +924,7 @@ function normalizeSimulationDetail(value: unknown): AssignmentSimulationDetail |
       pick(detail, 'studentInputMode', 'StudentInputMode'),
       'circuit_build'
     ),
-    starterCode: toStringValue(pick(detail, 'starterCode', 'StarterCode'), '') || null,
+    starterCode: toNullableStringValue(pick(detail, 'starterCode', 'StarterCode')),
     answerKey: pick(detail, 'answerKey', 'AnswerKey') ?? {},
     autoGradingEnabled: toBooleanValue(
       pick(detail, 'autoGradingEnabled', 'AutoGradingEnabled')
@@ -1655,8 +1662,7 @@ function normalizeLab(value: unknown): LabEntity {
       'wokwi_iframe'
     ),
     boardType: toStringValue(pick(source, 'boardType', 'BoardType'), 'arduino_uno'),
-    starterCode:
-      toStringValue(pick(source, 'starterCode', 'StarterCode'), '') || null,
+    starterCode: toNullableStringValue(pick(source, 'starterCode', 'StarterCode')),
     circuitConfig: normalizeCircuitConfig(pick(source, 'circuitConfig', 'CircuitConfig')),
     allowedComponentTypes: toStringArray(
       pick(source, 'allowedComponentTypes', 'AllowedComponentTypes')
